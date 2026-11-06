@@ -215,14 +215,14 @@ export function RegisterPaymentSheet({
                 <button
                   type="button"
                   onClick={() => setAmountFromChip(debt.balance)}
-                  className="h-9 rounded-lg border bg-background px-3 text-xs font-medium active:bg-muted"
+                  className="h-11 rounded-lg border bg-background px-3 text-xs font-medium active:bg-muted"
                 >
                   Todo
                 </button>
                 <button
                   type="button"
                   onClick={() => setAmountFromChip(debt.balance / 2)}
-                  className="h-9 rounded-lg border bg-background px-3 text-xs font-medium active:bg-muted"
+                  className="h-11 rounded-lg border bg-background px-3 text-xs font-medium active:bg-muted"
                 >
                   50%
                 </button>
@@ -234,7 +234,7 @@ export function RegisterPaymentSheet({
                       Math.min(debt.balance, availableInDebtCurrency),
                     )
                   }
-                  className="h-9 rounded-lg border bg-background px-3 text-xs font-medium disabled:opacity-40 active:bg-muted"
+                  className="h-11 rounded-lg border bg-background px-3 text-xs font-medium disabled:opacity-40 active:bg-muted"
                 >
                   Mis ganancias
                 </button>
@@ -287,7 +287,7 @@ export function RegisterPaymentSheet({
                       aria-pressed={active}
                       onClick={() => setSource(option.value)}
                       className={cn(
-                        "h-10 rounded-md text-xs font-medium transition-colors",
+                        "h-11 rounded-md text-xs font-medium transition-colors",
                         active
                           ? "bg-background text-foreground shadow-xs"
                           : "text-muted-foreground active:bg-background/60",

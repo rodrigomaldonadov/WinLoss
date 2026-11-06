@@ -57,7 +57,7 @@ export function DeleteDebtButton({
         type="button"
         variant="ghost"
         size="sm"
-        className="h-9 gap-1 text-xs text-muted-foreground hover:text-destructive"
+        className="h-11 gap-1 text-xs text-muted-foreground hover:text-destructive"
         onClick={() => setOpen(true)}
       >
         <Trash2 className="size-3.5" aria-hidden />

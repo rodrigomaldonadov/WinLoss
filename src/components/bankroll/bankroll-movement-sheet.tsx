@@ -128,7 +128,7 @@ export function BankrollMovementSheet({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         {trigger ?? (
-          <Button type="button" variant="outline" className="h-10">
+          <Button type="button" variant="outline" className="h-11">
             Movimiento
           </Button>
         )}
@@ -178,7 +178,7 @@ export function BankrollMovementSheet({
                     aria-pressed={active}
                     onClick={() => setType(option.value)}
                     className={cn(
-                      "flex h-10 items-center justify-center gap-1 rounded-md text-xs font-medium transition-colors",
+                      "flex h-11 items-center justify-center gap-1 rounded-md text-xs font-medium transition-colors",
                       active
                         ? "bg-background text-foreground shadow-xs"
                         : "text-muted-foreground active:bg-background/60",
@@ -221,7 +221,7 @@ export function BankrollMovementSheet({
                       aria-pressed={active}
                       onClick={() => selectCurrency(code)}
                       className={cn(
-                        "flex h-10 items-center justify-center gap-1 rounded-md text-xs font-medium transition-colors",
+                        "flex h-11 items-center justify-center gap-1 rounded-md text-xs font-medium transition-colors",
                         active
                           ? "bg-background text-foreground shadow-xs"
                           : "text-muted-foreground active:bg-background/60",

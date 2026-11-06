@@ -49,7 +49,7 @@ export function VoidPaymentButton({
         type="button"
         variant="ghost"
         size="sm"
-        className="h-9 gap-1 text-xs text-muted-foreground"
+        className="h-11 gap-1 text-xs text-muted-foreground"
         onClick={() => setOpen(true)}
       >
         <Undo2 className="size-3.5" aria-hidden />

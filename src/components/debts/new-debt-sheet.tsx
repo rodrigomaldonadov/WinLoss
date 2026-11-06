@@ -200,7 +200,7 @@ export function NewDebtSheet({
                       aria-pressed={active}
                       onClick={() => selectCurrency(code)}
                       className={cn(
-                        "flex h-10 items-center justify-center gap-1 rounded-md text-sm font-medium transition-colors",
+                        "flex h-11 items-center justify-center gap-1 rounded-md text-sm font-medium transition-colors",
                         active
                           ? "bg-background text-foreground shadow-xs"
                           : "text-muted-foreground active:bg-background/60",
@@ -237,7 +237,7 @@ export function NewDebtSheet({
                     type="button"
                     onClick={() => setAmount(String(value))}
                     className={cn(
-                      "h-9 rounded-lg border px-3 text-xs font-medium tabular-nums transition-colors",
+                      "h-11 rounded-lg border px-3 text-xs font-medium tabular-nums transition-colors",
                       amount === String(value)
                         ? "border-primary bg-primary/10 text-primary"
                         : "bg-background text-muted-foreground active:bg-muted",

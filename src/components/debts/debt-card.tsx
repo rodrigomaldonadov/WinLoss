@@ -17,14 +17,15 @@ export function DebtCard({ debt }: DebtCardProps) {
   const progress = Math.round(debt.progress * 100);
 
   return (
-    <article className="min-w-0 rounded-xl border bg-card p-4 shadow-xs">
+    <Link
+      href={`/debts/${debt.id}`}
+      className="block min-w-0 rounded-xl border bg-card p-4 shadow-xs transition-colors hover:bg-muted/30"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <h2 className="truncate text-sm font-semibold">
-              <Link href={`/debts/${debt.id}`} className="hover:underline">
-                {debt.lenderName}
-              </Link>
+              {debt.lenderName}
             </h2>
             <Badge variant="secondary" className="font-normal">
               {debt.currency}
@@ -86,6 +87,6 @@ export function DebtCard({ debt }: DebtCardProps) {
           </span>
         )}
       </div>
-    </article>
+    </Link>
   );
 }
