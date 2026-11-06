@@ -7,6 +7,22 @@ export const APP_DESCRIPTION =
 export const DEFAULT_CURRENCY = "PEN";
 export const DEFAULT_TIMEZONE = "America/Lima";
 
+/** Monedas soportadas por el módulo de deudas. */
+export const DEBT_CURRENCIES = ["PEN", "USD"] as const;
+export type DebtCurrencyCode = (typeof DEBT_CURRENCIES)[number];
+
+export const DEBT_CURRENCY_LABELS: Record<
+  DebtCurrencyCode,
+  { symbol: string; label: string }
+> = {
+  PEN: { symbol: "S/", label: "Soles" },
+  USD: { symbol: "US$", label: "Dólares" },
+};
+
+/** Tasa manual USD → PEN por defecto (PEN por 1 USD). */
+export const DEFAULT_USD_TO_PEN_RATE = 3.75;
+export const DEFAULT_DEBT_ALERT_THRESHOLD = 30;
+
 /** Máximo de partidos (legs) por boleto. */
 export const MAX_BET_LEGS = 30;
 

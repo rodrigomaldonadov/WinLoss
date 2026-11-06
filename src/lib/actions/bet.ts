@@ -233,6 +233,12 @@ async function validateBetReferences(
           isFreeBet: true,
         },
       },
+      transactions: {
+        select: {
+          type: true,
+          amountInBankrollCurrency: true,
+        },
+      },
     },
   });
 
@@ -245,7 +251,11 @@ async function validateBetReferences(
     };
   }
 
-  const stats = calculateBettingStats(bankroll.bets, bankroll.initialAmount);
+  const stats = calculateBettingStats(
+    bankroll.bets,
+    bankroll.initialAmount,
+    bankroll.transactions,
+  );
 
   if (!data.isFreeBet && data.stake > stats.currentBankroll.toNumber()) {
     return {

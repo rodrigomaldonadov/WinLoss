@@ -1,5 +1,9 @@
 import Decimal from "decimal.js";
-import type { BetStatus, LegStatus } from "@prisma/client";
+import type {
+  BankrollTransactionType,
+  BetStatus,
+  LegStatus,
+} from "@prisma/client";
 
 export type Numeric = Decimal | number | string;
 
@@ -369,12 +373,32 @@ export type BettingStats = {
   yield: Decimal;
   /** (ganadas + medio ganadas) / liquidadas con resultado. */
   winRate: Decimal;
+  /** Inicial + movimientos + beneficio − stakes pendientes. */
   currentBankroll: Decimal;
+  /** Inicial + depósitos + préstamos − retiros. */
+  capitalContributed: Decimal;
+  /** Inicial + depósitos − retiros (sin préstamos). */
+  ownCapital: Decimal;
+  /** Suma neta de todos los movimientos del libro. */
+  movementsBalance: Decimal;
 };
 
+export type BankrollMovementLike = {
+  type: BankrollTransactionType;
+  amountInBankrollCurrency: Numeric;
+};
+
+/**
+ * Calcula métricas de apuestas y saldo del bankroll.
+ *
+ * Importante: el préstamo suma saldo, pero no beneficio. ROI, yield y win rate
+ * se calculan solo con apuestas. El capital aportado y el capital propio se
+ * usan para drawdown y alertas de deuda, no para rentabilidad.
+ */
 export function calculateBettingStats(
   bets: BetLike[],
   initialBankroll: Numeric = 0,
+  transactions: BankrollMovementLike[] = [],
 ): BettingStats {
   let settledCount = 0;
   let pendingCount = 0;
@@ -401,6 +425,35 @@ export function calculateBettingStats(
     if (bet.status === "LOST" || bet.status === "HALF_LOST") lostCount += 1;
   }
 
+  let movementsBalance = new Decimal(0);
+  let capitalContributed = toDecimal(initialBankroll);
+  let ownCapital = toDecimal(initialBankroll);
+
+  for (const transaction of transactions) {
+    const value = toDecimal(transaction.amountInBankrollCurrency).abs();
+    const signed =
+      transaction.type === "DEPOSIT" || transaction.type === "LOAN_IN"
+        ? value
+        : value.negated();
+
+    movementsBalance = movementsBalance.plus(signed);
+
+    if (
+      transaction.type === "DEPOSIT" ||
+      transaction.type === "WITHDRAWAL" ||
+      transaction.type === "LOAN_IN"
+    ) {
+      capitalContributed = capitalContributed.plus(signed);
+    }
+
+    if (
+      transaction.type === "DEPOSIT" ||
+      transaction.type === "WITHDRAWAL"
+    ) {
+      ownCapital = ownCapital.plus(signed);
+    }
+  }
+
   const decided = wonCount + lostCount;
   const initial = toDecimal(initialBankroll);
 
@@ -415,6 +468,11 @@ export function calculateBettingStats(
     roi: initial.gt(0) ? profit.div(initial) : new Decimal(0),
     yield: turnover.gt(0) ? profit.div(turnover) : new Decimal(0),
     winRate: decided > 0 ? new Decimal(wonCount).div(decided) : new Decimal(0),
-    currentBankroll: roundMoney(initial.plus(profit).minus(pendingStake)),
+    currentBankroll: roundMoney(
+      initial.plus(movementsBalance).plus(profit).minus(pendingStake),
+    ),
+    capitalContributed: roundMoney(capitalContributed),
+    ownCapital: roundMoney(ownCapital),
+    movementsBalance: roundMoney(movementsBalance),
   };
 }

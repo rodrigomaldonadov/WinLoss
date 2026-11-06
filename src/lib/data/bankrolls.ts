@@ -25,11 +25,22 @@ export async function getBankrollsForUser(
           },
         },
       },
+      transactions: {
+        orderBy: { occurredAt: "desc" },
+        select: {
+          type: true,
+          amountInBankrollCurrency: true,
+        },
+      },
     },
   });
 
   return bankrolls.map((bankroll) => {
-    const stats = calculateBettingStats(bankroll.bets, bankroll.initialAmount);
+    const stats = calculateBettingStats(
+      bankroll.bets,
+      bankroll.initialAmount,
+      bankroll.transactions,
+    );
 
     const betListItems = bankroll.bets.map((bet) =>
       toBetListItem({
@@ -57,6 +68,9 @@ export async function getBankrollsForUser(
       winRate: stats.winRate.toNumber(),
       roi: stats.roi.toNumber(),
       yield: stats.yield.toNumber(),
+      capitalContributed: stats.capitalContributed.toNumber(),
+      ownCapital: stats.ownCapital.toNumber(),
+      movementsBalance: stats.movementsBalance.toNumber(),
       bets: betListItems,
     };
   });
@@ -74,71 +88,107 @@ export async function countUserBankrolls(userId: string): Promise<number> {
   return prisma.bankroll.count({ where: { userId } });
 }
 
+export type BankrollHistoryPoint = {
+  date: string;
+  bankroll: number;
+  deposit?: number | null;
+  loan?: number | null;
+  payment?: number | null;
+  withdrawal?: number | null;
+};
+
 export async function getBankrollHistory(
   userId: string,
-  take = 180
-): Promise<{ date: string; bankroll: number }[]> {
-  const bets = await prisma.bet.findMany({
-    where: { userId },
-    orderBy: [{ placedAt: "asc" }, { createdAt: "asc" }],
-    take,
-    select: {
-      placedAt: true,
-      stake: true,
-      profit: true,
-      isFreeBet: true,
-    },
-  });
-
-  // Acumular bankroll día a día partiendo del saldo inicial de cada bankroll activo
-  const bankrolls = await prisma.bankroll.findMany({
+  take = 180,
+): Promise<BankrollHistoryPoint[]> {
+  const bankroll = await prisma.bankroll.findFirst({
     where: { userId, isActive: true },
+    orderBy: { createdAt: "asc" },
     select: {
       initialAmount: true,
       bets: {
+        orderBy: [{ placedAt: "asc" }, { createdAt: "asc" }],
+        take,
         select: {
-          status: true,
-          stake: true,
-          odds: true,
+          placedAt: true,
           profit: true,
           isFreeBet: true,
+        },
+      },
+      transactions: {
+        orderBy: { occurredAt: "asc" },
+        select: {
+          occurredAt: true,
+          type: true,
+          amountInBankrollCurrency: true,
         },
       },
     },
   });
 
-  // Por simplicidad, usamos el bankroll principal y calculamos el patrimonio
-  // día a día sumando stakes y profits reales.
-  // En producción esto sería una tabla de movimientos.
-  const initialBankroll = bankrolls[0]?.initialAmount?.toNumber() ?? 0;
+  if (!bankroll) return [];
 
-  const dailyBankrolls = bets.reduce<
-    Map<string, { profit: number; stake: number }>
-  >((acc, bet) => {
-    const day = bet.placedAt
-      ? `${bet.placedAt.getFullYear()}-${String(bet.placedAt.getMonth() + 1).padStart(2, "0")}-${String(bet.placedAt.getDate()).padStart(2, "0")}`
-      : "unknown";
-    if (!acc.has(day)) acc.set(day, { profit: 0, stake: 0 });
-    const dayData = acc.get(day)!;
-    if (bet.isFreeBet) {
-      dayData.profit += 0; // free bets no afectan profit real
-    } else {
-      dayData.profit += Number(bet.profit ?? 0);
+  const dayKey = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  const days = new Map<
+    string,
+    {
+      profit: number;
+      movement: number;
+      deposit: boolean;
+      loan: boolean;
+      payment: boolean;
+      withdrawal: boolean;
     }
-    dayData.stake += Number(bet.stake ?? 0);
-    acc.set(day, dayData);
-    return acc;
-  }, new Map());
+  >();
 
-  const result: { date: string; bankroll: number }[] = [];
-  let runningBankroll = Number(initialBankroll);
+  const ensureDay = (date: Date) => {
+    const key = dayKey(date);
+    if (!days.has(key)) {
+      days.set(key, {
+        profit: 0,
+        movement: 0,
+        deposit: false,
+        loan: false,
+        payment: false,
+        withdrawal: false,
+      });
+    }
+    return days.get(key)!;
+  };
 
-  const sortedDays = Array.from(dailyBankrolls.keys()).sort();
-  for (const day of sortedDays) {
-    const { profit } = dailyBankrolls.get(day)!;
-    // Para el gráfico mostramos: inicial + profit acumulado (sin descuentar stake pendiente aún)
-    runningBankroll = Number(initialBankroll) + profit;
-    result.push({ date: day, bankroll: Math.max(0, runningBankroll) });
+  for (const bet of bankroll.bets) {
+    const day = ensureDay(bet.placedAt);
+    if (!bet.isFreeBet) {
+      day.profit += Number(bet.profit ?? 0);
+    }
+  }
+
+  for (const transaction of bankroll.transactions) {
+    const day = ensureDay(transaction.occurredAt);
+    day.movement += Number(transaction.amountInBankrollCurrency);
+    if (transaction.type === "DEPOSIT") day.deposit = true;
+    if (transaction.type === "LOAN_IN") day.loan = true;
+    if (transaction.type === "LOAN_REPAYMENT") day.payment = true;
+    if (transaction.type === "WITHDRAWAL") day.withdrawal = true;
+  }
+
+  let running =
+    bankroll.initialAmount.toNumber();
+  const result: BankrollHistoryPoint[] = [];
+
+  for (const date of Array.from(days.keys()).sort()) {
+    const day = days.get(date)!;
+    running += day.profit + day.movement;
+    result.push({
+      date,
+      bankroll: Math.max(0, Math.round(running * 100) / 100),
+      deposit: day.deposit ? running : null,
+      loan: day.loan ? running : null,
+      payment: day.payment ? running : null,
+      withdrawal: day.withdrawal ? running : null,
+    });
   }
 
   return result;
@@ -149,7 +199,7 @@ export async function calculateDrawdown(
   bankrollId?: string
 ): Promise<{
   currentBankroll: number;
-  initialBankroll: number;
+  capitalContributed: number;
   drawdown: number;
   thresholdExceeded: boolean;
   label: string;
@@ -160,7 +210,7 @@ export async function calculateDrawdown(
   if (bankrolls.length === 0) {
     return {
       currentBankroll: 0,
-      initialBankroll: 0,
+      capitalContributed: 0,
       drawdown: 0,
       thresholdExceeded: false,
       label: "Sin bankrolls activos",
@@ -175,33 +225,54 @@ export async function calculateDrawdown(
   if (!targetBankroll) {
     return {
       currentBankroll: 0,
-      initialBankroll: 0,
+      capitalContributed: 0,
       drawdown: 0,
       thresholdExceeded: false,
       label: "Sin bankrolls activos",
     };
   }
 
-  const initialBankroll = targetBankroll.initialAmount;
-  // currentBankroll ya viene calculado en BankrollSummary.currentBankroll
-  const currentBankroll = targetBankroll.currentBankroll;
+  /*
+   * El drawdown se mide sobre la curva de beneficio realizado, no sobre el
+   * saldo: un préstamo o un pago no debe parecer una ganancia o una pérdida.
+   * El denominador es el capital aportado (inicial + depósitos/préstamos −
+   * retiros), no el saldo disponible.
+   */
+  const settledBets = await prisma.bet.findMany({
+    where: {
+      userId,
+      bankrollId: targetBankroll.id,
+      status: { not: "PENDING" },
+    },
+    orderBy: [{ settledAt: "asc" }, { placedAt: "asc" }],
+    select: { profit: true },
+  });
 
-  // 3. Drawdown respecto al saldo inicial
-  // drawdown = (initial - current) / initial
-  const drawdown = initialBankroll > 0 ? (initialBankroll - currentBankroll) / initialBankroll : 0;
+  let runningProfit = 0;
+  let peakProfit = 0;
+  for (const bet of settledBets) {
+    runningProfit += Number(bet.profit ?? 0);
+    peakProfit = Math.max(peakProfit, runningProfit);
+  }
+
+  const capitalContributed = targetBankroll.capitalContributed;
+  const drawdown =
+    capitalContributed > 0
+      ? Math.max(0, (peakProfit - runningProfit) / capitalContributed)
+      : 0;
 
   const thresholdExceeded = drawdown >= 0.15;
 
   const label =
     thresholdExceeded
-      ? "⚠️ Drawdown alto: tu bankroll ha caído un 15% o más de tu inicio."
+      ? "⚠️ Drawdown alto: tu beneficio ha caído un 15% o más del capital aportado."
       : drawdown > 0
         ? `-${((drawdown) * 100).toFixed(1)}% de drawdown`
         : "Bankroll estable";
 
   return {
-    currentBankroll,
-    initialBankroll,
+    currentBankroll: targetBankroll.currentBankroll,
+    capitalContributed,
     drawdown,
     thresholdExceeded,
     label,

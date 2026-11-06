@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateBetClosingLineValue,
   calculateBetResult,
+  calculateBettingStats,
   effectiveLegOdds,
   settleBet,
   totalOdds,
@@ -219,6 +220,50 @@ describe("calculateBetResult con ganancia aumentada", () => {
 
     expect(result.payout.toFixed(2)).toBe("0.00");
     expect(result.profit.toFixed(2)).toBe("-100.00");
+  });
+});
+
+describe("calculateBettingStats con movimientos", () => {
+  const bets = [
+    {
+      status: "WON" as const,
+      stake: 100,
+      odds: 2,
+      profit: 100,
+      isFreeBet: false,
+    },
+    {
+      status: "PENDING" as const,
+      stake: 50,
+      odds: 2,
+      profit: null,
+      isFreeBet: false,
+    },
+  ];
+
+  it("mantiene el comportamiento anterior sin movimientos", () => {
+    const stats = calculateBettingStats(bets, 1000);
+    expect(stats.currentBankroll.toFixed(2)).toBe("1050.00");
+    expect(stats.movementsBalance.toFixed(2)).toBe("0.00");
+    expect(stats.capitalContributed.toFixed(2)).toBe("1000.00");
+    expect(stats.roi.toFixed(4)).toBe("0.1000");
+  });
+
+  it("suma movimientos sin alterar ROI ni yield", () => {
+    const stats = calculateBettingStats(bets, 1000, [
+      { type: "LOAN_IN", amountInBankrollCurrency: 375 },
+      { type: "LOAN_REPAYMENT", amountInBankrollCurrency: -150 },
+      { type: "DEPOSIT", amountInBankrollCurrency: 100 },
+      { type: "WITHDRAWAL", amountInBankrollCurrency: -50 },
+    ]);
+
+    expect(stats.currentBankroll.toFixed(2)).toBe("1325.00");
+    expect(stats.movementsBalance.toFixed(2)).toBe("275.00");
+    expect(stats.capitalContributed.toFixed(2)).toBe("1425.00");
+    expect(stats.ownCapital.toFixed(2)).toBe("1050.00");
+    expect(stats.profit.toFixed(2)).toBe("100.00");
+    expect(stats.roi.toFixed(4)).toBe("0.1000");
+    expect(stats.yield.toFixed(4)).toBe("1.0000");
   });
 });
 

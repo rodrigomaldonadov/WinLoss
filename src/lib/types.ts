@@ -21,5 +21,8 @@ export type BankrollSummary = {
   winRate: number;
   roi: number;
   yield: number;
+  capitalContributed: number;
+  ownCapital: number;
+  movementsBalance: number;
   bets: BetListItem[];
 };
