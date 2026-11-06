@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Globe, LogOut, Wallet } from "lucide-react";
+import { ChevronRight, Globe, LogOut, Store, Wallet } from "lucide-react";
 
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions/auth";
+import { getBookmakersForUser } from "@/lib/data/bookmakers";
 import { prisma } from "@/lib/prisma";
 import { formatDate, getInitials } from "@/lib/format";
 
@@ -29,6 +31,8 @@ export default async function SettingsPage() {
   });
 
   if (!user) redirect("/login");
+
+  const bookmakers = await getBookmakersForUser(session.user.id);
 
   const rows = [
     {
@@ -78,6 +82,28 @@ export default async function SettingsPage() {
             );
           })}
         </ul>
+      </section>
+
+      <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
+        <h2 className="border-b px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Datos
+        </h2>
+        <Link
+          href="/settings/bookmakers"
+          className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-muted/60"
+        >
+          <Store className="size-[18px] text-muted-foreground" aria-hidden />
+          <span className="flex-1 text-sm">Casas de apuestas</span>
+          <span className="text-xs text-muted-foreground">
+            {bookmakers.length === 0
+              ? "Sin registrar"
+              : `${bookmakers.length} registrada${bookmakers.length === 1 ? "" : "s"}`}
+          </span>
+          <ChevronRight
+            className="size-4 text-muted-foreground"
+            aria-hidden
+          />
+        </Link>
       </section>
 
       <section className="rounded-xl border bg-card p-4 shadow-xs">
