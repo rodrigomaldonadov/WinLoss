@@ -1,9 +1,10 @@
 import "server-only";
 
 import { Prisma } from "@prisma/client";
+import Decimal from "decimal.js";
 import type { BetStatus, BetType } from "@prisma/client";
 
-import { calculateBettingStats } from "@/lib/bet-math";
+import { calculateBettingStats, calculateClosingLineValue, roundMoney } from "@/lib/bet-math";
 import { prisma } from "@/lib/prisma";
 
 export type BetFilter = "pending" | "settled" | "all";
@@ -158,6 +159,59 @@ export async function getBetSports(userId: string): Promise<string[]> {
 
   return Array.from(new Set(bets.map((bet) => bet.sport))).sort((a, b) =>
     a.localeCompare(b),
+  );
+}
+
+export type ClosingLineValueByBookmaker = {
+  bookmakerId: string | null;
+  bookmakerName: string;
+  averageClosingLineValue: Decimal | null;
+  betsCount: number;
+};
+
+/** Promedio de CLV agrupado por casa de apuestas (o "Sin casa" para apuestas sin casa). */
+export async function getClosingLineValueByBookmaker(
+  userId: string,
+): Promise<ClosingLineValueByBookmaker[]> {
+  const bets = await prisma.bet.findMany({
+    where: { userId, closingOdds: { not: null } },
+    include: { bookmaker: { select: { id: true, name: true } } },
+  });
+
+  const groups = new Map<string, { name: string; values: Decimal[] }>();
+
+  for (const bet of bets) {
+    const value = calculateClosingLineValue(bet.odds, bet.closingOdds);
+    if (!value) continue;
+
+    const key = bet.bookmakerId ?? "none";
+    const group =
+      groups.get(key) ?? { name: bet.bookmaker?.name ?? "Sin casa", values: [] };
+    group.values.push(value.percentage);
+    groups.set(key, group);
+  }
+
+  const result: ClosingLineValueByBookmaker[] = [];
+  for (const [key, group] of groups) {
+    const sum = group.values.reduce(
+      (acc, current) => acc.plus(current),
+      new Decimal(0),
+    );
+    result.push({
+      bookmakerId: key === "none" ? null : key,
+      bookmakerName: group.name,
+      averageClosingLineValue:
+        group.values.length > 0
+          ? roundMoney(sum.div(group.values.length))
+          : null,
+      betsCount: group.values.length,
+    });
+  }
+
+  return result.sort(
+    (a, b) =>
+      (b.averageClosingLineValue?.toNumber() ?? 0) -
+      (a.averageClosingLineValue?.toNumber() ?? 0),
   );
 }
 

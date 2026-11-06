@@ -14,6 +14,7 @@ import { BetRow } from "@/components/bets/bet-row";
 import { EmptyState } from "@/components/empty-state";
 import { ExportBetsButton } from "@/components/bets/export-bets-button";
 import { PageHeader } from "@/components/page-header";
+import { getClosingLineValueByBookmaker } from "@/lib/data/bets";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -28,6 +29,7 @@ import {
 import { getRecentBets } from "@/lib/data/bets";
 import { calculateAverageClosingLineValue } from "@/lib/bet-math";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import Decimal from "decimal.js";
 import { BetRowProps } from "@/components/bets/bet-row";
 import { BankrollLineChart } from "@/components/charts/bankroll-line-chart";
 import { SportsPieChart } from "@/components/charts/sports-pie-chart";
@@ -64,6 +66,9 @@ export default async function DashboardPage() {
   const averageClosingLineValue = calculateAverageClosingLineValue(allBets);
   const clv = averageClosingLineValue !== null ? averageClosingLineValue : null;
   const clvPercentage = clv !== null ? clv.toNumber() : null;
+
+  // ─── CLV POR CASA DE APUESTAS ────────────────────────────────────────
+  const clvByBookmaker = await getClosingLineValueByBookmaker(session.user.id);
 
   // ─── DRAWDOWN & ALERT ───────────────────────────────────────────────
   const drawdown = await calculateDrawdown(session.user.id);
@@ -152,7 +157,59 @@ export default async function DashboardPage() {
         />
       </section>
 
-      {/* ── ALERTA DE DRAWDOWN ──────────────────────────────────────── */}
+        {/* ── CLV POR CASA DE APUESTAS ───────────────────────────────────── */}
+        {clvByBookmaker.length > 0 ? (
+          <section
+            aria-label="CLV por casa de apuestas"
+            className="rounded-xl border bg-card p-4 shadow-xs mt-4"
+          >
+            <h2 className="text-sm font-semibold mb-3">CLV por casa</h2>
+            <div className="space-y-3">
+              {clvByBookmaker.map((item) => (
+                <div
+                  key={item.bookmakerId}
+                  className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm"
+                >
+                  <span className="font-medium">
+                    {item.bookmakerName ?? "Sin casa"}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      item.averageClosingLineValue?.gt(new Decimal(0)) ?? false
+                        ? "text-success"
+                        : item.averageClosingLineValue?.lt(new Decimal(0)) ?? false
+                          ? "text-loss"
+                          : "text-muted-foreground",
+                    )}
+                  >
+                    {item.averageClosingLineValue !== null
+                      ? formatPercent(item.averageClosingLineValue, {
+                          decimals: 1,
+                          signed: true,
+                        })
+                      : "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {item.betsCount} apuestas
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section
+            aria-label="CLV por casa de apuestas"
+            className="rounded-xl border bg-card p-4 shadow-xs mt-4 text-center"
+          >
+            <p className="text-muted-foreground">
+              Sin datos de CLV por casa aún. Liquidá apuestas con cuota de cierre
+              para ver este desglose.
+            </p>
+          </section>
+        )}
+
+        {/* ── ALERTA DE DRAWDOWN ──────────────────────────────────────── */}
       {showDrawdownAlert && (
         <Alert
           variant="destructive"
