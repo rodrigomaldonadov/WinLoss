@@ -132,6 +132,8 @@ model Bet {
   // Derivado de la cantidad de legs para filtrar rápido.
   betType     BetType   @default(SINGLE)
   isFreeBet   Boolean   @default(false)
+  // % de ganancia aumentada de la casa (ej. 5 = +5% sobre el retorno).
+  oddsBoostPct Decimal? @db.Decimal(5, 2)
   placedAt    DateTime  @default(now())
   settledAt   DateTime?
   // Importe total devuelto por la casa (stake incluido, salvo free bets).

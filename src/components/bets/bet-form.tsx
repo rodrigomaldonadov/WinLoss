@@ -108,6 +108,7 @@ export type BetFormDefaults = {
   odds?: number;
   stake?: number;
   isFreeBet?: boolean;
+  oddsBoostPct?: number | null;
   placedAt?: string;
   notes?: string | null;
   legs?: BetFormLegDefaults[];
@@ -149,6 +150,7 @@ type BetDraft = {
   bookmakerId: string;
   stake: string;
   isFreeBet: boolean;
+  oddsBoostPct?: string;
   externalId: string;
   placedAt: string;
   notes: string;
@@ -1124,6 +1126,11 @@ export function BetForm({
     defaults?.stake !== undefined ? String(defaults.stake) : "",
   );
   const [isFreeBet, setIsFreeBet] = useState(defaults?.isFreeBet ?? false);
+  const [oddsBoostPct, setOddsBoostPct] = useState(
+    defaults?.oddsBoostPct !== undefined && defaults.oddsBoostPct !== null
+      ? String(defaults.oddsBoostPct)
+      : "",
+  );
   const [externalIdValue, setExternalIdValue] = useState(
     defaults?.externalId ?? "",
   );
@@ -1150,6 +1157,11 @@ export function BetForm({
     () => calculateTotalOdds(watchedLegs),
     [watchedLegs],
   );
+  // Producto real de los legs: es lo que usa la liquidación (sin redondear).
+  const settlementOdds = watchedLegs.reduce(
+    (acc, leg) => acc * toNumber(leg.odds),
+    1,
+  );
 
   const totalOddsValue = manualOdds
     ? oddsOverride
@@ -1157,11 +1169,21 @@ export function BetForm({
   const oddsValue = toNumber(totalOddsValue);
   const stakeValue = toNumber(stake);
   const hasNumbers = oddsValue > 1 && stakeValue > 0;
-  const potentialProfit = hasNumbers ? stakeValue * (oddsValue - 1) : 0;
+  const boostPctValue = Math.min(100, Math.max(0, toNumber(oddsBoostPct)));
+  const boostInputNumber =
+    oddsBoostPct.trim() === "" ? 0 : Number(oddsBoostPct.replace(",", "."));
+  const invalidBoost =
+    oddsBoostPct.trim() !== "" &&
+    (!Number.isFinite(boostInputNumber) ||
+      boostInputNumber < 0 ||
+      boostInputNumber > 100);
+  const boostFactor = 1 + boostPctValue / 100;
   const potentialPayout = hasNumbers
-    ? isFreeBet
-      ? potentialProfit
-      : stakeValue * oddsValue
+    ? (isFreeBet
+        ? stakeValue *
+          Math.max(0, (boostPctValue > 0 ? settlementOdds : oddsValue) - 1)
+        : stakeValue * (boostPctValue > 0 ? settlementOdds : oddsValue)) *
+      boostFactor
     : 0;
   const exceedsBankroll =
     !isFreeBet &&
@@ -1270,6 +1292,7 @@ export function BetForm({
           bookmakerId,
           stake,
           isFreeBet,
+          oddsBoostPct,
           externalId: externalIdValue,
           placedAt: placedAtValue,
           notes,
@@ -1292,6 +1315,7 @@ export function BetForm({
     bookmakerId,
     stake,
     isFreeBet,
+    oddsBoostPct,
     externalIdValue,
     placedAtValue,
     notes,
@@ -1306,6 +1330,7 @@ export function BetForm({
     setBookmakerId(draft.bookmakerId);
     setStake(draft.stake);
     setIsFreeBet(draft.isFreeBet);
+    setOddsBoostPct(draft.oddsBoostPct ?? "");
     setExternalIdValue(draft.externalId);
     setPlacedAtValue(draft.placedAt);
     setNotes(draft.notes);
@@ -1447,6 +1472,7 @@ export function BetForm({
     setBetMode(legs.length > 1 ? "COMBINED" : "SINGLE");
     setStake(String(data.stake));
     setIsFreeBet(Boolean(data.isFreeBet));
+    setOddsBoostPct("");
     if (data.externalId) setExternalIdValue(data.externalId);
     if (data.placedAt) {
       const placedAt = new Date(data.placedAt);
@@ -1494,6 +1520,9 @@ export function BetForm({
     } else {
       setStake("");
     }
+    setOddsBoostPct(
+      data.oddsBoostPct !== null ? String(data.oddsBoostPct) : "",
+    );
     if (data.totalOdds !== null) {
       setOddsOverride(String(data.totalOdds));
       setManualOdds(true);
@@ -1653,6 +1682,7 @@ export function BetForm({
                 {stakeValue > 0
                   ? formatCurrency(stakeValue, currency)
                   : "Sin stake"}
+                {boostPctValue > 0 ? ` · +${boostPctValue}%` : ""}
               </p>
             </div>
             <ChevronDown
@@ -1935,6 +1965,53 @@ export function BetForm({
                 value={isFreeBet ? "true" : "false"}
               />
 
+              <div className="space-y-1.5">
+                <Label htmlFor="bet-boost">Ganancia aumentada (%)</Label>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Input
+                      id="bet-boost"
+                      name="oddsBoostPct"
+                      type="text"
+                      inputMode="decimal"
+                      enterKeyHint="next"
+                      placeholder="0"
+                      value={oddsBoostPct}
+                      onChange={(event) => setOddsBoostPct(event.target.value)}
+                      className="h-11 w-24 pr-7 tabular-nums"
+                      aria-invalid={invalidBoost}
+                      aria-describedby={
+                        invalidBoost ? "bet-boost-error" : "bet-boost-hint"
+                      }
+                    />
+                    <span
+                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
+                      aria-hidden
+                    >
+                      %
+                    </span>
+                  </div>
+                  <p
+                    id="bet-boost-hint"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Ej. 5 = +5% sobre el retorno si la apuesta gana.
+                  </p>
+                </div>
+                {invalidBoost && (
+                  <p
+                    id="bet-boost-error"
+                    className="text-xs text-destructive"
+                  >
+                    Indica un porcentaje entre 0 y 100.
+                  </p>
+                )}
+                <FieldError
+                  id="bet-boost-server-error"
+                  message={errors?.oddsBoostPct?.[0]}
+                />
+              </div>
+
               <details className="rounded-lg border p-3">
                 <summary className="cursor-pointer text-xs text-muted-foreground">
                   ID del boleto (opcional)
@@ -2041,8 +2118,13 @@ export function BetForm({
               </p>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 {isFreeBet ? "Ganancia" : "Retorno"}
+                {boostPctValue > 0 && (
+                  <span className="rounded bg-primary/10 px-1 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-primary">
+                    +{boostPctValue % 1 === 0 ? boostPctValue : boostPctValue.toFixed(2)}%
+                  </span>
+                )}
               </p>
               <p
                 className={cn(

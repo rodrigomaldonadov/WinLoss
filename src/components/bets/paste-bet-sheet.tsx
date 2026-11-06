@@ -217,6 +217,15 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
                       {totalSelections} selecciones
                     </Badge>
                   )}
+                  {parsed.oddsBoostPct !== null && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Boost +
+                      {parsed.oddsBoostPct % 1 === 0
+                        ? parsed.oddsBoostPct
+                        : parsed.oddsBoostPct.toFixed(2)}
+                      %
+                    </Badge>
+                  )}
                 </div>
                 <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
                   <div>

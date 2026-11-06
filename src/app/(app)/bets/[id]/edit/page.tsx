@@ -91,6 +91,7 @@ export default async function EditBetPage({ params }: EditBetPageProps) {
           odds: bet.odds,
           stake: bet.stake,
           isFreeBet: bet.isFreeBet,
+          oddsBoostPct: bet.oddsBoostPct,
           placedAt: toZonedDateTimeInput(bet.placedAt, preferences.timezone),
           notes: bet.notes,
           legs: bet.legs.map((leg) => ({

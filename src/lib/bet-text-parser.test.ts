@@ -214,6 +214,85 @@ describe("parseBetText · simple de Apuesta Total", () => {
   });
 });
 
+describe("parseBetText · ganancia aumentada", () => {
+  const parsed = parseBetText(
+    `Múltiple x3
+S/ 50.00
+Cuota 5.58
+
+SC Corinthians Paulista vs Mirassol, Racing Club Avellaneda vs CA Aldosivi, CA Sarmiento vs Rosario Central
+SC Corinthians Paulista
+1.83
+Resultado del partido (1X2)
+30/10 • 18:00
+SC Corinthians Paulista
+2
+Mirassol
+0
+Racing Club Avellaneda
+1.66
+Resultado del partido (1X2)
+30/10 • 19:15
+Racing Club Avellaneda
+2
+CA Aldosivi
+1
+Rosario Central
+1.84
+Resultado del partido (1X2)
+30/10 • 19:15
+CA Sarmiento
+1
+Rosario Central
+2
+Cuota total
+5.58
+Apuesta total
+PEN 50.00
+Ganancias aumentadas
++5%
+Ganancia total
+PEN 279.48
+PEN 293.45`,
+    { now: NOW },
+  );
+
+  it("detecta el porcentaje de ganancia aumentada", () => {
+    expect(parsed.betType).toBe("COMBINED");
+    expect(parsed.stake).toBe(50);
+    expect(parsed.totalOdds).toBe(5.58);
+    expect(parsed.oddsBoostPct).toBe(5);
+    expect(parsed.legs).toHaveLength(3);
+    expect(parsed.warnings).toEqual([]);
+  });
+
+  it("conserva los tres 1X2 y sus fechas", () => {
+    expect(parsed.legs[0]).toMatchObject({
+      eventName: "SC Corinthians Paulista vs Mirassol",
+      eventDate: "2026-10-30T18:00",
+      odds: 1.83,
+    });
+    expect(parsed.legs[0]?.selections[0]).toMatchObject({
+      marketKey: "MATCH_RESULT",
+      pick: "HOME",
+    });
+    expect(parsed.legs[2]).toMatchObject({
+      eventName: "CA Sarmiento vs Rosario Central",
+      eventDate: "2026-10-30T19:15",
+      odds: 1.84,
+    });
+    expect(parsed.legs[2]?.selections[0]).toMatchObject({
+      marketKey: "MATCH_RESULT",
+      pick: "AWAY",
+    });
+  });
+
+  it("no confunde la ganancia aumentada con otros porcentajes", () => {
+    const withoutBoost = parseBetText(SIMPLE_SLIP, { now: NOW });
+    expect(withoutBoost.oddsBoostPct).toBeNull();
+  });
+});
+
 describe("parseBetText · casos límite", () => {
   it("devuelve un resultado vacío con aviso si no hay texto", () => {
     const parsed = parseBetText("   ", { now: NOW });

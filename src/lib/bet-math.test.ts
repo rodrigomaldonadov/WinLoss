@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculateBetClosingLineValue,
+  calculateBetResult,
   effectiveLegOdds,
   settleBet,
   totalOdds,
@@ -169,6 +170,55 @@ describe("settleBet", () => {
   it("redondea los importes monetarios a 2 decimales", () => {
     const result = settleBet([{ odds: "1.333", status: "WON" }], "10.00");
     expect(result.payout.toFixed(2)).toBe("13.33");
+  });
+
+  it("aplica la ganancia aumentada al retorno si gana", () => {
+    const result = settleBet([{ odds: 5.58, status: "WON" }], 50, false, 5);
+
+    expect(result.payout.toFixed(2)).toBe("292.95");
+    expect(result.profit.toFixed(2)).toBe("242.95");
+  });
+
+  it("aplica la ganancia aumentada a una free bet", () => {
+    const result = settleBet([{ odds: 3, status: "WON" }], 100, true, 10);
+
+    expect(result.payout.toFixed(2)).toBe("220.00");
+    expect(result.profit.toFixed(2)).toBe("220.00");
+  });
+
+  it("no aplica la ganancia aumentada si pierde o queda nula", () => {
+    expect(settleBet([{ odds: 2, status: "LOST" }], 50, false, 5).profit.toFixed(2)).toBe(
+      "-50.00",
+    );
+    expect(settleBet([{ odds: 2, status: "VOID" }], 50, false, 5).payout.toFixed(2)).toBe(
+      "50.00",
+    );
+  });
+});
+
+describe("calculateBetResult con ganancia aumentada", () => {
+  it("aumenta el retorno de una apuesta ganada", () => {
+    const result = calculateBetResult({
+      stake: 100,
+      odds: 2,
+      status: "WON",
+      oddsBoostPct: 10,
+    });
+
+    expect(result.payout.toFixed(2)).toBe("220.00");
+    expect(result.profit.toFixed(2)).toBe("120.00");
+  });
+
+  it("no afecta a una apuesta perdida", () => {
+    const result = calculateBetResult({
+      stake: 100,
+      odds: 2,
+      status: "LOST",
+      oddsBoostPct: 10,
+    });
+
+    expect(result.payout.toFixed(2)).toBe("0.00");
+    expect(result.profit.toFixed(2)).toBe("-100.00");
   });
 });
 

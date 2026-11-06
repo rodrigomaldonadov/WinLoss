@@ -59,6 +59,8 @@ export type BetListItem = {
   status: BetStatus;
   betType: BetType;
   isFreeBet: boolean;
+  /** % de ganancia aumentada (5 = +5%). */
+  oddsBoostPct: number | null;
   placedAt: Date;
   settledAt: Date | null;
   payout: number | null;
@@ -94,6 +96,7 @@ type BetRecord = {
   status: BetStatus;
   betType: BetType;
   isFreeBet: boolean;
+  oddsBoostPct: { toString(): string } | null;
   placedAt: Date;
   settledAt: Date | null;
   payout: { toString(): string } | null;
@@ -186,6 +189,8 @@ export function toBetListItem(bet: BetRecord): BetListItem {
     status: bet.status,
     betType: bet.betType,
     isFreeBet: bet.isFreeBet,
+    oddsBoostPct:
+      bet.oddsBoostPct === null ? null : Number(bet.oddsBoostPct),
     placedAt: bet.placedAt,
     settledAt: bet.settledAt,
     payout: bet.payout === null ? null : Number(bet.payout),

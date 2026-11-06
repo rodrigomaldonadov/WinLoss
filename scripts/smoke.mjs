@@ -528,6 +528,8 @@ Cuota total
 1.32
 Apuesta total
 PEN 100.00
+Ganancias aumentadas
++5%
 Ganancia total
 PEN 132.00`);
   await page.getByRole("button", { name: "Analizar" }).click();
@@ -549,7 +551,7 @@ PEN 132.00`);
   if (pastedEvent !== "Galatasaray vs Barcelona") {
     throw new Error(`Evento importado incorrecto: ${pastedEvent}`);
   }
-  await page.getByText("S/ 132.00").first().waitFor({ timeout: 5_000 });
+  await page.getByText("S/ 138.60").first().waitFor({ timeout: 5_000 });
 
   await page.goto(`${BASE_URL}/settings`, { waitUntil: "networkidle" });
   if (!(await page.getByText("Casas de apuestas").isVisible())) {

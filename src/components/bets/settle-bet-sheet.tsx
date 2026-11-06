@@ -51,6 +51,7 @@ type SettleBetSheetProps = {
     stake: number;
     odds: number;
     isFreeBet: boolean;
+    oddsBoostPct?: number | null;
     bankroll: { currency: string };
     legs: SettleLeg[];
   };
@@ -92,6 +93,7 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
         })),
         bet.stake,
         bet.isFreeBet,
+        bet.oddsBoostPct ?? 0,
       );
 
   const preview = hasCashout

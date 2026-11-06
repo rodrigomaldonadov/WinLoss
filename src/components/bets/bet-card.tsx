@@ -32,9 +32,16 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
   const pending = bet.status === "PENDING";
   const typeLabel = getBetTypeLabel(bet);
 
-  const potentialPayout = bet.isFreeBet
-    ? bet.stake * (bet.odds - 1)
-    : bet.stake * bet.odds;
+  const boostPct = bet.oddsBoostPct ?? 0;
+  const effectiveOdds =
+    boostPct > 0
+      ? bet.legs.reduce((acc, leg) => acc * leg.odds, 1)
+      : bet.odds;
+  const potentialPayout =
+    (bet.isFreeBet
+      ? bet.stake * Math.max(0, effectiveOdds - 1)
+      : bet.stake * effectiveOdds) *
+    (1 + boostPct / 100);
 
   const closingValue = calculateBetClosingLineValue(bet.legs);
   const closingPercentage =
@@ -91,6 +98,15 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
           )}
           {bet.isFreeBet && (
             <span className="text-[10px] font-medium text-primary">Free bet</span>
+          )}
+          {bet.oddsBoostPct !== null && bet.oddsBoostPct > 0 && (
+            <span className="rounded bg-primary/10 px-1 text-[10px] font-semibold text-primary">
+              Boost +
+              {bet.oddsBoostPct % 1 === 0
+                ? bet.oddsBoostPct
+                : bet.oddsBoostPct.toFixed(2)}
+              %
+            </span>
           )}
         </div>
       </div>

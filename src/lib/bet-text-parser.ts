@@ -28,6 +28,8 @@ export type ParsedBet = {
   betType: "SINGLE" | "COMBINED";
   stake: number | null;
   totalOdds: number | null;
+  /** Porcentaje de ganancia aumentada (5 = +5%). */
+  oddsBoostPct: number | null;
   currency: string | null;
   legs: ParsedLeg[];
   warnings: string[];
@@ -194,6 +196,21 @@ function extractBetType(lines: string[]): "SINGLE" | "COMBINED" | null {
       return "COMBINED";
     }
     if (/^simple\b/i.test(line)) return "SINGLE";
+  }
+  return null;
+}
+
+/** Detecta “Ganancias aumentadas +5%” y devuelve el porcentaje. */
+function extractOddsBoost(lines: string[]): number | null {
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!/aumentad/i.test(lines[index] ?? "")) continue;
+    const limit = Math.min(index + 3, lines.length - 1);
+    for (let offset = index; offset <= limit; offset += 1) {
+      const match = /\+\s*(\d+(?:[.,]\d+)?)\s*%/.exec(lines[offset] ?? "");
+      if (!match?.[1]) continue;
+      const value = toNumber(match[1]);
+      if (value !== null && value > 0 && value <= 100) return value;
+    }
   }
   return null;
 }
@@ -699,6 +716,7 @@ export function parseBetText(raw: string, options: ParseOptions = {}): ParsedBet
       betType: "SINGLE",
       stake: null,
       totalOdds: null,
+      oddsBoostPct: null,
       currency: null,
       legs: [],
       warnings: ["Pega el texto del boleto para analizarlo."],
@@ -708,6 +726,7 @@ export function parseBetText(raw: string, options: ParseOptions = {}): ParsedBet
   const stake = extractStake(lines);
   const totalOdds = extractTotalOdds(lines);
   const declaredType = extractBetType(lines);
+  const oddsBoostPct = extractOddsBoost(lines);
   const events = extractEvents(lines);
 
   if (!stake) warnings.push("No se detectó el stake. Escríbelo a mano.");
@@ -725,6 +744,7 @@ export function parseBetText(raw: string, options: ParseOptions = {}): ParsedBet
       betType: declaredType ?? "SINGLE",
       stake,
       totalOdds,
+      oddsBoostPct,
       currency,
       legs: [],
       warnings,
@@ -800,6 +820,7 @@ export function parseBetText(raw: string, options: ParseOptions = {}): ParsedBet
     betType,
     stake,
     totalOdds,
+    oddsBoostPct,
     currency,
     legs,
     warnings: [...new Set(warnings)],

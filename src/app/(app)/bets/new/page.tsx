@@ -55,6 +55,7 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
           betType: copiedBet.betType,
           odds: copiedBet.odds,
           isFreeBet: false,
+          oddsBoostPct: copiedBet.oddsBoostPct,
           legs: copiedBet.legs.map((leg) => ({
             sport: leg.sport,
             competition: leg.competition,

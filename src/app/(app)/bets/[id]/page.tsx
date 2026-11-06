@@ -81,6 +81,13 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
             <p className="mt-1 text-sm font-medium">
               {bet.legs.length} partido{bet.legs.length === 1 ? "" : "s"}
               {bet.isFreeBet ? " · Free bet" : ""}
+              {bet.oddsBoostPct !== null && bet.oddsBoostPct > 0
+                ? ` · Boost +${
+                    bet.oddsBoostPct % 1 === 0
+                      ? bet.oddsBoostPct
+                      : bet.oddsBoostPct.toFixed(2)
+                  }%`
+                : ""}
             </p>
             {bet.externalId && (
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -96,6 +103,15 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
             <dt className="text-[11px] text-muted-foreground">Cuota total</dt>
             <dd className="mt-0.5 text-sm font-semibold tabular-nums">
               {formatOdds(bet.odds)}
+              {bet.oddsBoostPct !== null && bet.oddsBoostPct > 0 && (
+                <span className="ml-1 text-[10px] font-semibold text-primary">
+                  +
+                  {bet.oddsBoostPct % 1 === 0
+                    ? bet.oddsBoostPct
+                    : bet.oddsBoostPct.toFixed(2)}
+                  %
+                </span>
+              )}
             </dd>
           </div>
           <div>

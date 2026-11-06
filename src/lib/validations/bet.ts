@@ -157,6 +157,19 @@ export const createBetSchema = z.object({
     (value) => value === true || value === "true" || value === "on",
     z.boolean(),
   ),
+  oddsBoostPct: z.preprocess(
+    (value) =>
+      value === "" || value === null || value === undefined
+        ? undefined
+        : typeof value === "string"
+          ? value.replace(",", ".")
+          : value,
+    z.coerce
+      .number({ error: "Indica un porcentaje válido" })
+      .min(0, "El porcentaje no puede ser negativo")
+      .max(100, "El porcentaje máximo es 100")
+      .optional(),
+  ),
   placedAt: z
     .string()
     .trim()

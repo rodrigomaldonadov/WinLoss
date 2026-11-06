@@ -159,6 +159,7 @@ function readBetForm(formData: FormData) {
     odds: formData.get("odds"),
     stake: formData.get("stake"),
     isFreeBet: formData.get("isFreeBet"),
+    oddsBoostPct: formData.get("oddsBoostPct"),
     placedAt: formData.get("placedAt"),
     notes: formData.get("notes"),
     legs,
@@ -350,6 +351,10 @@ export async function createBet(
         stake: data.stake,
         betType: betTypeFromLegCount(data.legs.length),
         isFreeBet: data.isFreeBet,
+        oddsBoostPct:
+          data.oddsBoostPct && data.oddsBoostPct > 0
+            ? data.oddsBoostPct
+            : null,
         placedAt,
         notes: data.notes ?? null,
         legs: {
@@ -430,6 +435,7 @@ export async function quickSettleBet(
       status: true,
       stake: true,
       isFreeBet: true,
+      oddsBoostPct: true,
       legs: { select: { id: true, odds: true, status: true } },
     },
   });
@@ -447,6 +453,7 @@ export async function quickSettleBet(
     [{ odds: leg.odds, status }],
     bet.stake,
     bet.isFreeBet,
+    bet.oddsBoostPct ?? 0,
   );
 
   await prisma.$transaction([
@@ -610,6 +617,7 @@ export async function updateBet(
       legsWithStatus.map((leg) => ({ odds: leg.odds, status: leg.status })),
       data.stake,
       data.isFreeBet,
+      data.oddsBoostPct ?? 0,
     );
     status = settlement.status;
     if (settlement.status !== "PENDING") {
@@ -632,6 +640,10 @@ export async function updateBet(
         stake: data.stake,
         betType: betTypeFromLegCount(data.legs.length),
         isFreeBet: data.isFreeBet,
+        oddsBoostPct:
+          data.oddsBoostPct && data.oddsBoostPct > 0
+            ? data.oddsBoostPct
+            : null,
         placedAt,
         notes: data.notes ?? null,
         status,
@@ -740,6 +752,7 @@ export async function settleBet(
       stake: true,
       odds: true,
       isFreeBet: true,
+      oddsBoostPct: true,
       legs: {
         orderBy: { position: "asc" },
         select: { id: true, odds: true, status: true, closingOdds: true },
@@ -793,6 +806,7 @@ export async function settleBet(
       updatedLegs.map((leg) => ({ odds: leg.odds, status: leg.status })),
       bet.stake,
       bet.isFreeBet,
+      bet.oddsBoostPct ?? 0,
     );
     status = result.status;
     payout = result.payout;

@@ -10,6 +10,7 @@ const CSV_HEADERS = [
   "legs",
   "selecciones",
   "cuota",
+  "boost_pct",
   "stake",
   "moneda",
   "casa",
@@ -71,6 +72,9 @@ export async function GET() {
         bet.legs.length,
         selectionsSummary,
         Number(bet.odds).toFixed(3),
+        bet.oddsBoostPct === null || bet.oddsBoostPct === undefined
+          ? ""
+          : bet.oddsBoostPct.toNumber().toFixed(2),
         Number(bet.stake).toFixed(2),
         bet.bankroll?.currency ?? "",
         bet.bookmaker?.name ?? "",

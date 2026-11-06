@@ -16,6 +16,8 @@ export type BetMathInput = {
   odds: Numeric;
   status: BetStatus;
   isFreeBet?: boolean;
+  /** % de ganancia aumentada aplicado al retorno si la apuesta gana. */
+  oddsBoostPct?: Numeric;
   /** Importe devuelto por la casa en un cashout. */
   cashoutAmount?: Numeric | null;
 };
@@ -73,6 +75,15 @@ export type BetMathResult = {
       payout = new Decimal(0);
       profit = new Decimal(0);
       break;
+  }
+
+  const boost = toDecimal(input.oddsBoostPct ?? 0);
+  if (
+    boost.gt(0) &&
+    (input.status === "WON" || input.status === "HALF_WON")
+  ) {
+    payout = payout.mul(new Decimal(1).plus(boost.div(100)));
+    profit = isFreeBet ? payout : payout.minus(stake);
   }
 
   return { payout: roundMoney(payout), profit: roundMoney(profit) };
@@ -143,6 +154,7 @@ export function settleBet(
   legs: LegMathInput[],
   stake: Numeric,
   isFreeBet = false,
+  oddsBoostPct: Numeric = 0,
 ): SettleBetResult {
   const stakeValue = toDecimal(stake);
 
@@ -210,6 +222,12 @@ export function settleBet(
       payout = grossProfit;
       profit = grossProfit;
     }
+  }
+
+  const boost = toDecimal(oddsBoostPct);
+  if (boost.gt(0) && (status === "WON" || status === "HALF_WON")) {
+    payout = payout.mul(new Decimal(1).plus(boost.div(100)));
+    profit = isFreeBet ? payout : payout.minus(stakeValue);
   }
 
   return {

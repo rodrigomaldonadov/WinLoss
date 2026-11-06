@@ -177,6 +177,7 @@ export async function runAutoSettlement(
       })),
       bet.stake,
       bet.isFreeBet,
+      bet.oddsBoostPct ?? 0,
     );
 
     const proposal: AutoSettleProposal = {
