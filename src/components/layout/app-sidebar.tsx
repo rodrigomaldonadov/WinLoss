@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   House,
+  Landmark,
   Plus,
   Settings,
   Ticket,
@@ -21,6 +22,7 @@ const items = [
   { href: "/", label: "Inicio", icon: House },
   { href: "/bets", label: "Apuestas", icon: Ticket },
   { href: "/analysis", label: "Consenso", icon: BarChart3 },
+  { href: "/debts", label: "Deudas", icon: Landmark, debts: true },
   { href: "/bankroll", label: "Bankroll", icon: Wallet },
   { href: "/settings", label: "Ajustes", icon: Settings },
 ] as const;
@@ -32,10 +34,14 @@ function isActive(pathname: string, href: string) {
 
 type AppSidebarProps = {
   user: ShellUser;
+  showDebts?: boolean;
 };
 
-export function AppSidebar({ user }: AppSidebarProps) {
+export function AppSidebar({ user, showDebts = true }: AppSidebarProps) {
   const pathname = usePathname();
+  const visibleItems = items.filter(
+    (item) => !("debts" in item && item.debts && !showDebts),
+  );
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r bg-sidebar px-3 py-4 md:flex">
@@ -44,7 +50,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </div>
 
       <nav aria-label="Navegación principal" className="flex flex-1 flex-col gap-1">
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const active = isActive(pathname, item.href);
           const Icon = item.icon;
 

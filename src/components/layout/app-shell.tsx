@@ -7,10 +7,11 @@ import type { ShellUser } from "@/lib/types";
 
 type AppShellProps = {
   user: ShellUser;
+  showDebts?: boolean;
   children: ReactNode;
 };
 
-export function AppShell({ user, children }: AppShellProps) {
+export function AppShell({ user, showDebts = true, children }: AppShellProps) {
   return (
     <div className="min-h-dvh bg-background">
       <a
@@ -20,7 +21,7 @@ export function AppShell({ user, children }: AppShellProps) {
         Saltar al contenido
       </a>
 
-      <AppSidebar user={user} />
+      <AppSidebar user={user} showDebts={showDebts} />
 
       <div className="flex min-h-dvh flex-col md:pl-64">
         <AppHeader user={user} />
@@ -32,7 +33,7 @@ export function AppShell({ user, children }: AppShellProps) {
         </main>
       </div>
 
-      <BottomNav />
+      <BottomNav showDebts={showDebts} />
     </div>
   );
 }

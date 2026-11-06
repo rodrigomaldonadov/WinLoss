@@ -2,13 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Plus, Settings, Ticket, Wallet } from "lucide-react";
+import {
+  BarChart3,
+  House,
+  Landmark,
+  Plus,
+  Settings,
+  Ticket,
+  Wallet,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const items = [
+const LEFT_ITEMS = [
   { href: "/", label: "Inicio", icon: House },
   { href: "/bets", label: "Apuestas", icon: Ticket },
+  { href: "/analysis", label: "Consenso", icon: BarChart3 },
+] as const;
+
+const RIGHT_ITEMS = [
+  { href: "/debts", label: "Deudas", icon: Landmark, debts: true },
   { href: "/bankroll", label: "Bankroll", icon: Wallet },
   { href: "/settings", label: "Ajustes", icon: Settings },
 ] as const;
@@ -18,7 +31,11 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function BottomNav() {
+type BottomNavProps = {
+  showDebts?: boolean;
+};
+
+export function BottomNav({ showDebts = true }: BottomNavProps) {
   const pathname = usePathname();
 
   return (
@@ -26,8 +43,8 @@ export function BottomNav() {
       aria-label="Navegación principal"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
     >
-      <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center">
-        {items.slice(0, 2).map((item) => (
+      <div className="mx-auto grid h-16 max-w-md grid-cols-7 items-center">
+        {LEFT_ITEMS.map((item) => (
           <NavItem
             key={item.href}
             {...item}
@@ -45,13 +62,17 @@ export function BottomNav() {
           </Link>
         </div>
 
-        {items.slice(2).map((item) => (
-          <NavItem
-            key={item.href}
-            {...item}
-            active={isActive(pathname, item.href)}
-          />
-        ))}
+        {RIGHT_ITEMS.map((item) =>
+          "debts" in item && item.debts && !showDebts ? (
+            <span key={item.href} aria-hidden />
+          ) : (
+            <NavItem
+              key={item.href}
+              {...item}
+              active={isActive(pathname, item.href)}
+            />
+          ),
+        )}
       </div>
     </nav>
   );
@@ -70,16 +91,16 @@ function NavItem({ href, label, icon: Icon, active }: NavItemProps) {
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active ? "text-primary" : "text-muted-foreground",
       )}
     >
       <Icon
-        className="size-[22px]"
+        className="size-[21px]"
         strokeWidth={active ? 2.4 : 1.9}
         aria-hidden
       />
-      <span>{label}</span>
+      <span className="w-full truncate text-center">{label}</span>
     </Link>
   );
 }
