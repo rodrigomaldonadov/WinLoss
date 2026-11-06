@@ -8,6 +8,7 @@ import { BetCard } from "@/components/bets/bet-card";
 import { BetsFiltersSheet } from "@/components/bets/bets-filters-sheet";
 import { VerifyResultsButton } from "@/components/bets/verify-results-button";
 import { CreatedBetBanner } from "@/components/bets/created-bet-banner";
+import { getOpenDebtSuggestion } from "@/lib/data/debts";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -169,29 +170,31 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const safePage = Math.min(Math.max(page, 1), totalPages);
 
-  const [bets, summary, sports, preferences] = await Promise.all([
-    getBetsForUser(session.user.id, {
-      filter,
-      type,
-      order,
-      take: PER_PAGE,
-      skip: (safePage - 1) * PER_PAGE,
-      from,
-      to,
-      sport,
-      q,
-    }),
-    getBetSummaryForUser(session.user.id, {
-      filter,
-      type,
-      from,
-      to,
-      sport,
-      q,
-    }),
-    getBetSports(session.user.id),
-    getUserPreferences(session.user.id),
-  ]);
+  const [bets, summary, sports, preferences, debtSuggestion] =
+    await Promise.all([
+      getBetsForUser(session.user.id, {
+        filter,
+        type,
+        order,
+        take: PER_PAGE,
+        skip: (safePage - 1) * PER_PAGE,
+        from,
+        to,
+        sport,
+        q,
+      }),
+      getBetSummaryForUser(session.user.id, {
+        filter,
+        type,
+        from,
+        to,
+        sport,
+        q,
+      }),
+      getBetSports(session.user.id),
+      getUserPreferences(session.user.id),
+      getOpenDebtSuggestion(session.user.id),
+    ]);
 
   const sharedParams = {
     estado: filter,
@@ -448,6 +451,9 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
                 key={bet.id}
                 bet={bet}
                 timeZone={preferences.timezone}
+                debtSuggestion={
+                  preferences.showDebts ? debtSuggestion : null
+                }
               />
             ))}
           </div>

@@ -14,6 +14,7 @@ import { getBetTypeLabel } from "@/lib/bet-display";
 import { getBetStatusMeta } from "@/lib/bet-status";
 import { calculateBetClosingLineValue } from "@/lib/bet-math";
 import { getBetForUser } from "@/lib/data/bets";
+import { getOpenDebtSuggestion } from "@/lib/data/debts";
 import { getUserPreferences } from "@/lib/data/user";
 import {
   formatCurrency,
@@ -42,7 +43,10 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
 
   if (!bet) notFound();
 
-  const preferences = await getUserPreferences(session.user.id);
+  const [preferences, debtSuggestion] = await Promise.all([
+    getUserPreferences(session.user.id),
+    getOpenDebtSuggestion(session.user.id),
+  ]);
   const timeZone = preferences.timezone;
 
   const status = getBetStatusMeta(bet.status);
@@ -60,7 +64,14 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
           </Link>
         </Button>
         <div className="flex items-center gap-1">
-          {pending && <SettleBetSheet bet={bet} />}
+          {pending && (
+            <SettleBetSheet
+              bet={bet}
+              debtSuggestion={
+                preferences.showDebts ? debtSuggestion : null
+              }
+            />
+          )}
           <BetActionsSheet bet={bet} />
         </div>
       </div>

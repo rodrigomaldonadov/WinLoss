@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CircleAlert, Gavel } from "lucide-react";
 import type { BetStatus, LegStatus } from "@prisma/client";
 import { toast } from "sonner";
@@ -55,13 +56,18 @@ type SettleBetSheetProps = {
     bankroll: { currency: string };
     legs: SettleLeg[];
   };
+  debtSuggestion?: {
+    id: string;
+    lenderName: string;
+  } | null;
 };
 
 function initialStatuses(legs: SettleLeg[]): Record<string, LegStatus> {
   return Object.fromEntries(legs.map((leg) => [leg.id, "WON" as LegStatus]));
 }
 
-export function SettleBetSheet({ bet }: SettleBetSheetProps) {
+export function SettleBetSheet({ bet, debtSuggestion }: SettleBetSheetProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, LegStatus>>(() =>
     initialStatuses(bet.legs),
@@ -72,11 +78,6 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
     settleBet,
     initialState,
   );
-
-  useEffect(() => {
-    if (state.ok) toast.success("Apuesta liquidada");
-    if (state.error) toast.error(state.error);
-  }, [state]);
 
   // Tras una liquidación correcta revalidamos y cerramos el panel.
   const sheetOpen = open && !state.ok;
@@ -109,6 +110,38 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
   const previewStatus: BetStatus = hasCashout ? "CASHOUT" : previewMath!.status;
   const previewProfit = preview.profit.toNumber();
   const canSubmit = hasCashout || previewStatus !== "PENDING";
+
+  useEffect(() => {
+    if (state.ok) {
+      toast.success("Apuesta liquidada");
+      if (
+        debtSuggestion &&
+        previewProfit > 0 &&
+        (previewStatus === "WON" || previewStatus === "HALF_WON")
+      ) {
+        toast.info(
+          `Ganaste ${formatCurrency(previewProfit, bet.bankroll.currency)}. ¿Abonar a ${debtSuggestion.lenderName}?`,
+          {
+            duration: 8000,
+            action: {
+              label: "Abonar",
+              onClick: () => {
+                router.push(`/debts/${debtSuggestion.id}?pagar=1`);
+              },
+            },
+          },
+        );
+      }
+    }
+    if (state.error) toast.error(state.error);
+  }, [
+    state,
+    debtSuggestion,
+    previewProfit,
+    previewStatus,
+    bet.bankroll.currency,
+    router,
+  ]);
 
   const setAllStatuses = (status: LegStatus) => {
     setStatuses(Object.fromEntries(bet.legs.map((leg) => [leg.id, status])));

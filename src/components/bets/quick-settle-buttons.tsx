@@ -14,12 +14,21 @@ import { cn } from "@/lib/utils";
 type QuickSettleButtonsProps = {
   betId: string;
   className?: string;
+  winAmount?: number;
+  currency?: string;
+  debtSuggestion?: {
+    id: string;
+    lenderName: string;
+  } | null;
 };
 
 /** Acciones rápidas de liquidación para apuestas simples. */
 export function QuickSettleButtons({
   betId,
   className,
+  winAmount,
+  currency,
+  debtSuggestion,
 }: QuickSettleButtonsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -47,6 +56,29 @@ export function QuickSettleButtons({
           },
         },
       });
+
+      if (
+        status === "WON" &&
+        debtSuggestion &&
+        winAmount !== undefined &&
+        winAmount > 0
+      ) {
+        const amount = new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: currency ?? "PEN",
+          maximumFractionDigits: 2,
+        }).format(winAmount);
+        toast.info(`Ganaste ${amount}. ¿Abonar a ${debtSuggestion.lenderName}?`, {
+          duration: 8000,
+          action: {
+            label: "Abonar",
+            onClick: () => {
+              router.push(`/debts/${debtSuggestion.id}?pagar=1`);
+            },
+          },
+        });
+      }
+
       router.refresh();
     });
   };

@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   BarChart3,
   ChevronRight,
+  Landmark,
   Percent,
   Target,
   Ticket,
@@ -18,6 +19,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ExportBetsButton } from "@/components/bets/export-bets-button";
 import { PageHeader } from "@/components/page-header";
 import { getClosingLineValueByBookmaker, getRecentBets } from "@/lib/data/bets";
+import { getDebtSummaryForUser } from "@/lib/data/debts";
 import { getUserPreferences } from "@/lib/data/user";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
@@ -43,10 +45,11 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [bankrolls, recentBets, preferences] = await Promise.all([
+  const [bankrolls, recentBets, preferences, debtSummary] = await Promise.all([
     getBankrollsForUser(session.user.id),
     getRecentBets(session.user.id, 10),
     getUserPreferences(session.user.id),
+    getDebtSummaryForUser(session.user.id),
   ]);
 
   const hasBankroll = bankrolls.length > 0;
@@ -78,6 +81,19 @@ export default async function DashboardPage() {
 
   const drawdown = await calculateDrawdown(session.user.id);
   const showDrawdownAlert = hasBankroll && drawdown.thresholdExceeded;
+  const showDebtSection = debtSummary.showDebts;
+  const profitPen = bankrolls.reduce((total, bankroll) => {
+    if (bankroll.currency === "USD") {
+      return total + bankroll.profit * debtSummary.usdToPenRate;
+    }
+    return total + bankroll.profit;
+  }, 0);
+  const netProfit = profitPen - debtSummary.totalPen;
+  const debtAlerts =
+    showDebtSection &&
+    (debtSummary.alerts.ratio ||
+      debtSummary.alerts.overdue ||
+      debtSummary.alerts.loanFunded);
 
   const history = await getBankrollHistory(session.user.id, 180);
 
@@ -105,19 +121,53 @@ export default async function DashboardPage() {
           title="Cuidado con tu bankroll"
           description={
             <>
-              Tu balance actual{" "}
-              <strong>{formatCurrency(drawdown.currentBankroll, currency)}</strong>{" "}
-              ha caído un{" "}
-              <strong>{Math.round((1 - drawdown.drawdown) * 100)}%</strong>{" "}
-              respecto a tu saldo inicial{" "}
-              <strong>{formatCurrency(drawdown.initialBankroll, currency)}</strong>.
-              Te recomendamos pausar nuevas apuestas y revisar tu gestión de
+              Tu beneficio acumulado está un{" "}
+              <strong>{Math.round(drawdown.drawdown * 100)}%</strong> por
+              debajo de su pico, sobre un capital aportado de{" "}
+              <strong>
+                {formatCurrency(drawdown.capitalContributed, currency)}
+              </strong>
+              . Te recomendamos pausar nuevas apuestas y revisar tu gestión de
               riesgo.
             </>
           }
           action={
             <Button asChild variant="outline">
               <Link href="/settings">Revisar ajustes</Link>
+            </Button>
+          }
+        />
+      )}
+
+      {debtAlerts && (
+        <Alert
+          title="Deudas: revisa tu exposición"
+          description={
+            <ul className="list-inside list-disc space-y-0.5">
+              {debtSummary.alerts.overdue && (
+                <li>
+                  Tienes {debtSummary.overdueCount} deuda
+                  {debtSummary.overdueCount === 1 ? "" : "s"} vencida
+                  {debtSummary.overdueCount === 1 ? "" : "s"}.
+                </li>
+              )}
+              {debtSummary.alerts.ratio && (
+                <li>
+                  La deuda pendiente es{" "}
+                  {Math.round(debtSummary.ratio * 100)}% de tu capital propio
+                  (umbral {Math.round(debtSummary.thresholdPct)}%).
+                </li>
+              )}
+              {debtSummary.alerts.loanFunded && (
+                <li>
+                  Más de la mitad del bankroll está financiado con préstamos.
+                </li>
+              )}
+            </ul>
+          }
+          action={
+            <Button asChild variant="outline">
+              <Link href="/debts">Ver deudas</Link>
             </Button>
           }
         />
@@ -139,7 +189,7 @@ export default async function DashboardPage() {
           {/* 2. Métricas */}
           <section
             aria-label="Métricas principales"
-            className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
           >
             <StatCard
               label="Bankroll actual"
@@ -203,6 +253,30 @@ export default async function DashboardPage() {
               }
               icon={TrendingUp}
             />
+            {showDebtSection && (
+              <>
+                <StatCard
+                  label="Deuda pendiente"
+                  value={formatCurrency(debtSummary.totalPen, "PEN")}
+                  hint={
+                    debtSummary.overdueCount > 0
+                      ? `${debtSummary.overdueCount} vencida${debtSummary.overdueCount === 1 ? "" : "s"} · ${debtSummary.openCount + debtSummary.partialCount} abiertas`
+                      : `${debtSummary.openCount + debtSummary.partialCount} abierta${debtSummary.openCount + debtSummary.partialCount === 1 ? "" : "s"}`
+                  }
+                  tone={debtSummary.overdueCount > 0 ? "loss" : "default"}
+                  icon={Landmark}
+                />
+                <StatCard
+                  label="Beneficio neto"
+                  value={formatCurrency(netProfit, "PEN")}
+                  hint="Beneficio de apuestas − deuda (PEN)"
+                  tone={
+                    netProfit > 0 ? "success" : netProfit < 0 ? "loss" : "default"
+                  }
+                  icon={ArrowUpRight}
+                />
+              </>
+            )}
           </section>
 
           <Link

@@ -111,11 +111,23 @@ export function BankrollCard({ bankroll }: BankrollCardProps) {
           {formatPercent(bankroll.roi, { signed: true })} ROI
         </p>
 
-        <dl className="mt-4 grid grid-cols-3 gap-2 border-t pt-3">
+        <dl className="mt-4 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-4">
           <div>
-            <dt className="text-[11px] text-muted-foreground">Inicial</dt>
+            <dt className="text-[11px] text-muted-foreground">Aportado</dt>
             <dd className="mt-0.5 text-xs font-medium tabular-nums">
-              {formatCurrency(bankroll.initialAmount, bankroll.currency)}
+              {formatCurrency(bankroll.capitalContributed, bankroll.currency)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[11px] text-muted-foreground">Movimientos</dt>
+            <dd className="mt-0.5 text-xs font-medium tabular-nums">
+              {formatCurrency(bankroll.movementsBalance, bankroll.currency)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[11px] text-muted-foreground">Beneficio</dt>
+            <dd className="mt-0.5 text-xs font-medium tabular-nums">
+              {formatCurrency(bankroll.profit, bankroll.currency)}
             </dd>
           </div>
           <div>
@@ -124,13 +136,12 @@ export function BankrollCard({ bankroll }: BankrollCardProps) {
               {formatCurrency(bankroll.pendingStake, bankroll.currency)}
             </dd>
           </div>
-          <div>
-            <dt className="text-[11px] text-muted-foreground">Apuestas</dt>
-            <dd className="mt-0.5 text-xs font-medium tabular-nums">
-              {bankroll.settledCount + bankroll.pendingCount}
-            </dd>
-          </div>
         </dl>
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          Inicial {formatCurrency(bankroll.initialAmount, bankroll.currency)} ·{" "}
+          {bankroll.settledCount + bankroll.pendingCount} apuesta
+          {bankroll.settledCount + bankroll.pendingCount === 1 ? "" : "s"}
+        </p>
       </article>
 
       <BankrollFormSheet

@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, Globe, LogOut, Palette, Store, Wallet } from "lucide-react";
+import { ChevronRight, Globe, Landmark, LogOut, Palette, Store, Wallet } from "lucide-react";
 
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { UserProfileSheet } from "@/components/settings/user-profile-sheet";
 import { AutoSettlePreference } from "@/components/settings/auto-settle-preference";
+import { DebtPreferences } from "@/components/settings/debt-preferences";
 import { ThemePreference } from "@/components/settings/theme-preference";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions/auth";
 import { getBookmakersForUser } from "@/lib/data/bookmakers";
 import { prisma } from "@/lib/prisma";
+import {
+  DEFAULT_DEBT_ALERT_THRESHOLD,
+  DEFAULT_USD_TO_PEN_RATE,
+} from "@/lib/constants";
 import { formatDate, getInitials } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -30,6 +35,9 @@ export default async function SettingsPage() {
       currency: true,
       timezone: true,
       autoSettleMode: true,
+      usdToPenRate: true,
+      debtAlertThresholdPct: true,
+      showDebts: true,
       createdAt: true,
     },
   });
@@ -109,6 +117,33 @@ export default async function SettingsPage() {
           </p>
         </div>
         <AutoSettlePreference mode={user.autoSettleMode} />
+      </section>
+
+      <section className="space-y-3 rounded-xl border bg-card p-4 shadow-xs">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <Landmark className="size-4 text-muted-foreground" aria-hidden />
+            Deudas y alertas
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Configura la tasa manual USD → PEN y el umbral de los avisos de
+            juego responsable. Las deudas no modifican tu ROI ni tu yield.
+          </p>
+        </div>
+        <DebtPreferences
+          usdToPenRate={
+            user.usdToPenRate
+              ? Number(user.usdToPenRate)
+              : DEFAULT_USD_TO_PEN_RATE
+          }
+          thresholdPct={
+            user.debtAlertThresholdPct !== null &&
+            user.debtAlertThresholdPct !== undefined
+              ? Number(user.debtAlertThresholdPct)
+              : DEFAULT_DEBT_ALERT_THRESHOLD
+          }
+          showDebts={user.showDebts}
+        />
       </section>
 
       <section className="overflow-hidden rounded-xl border bg-card shadow-xs">

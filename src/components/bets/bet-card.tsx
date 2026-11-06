@@ -22,11 +22,19 @@ import { cn } from "@/lib/utils";
 type BetCardProps = {
   bet: BetListItem;
   timeZone?: string;
+  debtSuggestion?: {
+    id: string;
+    lenderName: string;
+  } | null;
 };
 
 const MAX_VISIBLE_LEGS = 3;
 
-export function BetCard({ bet, timeZone }: BetCardProps) {
+export function BetCard({
+  bet,
+  timeZone,
+  debtSuggestion,
+}: BetCardProps) {
   const status = getBetStatusMeta(bet.status);
   const currency = bet.bankroll.currency;
   const pending = bet.status === "PENDING";
@@ -42,6 +50,10 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
       ? bet.stake * Math.max(0, effectiveOdds - 1)
       : bet.stake * effectiveOdds) *
     (1 + boostPct / 100);
+  const potentialProfit = Math.max(
+    0,
+    potentialPayout - (bet.isFreeBet ? 0 : bet.stake),
+  );
 
   const closingValue = calculateBetClosingLineValue(bet.legs);
   const closingPercentage =
@@ -224,7 +236,13 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
       )}
 
       {pending && bet.legs.length === 1 && (
-        <QuickSettleButtons betId={bet.id} className="mt-2.5" />
+        <QuickSettleButtons
+          betId={bet.id}
+          className="mt-2.5"
+          winAmount={potentialProfit}
+          currency={currency}
+          debtSuggestion={debtSuggestion}
+        />
       )}
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
@@ -245,7 +263,7 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
               <CopyPlus className="size-4" aria-hidden />
             </Link>
           </Button>
-          {pending && <SettleBetSheet bet={bet} />}
+          {pending && <SettleBetSheet bet={bet} debtSuggestion={debtSuggestion} />}
           <BetActionsSheet bet={bet} />
         </div>
       </div>

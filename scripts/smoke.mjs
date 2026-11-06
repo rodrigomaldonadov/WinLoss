@@ -566,9 +566,62 @@ PEN 132.00`);
     throw new Error("La página de consenso no muestra el aviso de privacidad");
   }
 
+  // ── Deudas: alta USD, pago parcial, pago total y anulación ─────────
+  await page.goto(`${BASE_URL}/debts`, { waitUntil: "networkidle" });
+  await page
+    .getByRole("button", { name: "Nueva deuda" })
+    .first()
+    .click();
+  await page.getByLabel("Acreedor").fill("Smoke Lender");
+  await page.getByRole("button", { name: /Dólares/ }).click();
+  await page.getByLabel("Monto prestado").fill("10");
+  await page.getByLabel(/Tasa de cambio/).fill("3.5");
+  await page.getByRole("button", { name: "Crear deuda" }).click();
+  await page.getByText("Deuda registrada").waitFor({ timeout: 15_000 });
+  await page.getByText("Smoke Lender").first().waitFor({ timeout: 15_000 });
+
+  await page.getByText("Smoke Lender").first().click();
+  await page.getByRole("button", { name: "Registrar pago" }).click();
+  await page.getByLabel("Monto a pagar").fill("5");
+  await page.getByRole("button", { name: "Confirmar pago" }).click();
+  await page.getByText("Pago registrado").waitFor({ timeout: 15_000 });
+  await page.getByText("Parcial", { exact: true }).first().waitFor({
+    timeout: 15_000,
+  });
+
+  await page.getByRole("button", { name: "Registrar pago" }).click();
+  await page.getByLabel("Monto a pagar").fill("5");
+  await page.getByRole("button", { name: "Confirmar pago" }).click();
+  await page.getByText("Pagada", { exact: true }).first().waitFor({
+    timeout: 15_000,
+  });
+
+  await page.getByRole("button", { name: "Anular" }).first().click();
+  await page.getByRole("button", { name: "Anular pago" }).click();
+  await page.getByText("Pago anulado").waitFor({ timeout: 15_000 });
+  await page.getByText("Parcial", { exact: true }).first().waitFor({
+    timeout: 15_000,
+  });
+
+  await page.goto(`${BASE_URL}/bankroll`, { waitUntil: "networkidle" });
+  const movementsText = await page.locator("body").innerText();
+  if (
+    !movementsText.includes("Préstamo · Smoke Lender") ||
+    !movementsText.includes("Pago de deuda · Smoke Lender")
+  ) {
+    throw new Error(`Movimientos de deuda incompletos: ${movementsText}`);
+  }
+
   await page.goto(`${BASE_URL}/settings`, { waitUntil: "networkidle" });
   if (!(await page.getByText("Casas de apuestas").isVisible())) {
     throw new Error("Ajustes no enlaza a casas de apuestas");
+  }
+  if (
+    !(await page
+      .getByRole("heading", { name: "Deudas y alertas" })
+      .isVisible())
+  ) {
+    throw new Error("Ajustes no muestra las preferencias de deuda");
   }
   await page.screenshot({
     path: "artifacts/09-settings-mobile.png",
