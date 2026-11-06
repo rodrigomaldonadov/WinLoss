@@ -229,6 +229,7 @@ export async function updateBet(
       id: true,
       status: true,
       payout: true,
+      closingOdds: true,
     },
   });
 
@@ -290,6 +291,7 @@ export async function updateBet(
       notes: data.notes ?? null,
       payout: settlement?.payout ?? null,
       profit: settlement?.profit ?? null,
+      closingOdds: data.closingOdds ?? existing.closingOdds ?? null,
     },
   });
 
@@ -341,6 +343,7 @@ export async function settleBet(
     id: formData.get("id"),
     status: formData.get("status"),
     cashoutAmount: formData.get("cashoutAmount"),
+    closingOdds: formData.get("closingOdds"),
   });
 
   if (!parsed.success) {
@@ -381,6 +384,7 @@ export async function settleBet(
       settledAt: new Date(),
       payout: result.payout,
       profit: result.profit,
+      closingOdds: parsed.data.closingOdds ?? null,
     },
   });
 

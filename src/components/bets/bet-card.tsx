@@ -2,11 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import { BetActionsSheet } from "@/components/bets/bet-actions-sheet";
 import { SettleBetSheet } from "@/components/bets/settle-bet-sheet";
 import { getBetStatusMeta } from "@/lib/bet-status";
+import { calculateClosingLineValue } from "@/lib/bet-math";
 import type { BetListItem } from "@/lib/data/bets";
 import {
   formatCurrency,
   formatDateTime,
   formatOdds,
+  formatPercent,
   formatSignedCurrency,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,12 @@ export function BetCard({ bet }: BetCardProps) {
   const potentialPayout = bet.isFreeBet
     ? bet.stake * (bet.odds - 1)
     : bet.stake * bet.odds;
+
+  const closingValue = bet.closingOdds
+    ? calculateClosingLineValue(bet.odds, bet.closingOdds)
+    : null;
+  const closingPercentage =
+    closingValue !== null ? closingValue.value.toNumber() : null;
 
   return (
     <article className="rounded-xl border bg-card p-4 shadow-xs">
@@ -79,6 +87,24 @@ export function BetCard({ bet }: BetCardProps) {
           </dd>
         </div>
       </dl>
+
+      {!pending && closingValue && closingPercentage !== null && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs">
+          <span className="text-muted-foreground">CLV</span>
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              closingPercentage > 0
+                ? "text-success"
+                : closingPercentage < 0
+                  ? "text-loss"
+                  : "text-muted-foreground",
+            )}
+          >
+            {formatPercent(closingPercentage, { decimals: 1, signed: true })}
+          </span>
+        </div>
+      )}
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">

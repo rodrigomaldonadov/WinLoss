@@ -32,5 +32,14 @@ export const registerSchema = z
     message: "Las contraseñas no coinciden",
   });
 
+export const updateProfileSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Ingresa tu nombre")
+    .max(60, "Máximo 60 caracteres"),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

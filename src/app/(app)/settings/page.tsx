@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, Globe, LogOut, Store, Wallet } from "lucide-react";
+import { ChevronRight, Globe, LogOut, Store, Sun, Wallet } from "lucide-react";
 
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
+import { UserProfileSheet } from "@/components/settings/user-profile-sheet";
+import { ThemePreference } from "@/components/settings/theme-preference";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions/auth";
 import { getBookmakersForUser } from "@/lib/data/bookmakers";
@@ -64,6 +66,7 @@ export default async function SettingsPage() {
           </p>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
+        <UserProfileSheet userName={user.name} email={user.email} />
       </section>
 
       <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
@@ -82,6 +85,16 @@ export default async function SettingsPage() {
             );
           })}
         </ul>
+
+        <div className="flex flex-col gap-3 border-t px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Sun className="size-[18px] text-muted-foreground" aria-hidden />
+            <span className="text-sm">Modo oscuro</span>
+          </div>
+          <div className="sm:w-56">
+            <ThemePreference />
+          </div>
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-xl border bg-card shadow-xs">

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { Prisma } from "@prisma/client";
 import type { BetStatus, BetType } from "@prisma/client";
 
 import { calculateBettingStats } from "@/lib/bet-math";
@@ -23,6 +24,7 @@ export type BetListItem = {
   settledAt: Date | null;
   payout: number | null;
   profit: number | null;
+  closingOdds: number | null;
   bankroll: { id: string; name: string; currency: string };
   bookmaker: { id: string; name: string } | null;
 };
@@ -49,6 +51,7 @@ function toBetListItem(bet: {
   settledAt: Date | null;
   payout: { toString(): string } | null;
   profit: { toString(): string } | null;
+  closingOdds: { toString(): string } | null;
   bankroll: { id: string; name: string; currency: string };
   bookmaker: { id: string; name: string } | null;
 }): BetListItem {
@@ -68,16 +71,36 @@ function toBetListItem(bet: {
     settledAt: bet.settledAt,
     payout: bet.payout === null ? null : Number(bet.payout),
     profit: bet.profit === null ? null : Number(bet.profit),
+    closingOdds: bet.closingOdds === null ? null : Number(bet.closingOdds),
     bankroll: bet.bankroll,
     bookmaker: bet.bookmaker,
   };
 }
 
+export type BetListQuery = {
+  filter?: BetFilter;
+  /** Resultados por página. */
+  take?: number;
+  /** Saltos para paginación (skip). */
+  skip?: number;
+  /** Desde (inclusive) para `placedAt`. */
+  from?: Date;
+  /** Hasta (inclusive) para `placedAt`. */
+  to?: Date;
+  /** Deporte exacto. */
+  sport?: string;
+};
+
 export async function getBetsForUser(
   userId: string,
-  filter: BetFilter = "all",
-  take = 100,
+  query: BetListQuery = {},
 ): Promise<BetListItem[]> {
+  const { filter = "all", take = 100, skip = 0, from, to, sport } = query;
+
+  const placedAt: { gte?: Date; lte?: Date } = {};
+  if (from) placedAt.gte = from;
+  if (to) placedAt.lte = to;
+
   const bets = await prisma.bet.findMany({
     where: {
       userId,
@@ -86,9 +109,12 @@ export async function getBetsForUser(
         : filter === "settled"
           ? { status: { not: "PENDING" } }
           : {}),
+      ...(sport ? { sport: { equals: sport } } : {}),
+      ...(Object.keys(placedAt).length > 0 ? { placedAt } : {}),
     },
     orderBy: [{ placedAt: "desc" }, { createdAt: "desc" }],
     take,
+    skip,
     include: {
       bankroll: { select: { id: true, name: true, currency: true } },
       bookmaker: { select: { id: true, name: true } },
@@ -96,6 +122,43 @@ export async function getBetsForUser(
   });
 
   return bets.map(toBetListItem);
+}
+
+export async function countBetsForUser(
+  userId: string,
+  query: Omit<BetListQuery, "take" | "skip"> = {},
+): Promise<number> {
+  const { filter = "all", from, to, sport } = query;
+
+  const placedAt: { gte?: Date; lte?: Date } = {};
+  if (from) placedAt.gte = from;
+  if (to) placedAt.lte = to;
+
+  const where: Prisma.BetWhereInput = {
+    userId,
+    ...(filter === "pending"
+      ? { status: "PENDING" }
+      : filter === "settled"
+        ? { status: { not: "PENDING" } }
+        : {}),
+    ...(sport ? { sport: { equals: sport } } : {}),
+    ...(Object.keys(placedAt).length > 0 ? { placedAt } : {}),
+  };
+
+  return prisma.bet.count({ where });
+}
+
+/** Deportes distintos registrados por el usuario (para el filtro avanzado). */
+export async function getBetSports(userId: string): Promise<string[]> {
+  const bets = await prisma.bet.findMany({
+    where: { userId },
+    select: { sport: true },
+    orderBy: { sport: "asc" },
+  });
+
+  return Array.from(new Set(bets.map((bet) => bet.sport))).sort((a, b) =>
+    a.localeCompare(b),
+  );
 }
 
 export async function getBetForUser(
@@ -121,7 +184,7 @@ export async function getBetForUser(
 }
 
 export async function getRecentBets(userId: string, take = 5) {
-  return getBetsForUser(userId, "all", take);
+  return getBetsForUser(userId, { filter: "all", take });
 }
 
 export async function getBetCounts(userId: string) {

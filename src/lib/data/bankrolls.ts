@@ -30,6 +30,7 @@ export async function getBankrollsForUser(
           settledAt: true,
           payout: true,
           profit: true,
+          closingOdds: true,
           bankrollId: true,
           bookmakerId: true,
         },
@@ -56,6 +57,7 @@ export async function getBankrollsForUser(
       settledAt: bet.settledAt,
       payout: bet.payout === null ? null : Number(bet.payout),
       profit: bet.profit === null ? null : Number(bet.profit),
+      closingOdds: bet.closingOdds === null ? null : Number(bet.closingOdds),
       bankroll: { id: bankroll.id, name: bankroll.name, currency: bankroll.currency },
       bookmaker: bet.bookmakerId ? { id: bet.bookmakerId, name: "" } : null,
     }));

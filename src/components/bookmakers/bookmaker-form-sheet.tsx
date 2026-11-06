@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -15,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { CURRENCIES } from "@/lib/constants";
 import {
   saveBookmaker,
   type BookmakerFormState,
@@ -43,6 +51,7 @@ export function BookmakerFormSheet({
 
   useEffect(() => {
     if (!state.ok) return;
+
     formRef.current?.reset();
     toast.success(
       isEditing ? "Casa de apuestas actualizada" : "Casa de apuestas creada",
@@ -60,15 +69,14 @@ export function BookmakerFormSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg"
+        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl sm:mx-auto sm:max-w-lg"
       >
         <SheetHeader className="pb-0">
           <SheetTitle>
             {isEditing ? "Editar casa" : "Nueva casa de apuestas"}
           </SheetTitle>
           <SheetDescription>
-            Añade la casa donde registras tus apuestas para filtrar y comparar
-            después.
+            Añade la casa donde registras tus apuestas para filtrar y comparar después.
           </SheetDescription>
         </SheetHeader>
 
@@ -94,12 +102,9 @@ export function BookmakerFormSheet({
               defaultValue={bookmaker?.name}
               required
               maxLength={40}
-              autoFocus
               className="h-12"
               aria-invalid={Boolean(errors?.name)}
-              aria-describedby={
-                errors?.name ? "bookmaker-name-error" : undefined
-              }
+              aria-describedby={errors?.name ? "bookmaker-name-error" : undefined}
             />
             {errors?.name && (
               <p id="bookmaker-name-error" className="text-xs text-destructive">
@@ -108,10 +113,39 @@ export function BookmakerFormSheet({
             )}
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="bookmaker-currency">Moneda</Label>
+              <Select
+                name="currency"
+                defaultValue="PEN"
+              >
+                <SelectTrigger
+                  id="bookmaker-currency"
+                  className="h-12 w-full"
+                  aria-label="Moneda"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.code} - {currency.symbol}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Ingresa el nombre exacto de la casa de apuestas.
+          </p>
+
           <SheetFooter className="px-0">
             <Button type="submit" className="h-12 w-full" disabled={pending}>
               {pending
-                ? "Guardando…"
+                ? "Guardando…?"
                 : isEditing
                   ? "Guardar cambios"
                   : "Añadir casa"}

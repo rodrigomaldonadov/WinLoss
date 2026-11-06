@@ -12,6 +12,7 @@ import {
 import { auth } from "@/auth";
 import { BetRow } from "@/components/bets/bet-row";
 import { EmptyState } from "@/components/empty-state";
+import { ExportBetsButton } from "@/components/bets/export-bets-button";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
   calculateDrawdown,
 } from "@/lib/data/bankrolls";
 import { getRecentBets } from "@/lib/data/bets";
+import { calculateAverageClosingLineValue } from "@/lib/bet-math";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { BetRowProps } from "@/components/bets/bet-row";
 import { BankrollLineChart } from "@/components/charts/bankroll-line-chart";
@@ -57,6 +59,12 @@ export default async function DashboardPage() {
 
   const roi = totals.initial > 0 ? totals.profit / totals.initial : 0;
 
+  // ─── CLOSING LINE VALUE (CLV) ───────────────────────────────────────
+  const allBets = bankrolls.flatMap((bankroll) => bankroll.bets ?? []);
+  const averageClosingLineValue = calculateAverageClosingLineValue(allBets);
+  const clv = averageClosingLineValue !== null ? averageClosingLineValue : null;
+  const clvPercentage = clv !== null ? clv.toNumber() : null;
+
   // ─── DRAWDOWN & ALERT ───────────────────────────────────────────────
   const drawdown = await calculateDrawdown(session.user.id);
   const showDrawdownAlert = drawdown.thresholdExceeded;
@@ -70,15 +78,18 @@ export default async function DashboardPage() {
         title="Resumen"
         description="Tu rendimiento, de un vistazo."
         action={
-          <Button asChild className="hidden sm:inline-flex">
-            <Link href="/bets/new">Registrar apuesta</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportBetsButton />
+            <Button asChild className="hidden sm:inline-flex">
+              <Link href="/bets/new">Registrar apuesta</Link>
+            </Button>
+          </div>
         }
       />
 
       <section
         aria-label="Métricas principales"
-        className="grid grid-cols-2 gap-3 md:grid-cols-4"
+        className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5"
       >
         <StatCard
           label="Bankroll actual"
@@ -119,6 +130,25 @@ export default async function DashboardPage() {
               : "Sin apuestas abiertas"
           }
           icon={Ticket}
+        />
+        <StatCard
+          label="CLV"
+          value={
+            clv !== null ? formatPercent(clv, { decimals: 1, signed: true }) : "—"
+          }
+          hint={
+            clv !== null
+              ? "Promedio de trades con cierre"
+              : "Sin cuotas de cierre registradas"
+          }
+          tone={
+            clvPercentage !== null && clvPercentage > 0
+              ? "success"
+              : clvPercentage !== null && clvPercentage < 0
+                ? "loss"
+                : "default"
+          }
+          icon={TrendingUp}
         />
       </section>
 

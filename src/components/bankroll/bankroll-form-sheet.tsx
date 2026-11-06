@@ -67,9 +67,9 @@ export function BankrollFormSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg"
+        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl sm:mx-auto sm:max-w-lg"
       >
-        <SheetHeader className="pb-0">
+        <SheetHeader className="pb-2">
           <SheetTitle>
             {isEditing ? "Editar bankroll" : "Nuevo bankroll"}
           </SheetTitle>
@@ -80,7 +80,7 @@ export function BankrollFormSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <form ref={formRef} action={formAction} className="space-y-4 px-4">
+        <form ref={formRef} action={formAction} className="space-y-5 px-4">
           {bankroll && <input type="hidden" name="id" value={bankroll.id} />}
 
           {state.error && (
@@ -93,8 +93,10 @@ export function BankrollFormSheet({
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="bankroll-name">Nombre</Label>
+          <div className="space-y-2">
+            <Label htmlFor="bankroll-name" className="text-sm font-medium">
+              Nombre
+            </Label>
             <Input
               id="bankroll-name"
               name="name"
@@ -102,7 +104,7 @@ export function BankrollFormSheet({
               defaultValue={bankroll?.name}
               required
               maxLength={40}
-              className="h-12"
+              className="h-12 w-full rounded-md border border-input bg-input px-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               aria-invalid={Boolean(errors?.name)}
               aria-describedby={errors?.name ? "bankroll-name-error" : undefined}
             />
@@ -115,7 +117,9 @@ export function BankrollFormSheet({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="bankroll-amount">Capital inicial</Label>
+              <Label htmlFor="bankroll-amount" className="text-sm font-medium">
+                Capital inicial
+              </Label>
               <Input
                 id="bankroll-amount"
                 name="initialAmount"
@@ -124,7 +128,7 @@ export function BankrollFormSheet({
                 placeholder="0.00"
                 defaultValue={bankroll?.initialAmount ?? ""}
                 required
-                className="h-12"
+                className="h-12 w-full rounded-md border border-input bg-input px-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-invalid={Boolean(errors?.initialAmount)}
                 aria-describedby={
                   errors?.initialAmount ? "bankroll-amount-error" : undefined
@@ -141,7 +145,9 @@ export function BankrollFormSheet({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="bankroll-currency">Moneda</Label>
+              <Label htmlFor="bankroll-currency" className="text-sm font-medium">
+                Moneda
+              </Label>
               <Select
                 name="currency"
                 defaultValue={bankroll?.currency ?? "PEN"}
@@ -171,7 +177,7 @@ export function BankrollFormSheet({
           <SheetFooter className="px-0">
             <Button type="submit" className="h-12 w-full" disabled={pending}>
               {pending
-                ? "Guardando…"
+                ? "Guardando…?"
                 : isEditing
                   ? "Guardar cambios"
                   : "Crear bankroll"}

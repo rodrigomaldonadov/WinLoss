@@ -119,6 +119,7 @@ try {
   await page
     .getByRole("button", { name: "Ganada", exact: true })
     .click();
+  await page.locator("#settle-closing-odds").fill("1.85");
   await page.getByRole("button", { name: "Confirmar resultado" }).click();
 
   const betArticle = page
@@ -131,6 +132,9 @@ try {
   if (!betText.includes("10.00")) {
     throw new Error(`Beneficio no visible tras liquidar: ${betText}`);
   }
+  await betArticle.getByText("CLV", { exact: true }).first().waitFor({
+    timeout: 15_000,
+  });
   await page.screenshot({
     path: "artifacts/07-bets-mobile.png",
     fullPage: false,

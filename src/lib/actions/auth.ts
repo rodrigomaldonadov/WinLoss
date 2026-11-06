@@ -5,13 +5,15 @@ import { hash } from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { loginSchema, registerSchema } from "@/lib/validations/auth";
+import { loginSchema, registerSchema, updateProfileSchema } from "@/lib/validations/auth";
+import { revalidatePath } from "next/cache";
 
 export type AuthFormState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  ok?: boolean;
 };
 
 function toFieldErrors(error: z.ZodError): Record<string, string[]> {
@@ -107,4 +109,34 @@ export async function registerAction(
 
 export async function signOutAction() {
   await signOut({ redirectTo: "/login" });
+}
+
+export async function updateUserAction(
+  _prevState: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
+  }
+
+  const parsed = updateProfileSchema.safeParse({
+    name: formData.get("name"),
+  });
+
+  if (!parsed.success) {
+    return { fieldErrors: toFieldErrors(parsed.error) };
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { name: parsed.data.name },
+    });
+  } catch {
+    return { error: "No pudimos actualizar tu nombre. Inténtalo de nuevo." };
+  }
+
+  revalidatePath("/settings");
+  return { ok: true };
 }

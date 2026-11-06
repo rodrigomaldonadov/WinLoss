@@ -81,7 +81,7 @@ export function BetActionsSheet({ bet }: BetActionsSheetProps) {
         </SheetTrigger>
         <SheetContent
           side="bottom"
-          className="max-h-[90dvh] overflow-y-auto rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg"
+          className="max-h-[90dvh] overflow-y-auto rounded-t-2xl pb-6 sm:mx-auto sm:max-w-lg"
         >
           <SheetHeader className="pb-0">
             <div className="flex items-center justify-between gap-3 pr-8">

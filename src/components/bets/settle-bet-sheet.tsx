@@ -48,6 +48,7 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Exclude<BetStatus, "PENDING">>("WON");
   const [cashout, setCashout] = useState("");
+  const [closingOdds, setClosingOdds] = useState("");
   const [state, formAction, pending] = useActionState(
     settleBet,
     initialState,
@@ -92,7 +93,7 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
       </SheetTrigger>
       <SheetContent
         side="bottom"
-        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg"
+        className="max-h-[90dvh] overflow-y-auto rounded-t-2xl pb-6 sm:mx-auto sm:max-w-lg"
       >
         <SheetHeader className="pb-0">
           <SheetTitle>Liquidar apuesta</SheetTitle>
@@ -153,6 +154,25 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
               </p>
             </div>
           )}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="settle-closing-odds">Cuota de cierre</Label>
+            <Input
+              id="settle-closing-odds"
+              name="closingOdds"
+              type="text"
+              inputMode="decimal"
+              placeholder="1.85"
+              value={closingOdds}
+              onChange={(event) => setClosingOdds(event.target.value)}
+              required
+              className="h-12 tabular-nums"
+            />
+            <p className="text-xs text-muted-foreground">
+              Cuota a la que cerró la línea cuando saliste del mercado. Se usa
+              para calcular el CLV del trade.
+            </p>
+          </div>
 
           {canPreview && (
             <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5 text-sm">

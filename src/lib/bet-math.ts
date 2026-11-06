@@ -32,8 +32,7 @@ export type BetMathResult = {
  *
  * Regla de free bets: el stake no es dinero real, por lo que no se devuelve
  * ni se descuenta. El beneficio de un free bet ganado es stake * (cuota - 1).
- */
-export function calculateBetResult(input: BetMathInput): BetMathResult {
+ */export function calculateBetResult(input: BetMathInput): BetMathResult {
   const stake = toDecimal(input.stake);
   const odds = toDecimal(input.odds);
   const isFreeBet = input.isFreeBet ?? false;
@@ -85,7 +84,63 @@ export type BetLike = {
   odds: Numeric;
   profit?: Numeric | null;
   isFreeBet?: boolean;
+  /** Cuota de cierre usada al liquidar. */
+  closingOdds?: Numeric | null;
 };
+
+export type ClosingLineValue = {
+  /** Cuota de cierre con la que se comparó el trade. */
+  closingOdds: Decimal;
+  /** (Cuota tomada / Cuota de cierre) - 1. */
+  value: Decimal;
+  /** Closing Line Value en porcentaje: value * 100. */
+  percentage: Decimal;
+};
+
+/**
+ * Closing Line Value (CLV): mide la calidad del trade comparando la cuota a la
+ * que se entró con la cuota de cierre (línea de apuesta / líneas del book).
+ * CLV positivo = el bettor entró a mejor precio del que cerró la línea.
+ * Sin cuota de cierre no se puede calcular; devuelve null.
+ */
+export function calculateClosingLineValue(
+  takenOdds: Numeric,
+  closingOdds?: Numeric | null,
+): ClosingLineValue | null {
+  if (closingOdds === null || closingOdds === undefined) return null;
+
+  const closing = toDecimal(closingOdds);
+  if (closing.lte(0)) return null;
+
+  const value = toDecimal(takenOdds).div(closing).minus(1);
+  const rounded = roundMoney(value);
+
+  return {
+    closingOdds: closing,
+    value: rounded,
+    percentage: roundMoney(rounded.mul(100)),
+  };
+}
+
+/**
+ * Promedio de CLV sobre las apuestas liquidadas que tengan cuota de cierre.
+ * Devuelve null cuando ninguna tiene closing odds.
+ */
+export function calculateAverageClosingLineValue(
+  bets: BetLike[],
+): Decimal | null {
+  const values = bets
+    .map((bet) => calculateClosingLineValue(bet.odds, bet.closingOdds))
+    .filter((value): value is ClosingLineValue => value !== null);
+
+  if (values.length === 0) return null;
+
+  const sum = values.reduce(
+    (acc, current) => acc.plus(current.percentage),
+    new Decimal(0),
+  );
+  return roundMoney(sum.div(values.length));
+}
 
 export type BettingStats = {
   /** Nº de apuestas liquidadas. */

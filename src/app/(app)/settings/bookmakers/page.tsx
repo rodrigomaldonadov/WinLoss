@@ -9,6 +9,7 @@ import { NewBookmakerButton } from "@/components/bookmakers/new-bookmaker-button
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+
 import { getBookmakersForUser } from "@/lib/data/bookmakers";
 
 export const metadata: Metadata = {
@@ -20,6 +21,8 @@ export default async function BookmakersPage() {
   if (!session?.user) redirect("/login");
 
   const bookmakers = await getBookmakersForUser(session.user.id);
+  const count = bookmakers.length;
+  const isPlural = count !== 1;
 
   return (
     <div className="space-y-5">
@@ -33,14 +36,14 @@ export default async function BookmakersPage() {
       <PageHeader
         title="Casas de apuestas"
         description={
-          bookmakers.length === 0
+          count === 0
             ? "Añade las casas donde apuestas."
-            : `${bookmakers.length} casa${bookmakers.length === 1 ? "" : "s"}`
+            : count + " casa" + (isPlural ? "s" : "")
         }
         action={<NewBookmakerButton />}
       />
 
-      {bookmakers.length === 0 ? (
+      {count === 0 ? (
         <EmptyState
           icon={Store}
           title="Sin casas de apuestas"

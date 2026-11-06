@@ -65,6 +65,13 @@ export const createBetSchema = z.object({
 
 export const updateBetSchema = createBetSchema.extend({
   id: z.string().min(1),
+  closingOdds: z.preprocess(
+    (value) => (typeof value === "string" ? value.replace(",", ".") : value),
+    z.coerce
+      .number({ error: "Cuota de cierre inválida" })
+      .positive("La cuota de cierre debe ser mayor que 0")
+      .optional(),
+  ),
 });
 
 export const settleBetSchema = z
@@ -83,12 +90,31 @@ export const settleBetSchema = z
         .positive("El importe debe ser mayor que 0")
         .optional(),
     ),
+    closingOdds: z.preprocess(
+      (value) =>
+        value === "" || value === null
+          ? undefined
+          : typeof value === "string"
+            ? value.replace(",", ".")
+            : value,
+      z.coerce
+        .number({ error: "Cuota de cierre inválida" })
+        .positive("La cuota de cierre debe ser mayor que 0")
+        .optional(),
+    ),
   })
   .refine(
     (data) => data.status !== "CASHOUT" || data.cashoutAmount !== undefined,
     {
       path: ["cashoutAmount"],
       message: "Indica el importe del cashout",
+    },
+  )
+  .refine(
+    (data) => data.closingOdds === undefined || data.closingOdds > 0,
+    {
+      path: ["closingOdds"],
+      message: "La cuota de cierre debe ser mayor que 0",
     },
   );
 
