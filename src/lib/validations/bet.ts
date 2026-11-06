@@ -33,7 +33,11 @@ const requiredOdds = z.preprocess(
 const optionalDate = z.preprocess(
   (value) =>
     value === "" || value === null || value === undefined ? undefined : value,
-  z.coerce.date({ error: "Fecha del evento inválida" }).optional(),
+  z
+    .string()
+    .trim()
+    .max(32, "Fecha del evento inválida")
+    .optional(),
 );
 
 export const betStatusSchema = z.enum([
@@ -128,7 +132,11 @@ export const createBetSchema = z.object({
     (value) => value === true || value === "true" || value === "on",
     z.boolean(),
   ),
-  placedAt: z.coerce.date({ error: "Fecha inválida" }),
+  placedAt: z
+    .string()
+    .trim()
+    .min(1, "Indica la fecha")
+    .max(32, "Fecha inválida"),
   notes: optionalText(500),
   legs: z
     .array(betLegSchema)

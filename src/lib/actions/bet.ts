@@ -12,6 +12,8 @@ import {
   settleBet as settleBetMath,
 } from "@/lib/bet-math";
 import { formatCurrency } from "@/lib/format";
+import { getUserPreferences } from "@/lib/data/user";
+import { zonedDateTimeToUtc } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 import {
   createBetSchema,
@@ -296,6 +298,8 @@ export async function createBet(
 
   const data = parsed.data;
   const firstLeg = data.legs[0];
+  const preferences = await getUserPreferences(session.user.id);
+  const placedAt = zonedDateTimeToUtc(data.placedAt, preferences.timezone);
 
   const references = await validateBetReferences(
     session.user.id,
@@ -322,7 +326,7 @@ export async function createBet(
         stake: data.stake,
         betType: betTypeFromLegCount(data.legs.length),
         isFreeBet: data.isFreeBet,
-        placedAt: data.placedAt,
+        placedAt,
         notes: data.notes ?? null,
         legs: {
           create: data.legs.map((leg, index) => ({
@@ -330,7 +334,9 @@ export async function createBet(
             sport: leg.sport,
             competition: leg.competition ?? null,
             eventName: leg.eventName,
-            eventDate: leg.eventDate ?? null,
+            eventDate: leg.eventDate
+              ? zonedDateTimeToUtc(leg.eventDate, preferences.timezone)
+              : null,
             isBuilder: leg.isBuilder,
             odds: leg.odds,
             status: "PENDING" as const,
@@ -379,6 +385,8 @@ export async function updateBet(
   }
 
   const data = parsed.data;
+  const preferences = await getUserPreferences(session.user.id);
+  const placedAt = zonedDateTimeToUtc(data.placedAt, preferences.timezone);
 
   const existing = await prisma.bet.findFirst({
     where: { id: data.id, userId: session.user.id },
@@ -421,6 +429,9 @@ export async function updateBet(
    */
   const legsWithStatus = data.legs.map((leg, index) => ({
     ...leg,
+    eventDate: leg.eventDate
+      ? zonedDateTimeToUtc(leg.eventDate, preferences.timezone)
+      : null,
     status: existing.legs[index]?.status ?? ("PENDING" as const),
     closingOdds: existing.legs[index]?.closingOdds ?? null,
   }));
@@ -466,7 +477,7 @@ export async function updateBet(
         stake: data.stake,
         betType: betTypeFromLegCount(data.legs.length),
         isFreeBet: data.isFreeBet,
-        placedAt: data.placedAt,
+        placedAt,
         notes: data.notes ?? null,
         status,
         payout,

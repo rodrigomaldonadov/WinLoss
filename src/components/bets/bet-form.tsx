@@ -28,6 +28,11 @@ import {
   NewBetOCRButton,
   type OCRTicketData,
 } from "@/components/bets/ocr/new-bet-ocr-button";
+import {
+  CompetitionField,
+  SportField,
+} from "@/components/bets/leg-catalog-fields";
+import { DateTimeCompact } from "@/components/bets/date-time-field";
 import { createBet, updateBet, type BetFormState } from "@/lib/actions/bet";
 import { MARKETS, SPORTS } from "@/lib/constants";
 import { totalOdds } from "@/lib/bet-math";
@@ -320,6 +325,9 @@ function LegFields({
     name: selectionsPath,
   });
   const isBuilder = Boolean(leg.isBuilder);
+  const eventDatePath = `legs.${index}.eventDate` as FieldPath<BetFormValues>;
+  const eventDateValue =
+    useWatch({ control, name: eventDatePath }) ?? "";
 
   const toggleBuilder = (checked: boolean) => {
     setValue(`legs.${index}.isBuilder` as FieldPath<BetFormValues>, checked);
@@ -362,39 +370,8 @@ function LegFields({
       />
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor={`leg-${index}-sport`} className="text-xs">
-            Deporte
-          </Label>
-          <Input
-            id={`leg-${index}-sport`}
-            list="bet-sports"
-            placeholder="Fútbol"
-            required
-            maxLength={60}
-            className="h-11"
-            defaultValue={leg.sport}
-            {...register(
-              `legs.${index}.sport` as FieldPath<BetFormValues>,
-            )}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor={`leg-${index}-competition`} className="text-xs">
-            Competición
-          </Label>
-          <Input
-            id={`leg-${index}-competition`}
-            placeholder="Liga 1"
-            maxLength={80}
-            className="h-11"
-            defaultValue={leg.competition}
-            {...register(
-              `legs.${index}.competition` as FieldPath<BetFormValues>,
-            )}
-          />
-        </div>
+        <SportField index={index} />
+        <CompetitionField index={index} />
       </div>
 
       <div className="space-y-1.5">
@@ -417,16 +394,15 @@ function LegFields({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`leg-${index}-date`} className="text-xs">
-            Fecha del evento
+            Fecha del evento (opcional)
           </Label>
-          <Input
+          <input type="hidden" {...register(eventDatePath)} />
+          <DateTimeCompact
             id={`leg-${index}-date`}
-            type="date"
-            className="h-11"
-            defaultValue={leg.eventDate}
-            {...register(
-              `legs.${index}.eventDate` as FieldPath<BetFormValues>,
-            )}
+            value={String(eventDateValue)}
+            onChange={(value) =>
+              setValue(eventDatePath, value, { shouldDirty: true })
+            }
           />
         </div>
 
@@ -738,15 +714,13 @@ export function BetForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="bet-date">Fecha</Label>
-              <Input
+              <Label htmlFor="bet-date">Fecha y hora</Label>
+              <input type="hidden" name="placedAt" value={placedAtValue} />
+              <DateTimeCompact
                 id="bet-date"
-                name="placedAt"
-                type="datetime-local"
                 value={placedAtValue}
-                onChange={(event) => setPlacedAtValue(event.target.value)}
+                onChange={setPlacedAtValue}
                 required
-                className="h-12"
                 aria-invalid={Boolean(errors?.placedAt)}
                 aria-describedby={
                   errors?.placedAt ? "bet-date-error" : undefined

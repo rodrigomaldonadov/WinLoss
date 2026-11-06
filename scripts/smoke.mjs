@@ -30,6 +30,19 @@ page.on("console", (message) => {
   if (message.type() === "error") errors.push(message.text());
 });
 
+/** Selecciona un deporte en el combobox del leg `index`. */
+async function selectSport(index, sport) {
+  await page.getByLabel("Deporte", { exact: true }).nth(index).click();
+  await page.getByRole("option", { name: sport, exact: true }).click();
+}
+
+/** Selecciona una competición del catálogo (con búsqueda). */
+async function selectCompetition(index, query, label) {
+  await page.getByLabel("Competición", { exact: true }).nth(index).click();
+  await page.getByLabel("Buscar competición").last().fill(query);
+  await page.getByRole("button", { name: label, exact: true }).last().click();
+}
+
 try {
   await page.goto(`${BASE_URL}/login`, { waitUntil: "networkidle" });
   await page.screenshot({ path: "artifacts/01-login-mobile.png", fullPage: true });
@@ -94,8 +107,8 @@ try {
   await page.goto(`${BASE_URL}/bets/new`, { waitUntil: "networkidle" });
   await page.getByRole("combobox", { name: "Casa de apuestas" }).click();
   await page.getByRole("option", { name: "Betsson" }).click();
-  await page.getByLabel("Deporte").fill("Fútbol");
-  await page.getByLabel("Competición").fill("Liga 1");
+  await selectSport(0, "Fútbol");
+  await selectCompetition(0, "Liga 1", "Liga 1");
   await page.getByLabel("Evento", { exact: true }).fill("Alianza Lima vs. Universitario");
   await page.getByLabel("Mercado").fill("Ganador del partido");
   await page.getByLabel("Selección", { exact: true }).fill("Alianza Lima");
@@ -285,7 +298,7 @@ try {
   await page.goto(`${BASE_URL}/bets/new`, { waitUntil: "networkidle" });
   await page.getByRole("tab", { name: "Múltiple" }).click();
 
-  await page.getByLabel("Deporte").nth(0).fill("Fútbol");
+  await selectSport(0, "Fútbol");
   await page.getByLabel("Evento", { exact: true }).nth(0).fill("PSG vs. Marsella");
   await page.getByLabel("Mercado").nth(0).fill("Ganador del partido");
   await page.getByLabel("Selección", { exact: true }).nth(0).fill("PSG");
@@ -293,7 +306,7 @@ try {
 
   await page.getByRole("button", { name: "Añadir partido" }).click();
 
-  await page.getByLabel("Deporte").nth(1).fill("Fútbol");
+  await selectSport(1, "Fútbol");
   await page.getByLabel("Evento", { exact: true }).nth(1).fill("Real Madrid vs. Barcelona");
   await page.getByLabel("Mercado").nth(1).fill("Ambos equipos marcan");
   await page.getByLabel("Selección", { exact: true }).nth(1).fill("Sí");
@@ -340,7 +353,7 @@ try {
 
   // ── Bet Builder: cuota manual 3.00 con stake 100 → payout 300.00 ──────
   await page.goto(`${BASE_URL}/bets/new`, { waitUntil: "networkidle" });
-  await page.getByLabel("Deporte").nth(0).fill("Fútbol");
+  await selectSport(0, "Fútbol");
   await page.getByLabel("Evento", { exact: true }).nth(0).fill("PSG vs. Marsella");
   await page.getByRole("switch", { name: "Bet Builder" }).click();
 
