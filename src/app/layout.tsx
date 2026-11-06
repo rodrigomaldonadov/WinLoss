@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 
 import { Toaster } from "@/components/ui/sonner";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
+import { OfflineIndicator } from "@/components/offline/offline-indicator";
 
 import "./globals.css";
 
@@ -34,9 +35,13 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 };
 
+// Simplified PWA icons - using link tags in the HTML instead of Metadata icons property
+// to avoid TypeScript complexity until @serwist/next is installed.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
@@ -52,6 +57,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="flex min-h-dvh flex-col">
+        <OfflineIndicator mobileOnly={true} />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
