@@ -40,13 +40,15 @@ export function BankrollCard({ bankroll }: BankrollCardProps) {
 
   useEffect(() => {
     if (deleteState.ok) {
-      setDeleteOpen(false);
       toast.success("Bankroll eliminado");
     }
     if (deleteState.error) {
       toast.error(deleteState.error);
     }
   }, [deleteState]);
+
+  // Se cierra solo cuando la eliminación termina bien; si falla, sigue abierto.
+  const dialogOpen = deleteOpen && !deleteState.ok;
 
   const profitTone =
     bankroll.profit > 0
@@ -137,7 +139,7 @@ export function BankrollCard({ bankroll }: BankrollCardProps) {
         bankroll={bankroll}
       />
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialog open={dialogOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar “{bankroll.name}”?</AlertDialogTitle>
