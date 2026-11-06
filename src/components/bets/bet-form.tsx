@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import type { LegMarketKey } from "@prisma/client";
 import {
   FormProvider,
@@ -11,7 +11,8 @@ import {
   type FieldArrayPath,
   type FieldPath,
 } from "react-hook-form";
-import { CircleAlert, ListPlus, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CircleAlert, ChevronDown, ListPlus, Plus, Sparkles, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,10 @@ import { cn } from "@/lib/utils";
 const initialState: BetFormState = {};
 
 const STAKE_CHIPS = [0.02, 0.05, 0.1] as const;
+const QUICK_STAKES = [10, 20, 50, 100] as const;
+const DRAFT_KEY = "winloss:bet-draft:v1";
+const LAST_BET_KEY = "winloss:last-bet:v1";
+const LAST_STAKE_KEY = "winloss:last-stake:v1";
 const MAX_LEGS = 20;
 
 export type BetFormLegDefaults = {
@@ -124,6 +129,31 @@ type LegValues = {
 type BetFormValues = {
   legs: LegValues[];
 };
+
+type BetDraft = {
+  legs: LegValues[];
+  betMode: BetMode;
+  bankrollId: string;
+  bookmakerId: string;
+  stake: string;
+  isFreeBet: boolean;
+  externalId: string;
+  placedAt: string;
+  notes: string;
+  savedAt: number;
+};
+
+function isEmptyLeg(leg: LegValues | undefined): boolean {
+  if (!leg) return true;
+  return (
+    !leg.eventName.trim() &&
+    !leg.odds.trim() &&
+    leg.selections.every(
+      (selection) =>
+        !selection.market.trim() && !selection.selection.trim(),
+    )
+  );
+}
 
 function toNumber(value: string): number {
   const parsed = Number(value.replace(",", "."));
@@ -859,7 +889,7 @@ export function BetForm({
     defaultValues: { legs: initialLegs },
   });
   const { control, reset } = methods;
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control,
     name: "legs",
   });
@@ -868,6 +898,9 @@ export function BetForm({
   const [betMode, setBetMode] = useState<BetMode>(initialMode);
   const [bankrollId, setBankrollId] = useState(
     defaults?.bankrollId ?? bankrolls[0]?.id ?? "",
+  );
+  const [bookmakerId, setBookmakerId] = useState(
+    defaults?.bookmakerId ?? "none",
   );
   const [stake, setStake] = useState(
     defaults?.stake !== undefined ? String(defaults.stake) : "",
@@ -883,6 +916,11 @@ export function BetForm({
     defaults?.odds !== undefined ? String(defaults.odds) : "",
   );
   const [manualOdds, setManualOdds] = useState(initialManualOdds);
+  const [notes, setNotes] = useState(defaults?.notes ?? "");
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [draftAvailable, setDraftAvailable] = useState<BetDraft | null>(null);
+  const [lastStake, setLastStake] = useState("");
+  const [draftChecked, setDraftChecked] = useState(false);
 
   const errors = state.fieldErrors;
   const bankroll =
@@ -906,14 +944,137 @@ export function BetForm({
       ? potentialProfit
       : stakeValue * oddsValue
     : 0;
-  const bankrollShare =
-    bankroll && bankroll.currentBankroll > 0
-      ? stakeValue / bankroll.currentBankroll
-      : 0;
   const exceedsBankroll =
     !isFreeBet &&
     bankroll !== undefined &&
     stakeValue > bankroll.currentBankroll;
+
+  // Recupera última casa/bankroll/stake y detecta borrador.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isEditing) {
+        setDraftChecked(true);
+        return;
+      }
+      try {
+        const raw = localStorage.getItem(LAST_BET_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as {
+            bankrollId?: string;
+            bookmakerId?: string;
+            stake?: string;
+          };
+          if (
+            !defaults?.bankrollId &&
+            saved.bankrollId &&
+            bankrolls.some((item) => item.id === saved.bankrollId)
+          ) {
+            setBankrollId(saved.bankrollId);
+          }
+          if (!defaults?.bookmakerId && saved.bookmakerId) {
+            setBookmakerId(saved.bookmakerId);
+          }
+          if (defaults?.stake === undefined && saved.stake) {
+            setStake(saved.stake);
+          }
+        }
+        const savedStake = localStorage.getItem(LAST_STAKE_KEY);
+        if (savedStake) setLastStake(savedStake);
+      } catch {
+        // localStorage no disponible
+      }
+      try {
+        const draftRaw = localStorage.getItem(DRAFT_KEY);
+        if (draftRaw) {
+          const parsed = JSON.parse(draftRaw) as BetDraft;
+          if (
+            parsed &&
+            Array.isArray(parsed.legs) &&
+            parsed.legs.length > 0 &&
+            parsed.savedAt
+          ) {
+            setDraftAvailable(parsed);
+          }
+        }
+      } catch {
+        // ignorar borrador corrupto
+      }
+      setDraftChecked(true);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [
+    isEditing,
+    defaults?.bankrollId,
+    defaults?.bookmakerId,
+    defaults?.stake,
+    bankrolls,
+  ]);
+
+  // Guarda el borrador con debounce mientras se edita (solo creación).
+  useEffect(() => {
+    if (isEditing || !draftChecked || draftAvailable) return;
+    const timer = setTimeout(() => {
+      try {
+        const draft: BetDraft = {
+          legs: watchedLegs,
+          betMode,
+          bankrollId,
+          bookmakerId,
+          stake,
+          isFreeBet,
+          externalId: externalIdValue,
+          placedAt: placedAtValue,
+          notes,
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      } catch {
+        // sin storage
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [
+    isEditing,
+    draftChecked,
+    draftAvailable,
+    watchedLegs,
+    betMode,
+    bankrollId,
+    bookmakerId,
+    stake,
+    isFreeBet,
+    externalIdValue,
+    placedAtValue,
+    notes,
+  ]);
+
+  const restoreDraft = () => {
+    if (!draftAvailable) return;
+    const draft = draftAvailable;
+    reset({ legs: draft.legs });
+    setBetMode(draft.betMode);
+    setBankrollId(draft.bankrollId);
+    setBookmakerId(draft.bookmakerId);
+    setStake(draft.stake);
+    setIsFreeBet(draft.isFreeBet);
+    setExternalIdValue(draft.externalId);
+    setPlacedAtValue(draft.placedAt);
+    setNotes(draft.notes);
+    setManualOdds(false);
+    setOddsOverride("");
+    setDraftAvailable(null);
+    toast.info("Borrador restaurado");
+  };
+
+  const discardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // sin storage
+    }
+    setDraftAvailable(null);
+  };
 
   const nestedFieldErrors = Object.entries(errors ?? {})
     .filter(([key]) => key !== "bankrollId" && key !== "stake")
@@ -935,6 +1096,47 @@ export function BetForm({
     if (fields.length >= MAX_LEGS) return;
     append(emptyLeg());
     setManualOdds(false);
+  };
+
+  const buildLegFromEvent = (event: ApiEvent): LegValues => ({
+    sport: event.sport,
+    competition: event.competition,
+    eventName: `${event.home} vs. ${event.away}`,
+    eventDate: toZonedDateTimeInput(new Date(event.kickoffUtc), timeZone),
+    isBuilder: false,
+    odds: "",
+    externalProvider: event.provider,
+    externalEventId: event.externalId,
+    homeTeam: event.home,
+    awayTeam: event.away,
+    selections: [emptySelection()],
+  });
+
+  const addEventLeg = (event: ApiEvent) => {
+    const leg = buildLegFromEvent(event);
+    if (betMode === "SINGLE" && fields.length === 1 && isEmptyLeg(watchedLegs[0])) {
+      update(0, leg);
+    } else {
+      append(leg);
+      if (betMode === "SINGLE") setBetMode("COMBINED");
+    }
+    setManualOdds(false);
+    toast.success("Evento añadido al boleto");
+  };
+
+  const handleSubmit = () => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(
+          LAST_BET_KEY,
+          JSON.stringify({ bankrollId, bookmakerId, stake }),
+        );
+        if (stake) localStorage.setItem(LAST_STAKE_KEY, stake);
+      } catch {
+        // sin storage
+      }
+      if ("vibrate" in navigator) navigator.vibrate?.(8);
+    }
   };
 
   const handleOcrDetected = (data: OCRTicketData) => {
@@ -978,25 +1180,63 @@ export function BetForm({
 
   return (
     <FormProvider {...methods}>
-      <form action={formAction} className="space-y-5">
+      <form
+        action={formAction}
+        onSubmit={handleSubmit}
+        className="space-y-4 pb-24 md:pb-0"
+      >
         {defaults?.id && <input type="hidden" name="id" value={defaults.id} />}
 
-        {!isEditing && (
-          <section className="rounded-xl border border-dashed bg-muted/30 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">Escanea tu boleto</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Sube una captura y completamos legs, selecciones, cuota y
-                  stake. Revisa siempre los datos antes de guardar.
-                </p>
-              </div>
-              <NewBetOCRButton
-                onDetected={handleOcrDetected}
-                disabled={pending}
-              />
+        {/* Acciones rápidas */}
+        <section className="grid grid-cols-2 gap-2">
+          <NewBetOCRButton
+            onDetected={handleOcrDetected}
+            disabled={pending}
+          />
+          <EventSearchSheet
+            sport={watchedLegs[0]?.sport || "Fútbol"}
+            competition={watchedLegs[0]?.competition}
+            timeZone={timeZone}
+            disabled={pending}
+            onSelect={addEventLeg}
+          />
+        </section>
+
+        {draftAvailable && (
+          <div
+            role="status"
+            className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm sm:flex-row sm:items-center"
+          >
+            <p className="min-w-0 flex-1 text-amber-700 dark:text-amber-300">
+              Tienes un borrador sin guardar de{" "}
+              {new Date(draftAvailable.savedAt).toLocaleString("es-PE", {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+              .
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="h-9"
+                onClick={restoreDraft}
+              >
+                Restaurar
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-9"
+                onClick={discardDraft}
+              >
+                Descartar
+              </Button>
             </div>
-          </section>
+          </div>
         )}
 
         {state.error && (
@@ -1023,156 +1263,382 @@ export function BetForm({
           </div>
         )}
 
-        <section className="space-y-4 rounded-xl border bg-card p-4 shadow-xs">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="bet-bankroll">Bankroll</Label>
-              <Select
-                name="bankrollId"
-                value={bankrollId}
-                onValueChange={setBankrollId}
+        {/* Tipo de apuesta */}
+        <section className="rounded-xl border bg-card p-2 shadow-xs">
+          <div
+            role="tablist"
+            aria-label="Tipo de apuesta"
+            className="grid grid-cols-2 gap-1 rounded-lg bg-muted/40 p-1"
+          >
+            {(
+              [
+                { value: "SINGLE", label: "Simple" },
+                { value: "COMBINED", label: "Múltiple" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="tab"
+                aria-selected={betMode === option.value}
+                onClick={() => changeMode(option.value)}
+                className={cn(
+                  "h-11 rounded-md text-sm font-medium transition-colors",
+                  betMode === option.value
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground active:bg-background/60",
+                )}
               >
-                <SelectTrigger
-                  id="bet-bankroll"
-                  className="h-12 w-full"
-                  aria-label="Bankroll"
-                  aria-invalid={Boolean(errors?.bankrollId)}
-                  aria-describedby={
-                    errors?.bankrollId ? "bet-bankroll-error" : undefined
-                  }
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {bankrolls.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError
-                id="bet-bankroll-error"
-                message={errors?.bankrollId?.[0]}
-              />
-              {bankroll && (
-                <p className="text-xs text-muted-foreground">
-                  Disponible:{" "}
-                  <span className="font-medium text-foreground">
-                    {formatCurrency(bankroll.currentBankroll, currency)}
-                  </span>
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bet-bookmaker">Casa de apuestas</Label>
-              <Select
-                name="bookmakerId"
-                defaultValue={defaults?.bookmakerId ?? "none"}
-              >
-                <SelectTrigger
-                  id="bet-bookmaker"
-                  className="h-12 w-full"
-                  aria-label="Casa de apuestas"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin casa</SelectItem>
-                  {bookmakers.map((bookmaker) => (
-                    <SelectItem key={bookmaker.id} value={bookmaker.id}>
-                      {bookmaker.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError
-                id="bet-bookmaker-error"
-                message={errors?.bookmakerId?.[0]}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="bet-date">Fecha y hora</Label>
-              <input type="hidden" name="placedAt" value={placedAtValue} />
-              <DateTimeCompact
-                id="bet-date"
-                value={placedAtValue}
-                onChange={setPlacedAtValue}
-                required
-                aria-invalid={Boolean(errors?.placedAt)}
-                aria-describedby={
-                  errors?.placedAt ? "bet-date-error" : undefined
-                }
-              />
-              <FieldError id="bet-date-error" message={errors?.placedAt?.[0]} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bet-external-id">ID del boleto</Label>
-              <Input
-                id="bet-external-id"
-                name="externalId"
-                placeholder="Opcional"
-                maxLength={80}
-                value={externalIdValue}
-                onChange={(event) => setExternalIdValue(event.target.value)}
-                className="h-12"
-                aria-invalid={Boolean(errors?.externalId)}
-                aria-describedby={
-                  errors?.externalId ? "bet-external-id-error" : undefined
-                }
-              />
-              <FieldError
-                id="bet-external-id-error"
-                message={errors?.externalId?.[0]}
-              />
-            </div>
+                {option.label}
+              </button>
+            ))}
           </div>
         </section>
 
-        <section className="space-y-4 rounded-xl border bg-card p-4 shadow-xs">
-          <div className="space-y-2">
-            <Label>Tipo de apuesta</Label>
-            <div
-              role="tablist"
-              aria-label="Tipo de apuesta"
-              className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/40 p-1"
-            >
-              {(
-                [
-                  { value: "SINGLE", label: "Simple" },
-                  { value: "COMBINED", label: "Múltiple" },
-                ] as const
-              ).map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={betMode === option.value}
-                  onClick={() => changeMode(option.value)}
-                  className={cn(
-                    "h-10 rounded-md text-sm font-medium transition-colors",
-                    betMode === option.value
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground active:bg-background/60",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
+        {/* Datos del boleto (plegable) */}
+        <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
+          <button
+            type="button"
+            onClick={() => setDetailsOpen((value) => !value)}
+            aria-expanded={detailsOpen}
+            className="flex w-full items-center justify-between gap-3 p-4 text-left"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Datos del boleto</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {bankroll?.name ?? "Bankroll"} ·{" "}
+                {stakeValue > 0
+                  ? formatCurrency(stakeValue, currency)
+                  : "Sin stake"}
+              </p>
             </div>
-          </div>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 text-muted-foreground transition-transform",
+                detailsOpen && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
 
+          {detailsOpen && (
+            <div className="space-y-4 border-t p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="bet-bankroll">Bankroll</Label>
+                  <Select
+                    name="bankrollId"
+                    value={bankrollId}
+                    onValueChange={setBankrollId}
+                  >
+                    <SelectTrigger
+                      id="bet-bankroll"
+                      className="h-11 w-full"
+                      aria-label="Bankroll"
+                      aria-invalid={Boolean(errors?.bankrollId)}
+                      aria-describedby={
+                        errors?.bankrollId ? "bet-bankroll-error" : undefined
+                      }
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankrolls.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError
+                    id="bet-bankroll-error"
+                    message={errors?.bankrollId?.[0]}
+                  />
+                  {bankroll && (
+                    <p className="text-xs text-muted-foreground">
+                      Disponible:{" "}
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(bankroll.currentBankroll, currency)}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="bet-bookmaker">Casa de apuestas</Label>
+                  <Select
+                    name="bookmakerId"
+                    value={bookmakerId}
+                    onValueChange={setBookmakerId}
+                  >
+                    <SelectTrigger
+                      id="bet-bookmaker"
+                      className="h-11 w-full"
+                      aria-label="Casa de apuestas"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin casa</SelectItem>
+                      {bookmakers.map((bookmaker) => (
+                        <SelectItem key={bookmaker.id} value={bookmaker.id}>
+                          {bookmaker.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError
+                    id="bet-bookmaker-error"
+                    message={errors?.bookmakerId?.[0]}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="bet-date">Fecha y hora</Label>
+                  <input type="hidden" name="placedAt" value={placedAtValue} />
+                  <DateTimeCompact
+                    id="bet-date"
+                    value={placedAtValue}
+                    onChange={setPlacedAtValue}
+                    required
+                    aria-invalid={Boolean(errors?.placedAt)}
+                    aria-describedby={
+                      errors?.placedAt ? "bet-date-error" : undefined
+                    }
+                  />
+                  <FieldError
+                    id="bet-date-error"
+                    message={errors?.placedAt?.[0]}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="bet-total-odds">Cuota total</Label>
+                  {betMode === "COMBINED" ? (
+                    <>
+                      <Input
+                        id="bet-total-odds"
+                        name="odds"
+                        type="text"
+                        inputMode="decimal"
+                        enterKeyHint="next"
+                        placeholder="1.85"
+                        required
+                        value={totalOddsValue}
+                        onChange={(event) => {
+                          setOddsOverride(event.target.value);
+                          setManualOdds(true);
+                        }}
+                        className="h-11 tabular-nums"
+                        aria-invalid={
+                          Boolean(errors?.odds) ||
+                          (manualOdds && oddsValue <= 1)
+                        }
+                        aria-describedby={
+                          errors?.odds ? "bet-total-odds-error" : undefined
+                        }
+                      />
+                      <FieldError
+                        id="bet-total-odds-error"
+                        message={errors?.odds?.[0]}
+                      />
+                      {manualOdds &&
+                        totalOddsValue.trim() !== "" &&
+                        oddsValue <= 1 && (
+                          <p className="text-xs text-destructive">
+                            La cuota debe ser mayor que 1.00.
+                          </p>
+                        )}
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                        <span>
+                          {manualOdds ? "Cuota editada" : "Calculada"}
+                        </span>
+                        {manualOdds && (
+                          <button
+                            type="button"
+                            className="font-medium text-primary"
+                            onClick={() => {
+                              setManualOdds(false);
+                              setOddsOverride("");
+                            }}
+                          >
+                            Recalcular
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        type="hidden"
+                        name="odds"
+                        value={totalOddsValue}
+                      />
+                      <div
+                        aria-live="polite"
+                        className="flex h-11 items-center rounded-xl border border-input bg-muted/30 px-3 text-sm font-semibold tabular-nums"
+                      >
+                        {oddsValue > 0 ? totalOddsValue : "—"}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Se toma la cuota del partido.
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bet-stake">Stake</Label>
+                <Input
+                  id="bet-stake"
+                  name="stake"
+                  type="text"
+                  inputMode="decimal"
+                  enterKeyHint="done"
+                  placeholder="10.00"
+                  required
+                  value={stake}
+                  onChange={(event) => setStake(event.target.value)}
+                  className="h-11 tabular-nums"
+                  aria-invalid={
+                    Boolean(errors?.stake) ||
+                    exceedsBankroll ||
+                    (stake.trim() !== "" && stakeValue <= 0)
+                  }
+                  aria-describedby={
+                    errors?.stake ? "bet-stake-error" : undefined
+                  }
+                />
+                <FieldError id="bet-stake-error" message={errors?.stake?.[0]} />
+                {stake.trim() !== "" && stakeValue <= 0 && (
+                  <p className="text-xs text-destructive">
+                    El stake debe ser mayor que 0.
+                  </p>
+                )}
+                {exceedsBankroll && (
+                  <p className="text-xs text-destructive">
+                    Supera el saldo disponible del bankroll.
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-1.5">
+                  {QUICK_STAKES.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setStake(String(value))}
+                      className={cn(
+                        "h-9 rounded-lg border px-3 text-xs font-medium tabular-nums transition-colors",
+                        stakeValue === value
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "bg-background text-muted-foreground active:bg-muted",
+                      )}
+                    >
+                      {formatCurrency(value, currency)}
+                    </button>
+                  ))}
+                  {lastStake &&
+                    !QUICK_STAKES.includes(
+                      Number(lastStake) as (typeof QUICK_STAKES)[number],
+                    ) && (
+                      <button
+                        type="button"
+                        onClick={() => setStake(lastStake)}
+                        className="h-9 rounded-lg border px-3 text-xs font-medium tabular-nums text-muted-foreground active:bg-muted"
+                      >
+                        Último {formatCurrency(Number(lastStake), currency)}
+                      </button>
+                    )}
+                  {STAKE_CHIPS.map((share) => {
+                    const amount = bankroll
+                      ? Math.round(bankroll.currentBankroll * share * 100) / 100
+                      : 0;
+                    return (
+                      <button
+                        key={share}
+                        type="button"
+                        onClick={() => setStake(amount.toFixed(2))}
+                        className="h-9 rounded-lg border bg-background px-3 text-xs font-medium text-muted-foreground tabular-nums active:bg-muted"
+                      >
+                        {formatPercent(share, { decimals: 0 })}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                <div className="min-w-0">
+                  <Label htmlFor="bet-freebet" className="text-sm">
+                    Free bet
+                  </Label>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    El stake no es dinero real: no se descuenta ni se devuelve.
+                  </p>
+                </div>
+                <Switch
+                  id="bet-freebet"
+                  checked={isFreeBet}
+                  onCheckedChange={setIsFreeBet}
+                  className="mt-0.5"
+                />
+              </div>
+              <input
+                type="hidden"
+                name="isFreeBet"
+                value={isFreeBet ? "true" : "false"}
+              />
+
+              <details className="rounded-lg border p-3">
+                <summary className="cursor-pointer text-xs text-muted-foreground">
+                  ID del boleto (opcional)
+                </summary>
+                <Input
+                  id="bet-external-id"
+                  name="externalId"
+                  placeholder="Código de la casa"
+                  maxLength={80}
+                  value={externalIdValue}
+                  onChange={(event) => setExternalIdValue(event.target.value)}
+                  className="mt-2 h-11"
+                  aria-invalid={Boolean(errors?.externalId)}
+                  aria-describedby={
+                    errors?.externalId ? "bet-external-id-error" : undefined
+                  }
+                />
+                <FieldError
+                  id="bet-external-id-error"
+                  message={errors?.externalId?.[0]}
+                />
+              </details>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="bet-notes">Notas</Label>
+                <Textarea
+                  id="bet-notes"
+                  name="notes"
+                  placeholder="Tipster, lesiones, condiciones…"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  maxLength={500}
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Partidos */}
+        <section className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <div>
+            <div className="min-w-0">
               <h2 className="text-sm font-semibold">Partidos del boleto</h2>
               <p className="text-xs text-muted-foreground">
                 {betMode === "SINGLE"
-                  ? "Un partido. Activa Bet Builder si combinas 2+ selecciones."
+                  ? "Un partido. Usa Builder para combinar selecciones."
                   : `${fields.length} partido${fields.length === 1 ? "" : "s"} · máximo ${MAX_LEGS}`}
               </p>
             </div>
@@ -1181,12 +1647,12 @@ export function BetForm({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1"
+                className="h-10 gap-1"
                 onClick={addLeg}
                 disabled={fields.length >= MAX_LEGS}
               >
                 <ListPlus className="size-4" aria-hidden />
-                Añadir partido
+                Añadir
               </Button>
             )}
           </div>
@@ -1220,188 +1686,49 @@ export function BetForm({
           </datalist>
         </section>
 
-        <section className="space-y-4 rounded-xl border bg-card p-4 shadow-xs">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="bet-total-odds">Cuota total</Label>
-              <Input
-                id="bet-total-odds"
-                name="odds"
-                type="text"
-                inputMode="decimal"
-                placeholder="1.85"
-                required
-                value={totalOddsValue}
-                onChange={(event) => {
-                  setOddsOverride(event.target.value);
-                  setManualOdds(true);
-                }}
-                className="h-12 tabular-nums"
-                aria-invalid={Boolean(errors?.odds)}
-                aria-describedby={
-                  errors?.odds ? "bet-total-odds-error" : undefined
-                }
-              />
-              <FieldError
-                id="bet-total-odds-error"
-                message={errors?.odds?.[0]}
-              />
-              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                <span>
-                  {manualOdds ? "Cuota editada manualmente" : "Calculada"}
-                </span>
-                {manualOdds && (
-                  <button
-                    type="button"
-                    className="font-medium text-primary"
-                    onClick={() => {
-                      setManualOdds(false);
-                      setOddsOverride("");
-                    }}
-                  >
-                    Recalcular
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bet-stake">Stake</Label>
-              <Input
-                id="bet-stake"
-                name="stake"
-                type="text"
-                inputMode="decimal"
-                placeholder="10.00"
-                required
-                value={stake}
-                onChange={(event) => setStake(event.target.value)}
-                className="h-12 tabular-nums"
-                aria-invalid={Boolean(errors?.stake) || exceedsBankroll}
-                aria-describedby={
-                  errors?.stake ? "bet-stake-error" : undefined
-                }
-              />
-              <FieldError id="bet-stake-error" message={errors?.stake?.[0]} />
-            </div>
-          </div>
-
-          {bankroll && (
-            <div className="grid grid-cols-3 gap-2">
-              {STAKE_CHIPS.map((share) => {
-                const amount =
-                  Math.round(bankroll.currentBankroll * share * 100) / 100;
-                return (
-                  <button
-                    key={share}
-                    type="button"
-                    onClick={() => setStake(amount.toFixed(2))}
-                    className="flex h-10 flex-col items-center justify-center rounded-lg border bg-background text-[11px] text-muted-foreground transition-colors active:bg-muted"
-                  >
-                    <span className="font-medium text-foreground">
-                      {formatPercent(share, { decimals: 0 })}
-                    </span>
-                    <span className="tabular-nums">
-                      {formatCurrency(amount, currency)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div
-            className={cn(
-              "rounded-lg border p-3",
-              hasNumbers ? "bg-muted/40" : "border-dashed bg-muted/20",
-            )}
-            aria-live="polite"
-          >
-            {hasNumbers ? (
-              <dl className="grid grid-cols-2 gap-3">
-                <div>
-                  <dt className="text-[11px] text-muted-foreground">
-                    {isFreeBet ? "Ganancia potencial" : "Retorno potencial"}
-                  </dt>
-                  <dd className="mt-0.5 text-lg font-semibold tabular-nums">
-                    {formatCurrency(potentialPayout, currency)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] text-muted-foreground">
-                    Beneficio potencial
-                  </dt>
-                  <dd className="mt-0.5 text-lg font-semibold tabular-nums text-success">
-                    +{formatCurrency(potentialProfit, currency)}
-                  </dd>
-                </div>
-                <div className="col-span-2 flex items-center justify-between border-t pt-2 text-[11px] text-muted-foreground">
-                  <span>
-                    {isFreeBet
-                      ? "Free bet: no se descuenta del bankroll"
-                      : `${formatPercent(bankrollShare)} de tu bankroll`}
-                  </span>
-                  {exceedsBankroll && (
-                    <span className="font-medium text-destructive">
-                      Supera el saldo
-                    </span>
-                  )}
-                </div>
-              </dl>
-            ) : (
-              <p className="text-center text-xs text-muted-foreground">
-                Ingresa cuota y stake para ver el retorno potencial.
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+        {/* Barra fija inferior (pulgar) */}
+        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:rounded-xl md:border">
+          <div className="flex items-center gap-3">
             <div className="min-w-0">
-              <Label htmlFor="bet-freebet" className="text-sm">
-                Free bet
-              </Label>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                El stake no es dinero real: no se descuenta ni se devuelve.
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Cuota
+              </p>
+              <p className="text-base font-semibold tabular-nums">
+                {oddsValue > 0 ? totalOddsValue : "—"}
               </p>
             </div>
-            <Switch
-              id="bet-freebet"
-              checked={isFreeBet}
-              onCheckedChange={setIsFreeBet}
-              className="mt-0.5"
-            />
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                {isFreeBet ? "Ganancia" : "Retorno"}
+              </p>
+              <p
+                className={cn(
+                  "text-base font-semibold tabular-nums",
+                  hasNumbers ? "text-success" : "text-muted-foreground",
+                )}
+              >
+                {hasNumbers
+                  ? formatCurrency(potentialPayout, currency)
+                  : "—"}
+              </p>
+            </div>
+            <Button
+              type="submit"
+              className="ml-auto h-12 min-w-32 flex-1"
+              disabled={pending}
+            >
+              <Sparkles className="size-4" aria-hidden />
+              {pending
+                ? "Guardando…"
+                : isEditing
+                  ? "Guardar cambios"
+                  : "Guardar"}
+            </Button>
           </div>
-          <input
-            type="hidden"
-            name="isFreeBet"
-            value={isFreeBet ? "true" : "false"}
-          />
-
-          <div className="space-y-1.5">
-            <Label htmlFor="bet-notes">Notas</Label>
-            <Textarea
-              id="bet-notes"
-              name="notes"
-              placeholder="Tipster, lesiones, condiciones…"
-              defaultValue={defaults?.notes ?? ""}
-              maxLength={500}
-              rows={3}
-            />
-          </div>
-        </section>
-
-        <Button type="submit" className="h-12 w-full" disabled={pending}>
-          <Sparkles className="size-4" aria-hidden />
-          {pending
-            ? "Guardando…"
-            : isEditing
-              ? "Guardar cambios"
-              : "Registrar apuesta"}
-        </Button>
-
-        <p className="px-1 text-center text-[11px] text-muted-foreground">
-          Puedes usar coma o punto decimal en cuota y stake.
-        </p>
+          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+            Puedes usar coma o punto decimal en cuota, línea y stake.
+          </p>
+        </div>
       </form>
     </FormProvider>
   );

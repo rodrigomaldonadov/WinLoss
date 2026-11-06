@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { BetCard } from "@/components/bets/bet-card";
 import { BetsFiltersSheet } from "@/components/bets/bets-filters-sheet";
 import { VerifyResultsButton } from "@/components/bets/verify-results-button";
+import { CreatedBetBanner } from "@/components/bets/created-bet-banner";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -151,6 +152,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
   const sport = firstParam(params.sport) ?? undefined;
   const q = parseQuery(params.q);
   const order = parseOrder(params.orden);
+  const createdId = firstParam(params.created);
   const hasFilters = Boolean(
     from || to || sport || type || q || order !== "recent" || filter !== "all",
   );
@@ -218,6 +220,8 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           </div>
         }
       />
+
+      {createdId && <CreatedBetBanner betId={createdId} />}
 
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         Totales de tu historial

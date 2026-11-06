@@ -335,8 +335,9 @@ export async function createBet(
 
   if (!references.ok) return references.state;
 
+  let createdId = "";
   try {
-    await prisma.bet.create({
+    const created = await prisma.bet.create({
       data: {
         userId: session.user.id,
         bankrollId: references.bankrollId,
@@ -378,7 +379,9 @@ export async function createBet(
           })),
         },
       },
+      select: { id: true },
     });
+    createdId = created.id;
   } catch (error) {
     if (await isDuplicateExternalId(error)) {
       return {
@@ -391,7 +394,22 @@ export async function createBet(
   }
 
   revalidateBetViews();
-  redirect("/bets");
+  redirect(`/bets?created=${encodeURIComponent(createdId)}`);
+}
+
+/** Deshacer la última creación desde el toast post-guardado. */
+export async function undoCreateBet(
+  betId: string,
+): Promise<{ ok: boolean }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false };
+
+  const result = await prisma.bet.deleteMany({
+    where: { id: betId, userId: session.user.id },
+  });
+
+  if (result.count > 0) revalidateBetViews();
+  return { ok: result.count > 0 };
 }
 
 export async function updateBet(
