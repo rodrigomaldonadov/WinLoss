@@ -87,7 +87,7 @@ function mapEvent(event: TsdbEvent, competition: string): ApiEvent {
 }
 
 async function tsdbFetch(path: string): Promise<unknown> {
-  await throttle(PROVIDER, 1_200);
+  await throttle(PROVIDER, 350);
   const response = await fetch(`${BASE}/${apiKey()}/${path}`, {
     cache: "no-store",
   });
