@@ -7,6 +7,12 @@ export const APP_DESCRIPTION =
 export const DEFAULT_CURRENCY = "PEN";
 export const DEFAULT_TIMEZONE = "America/Lima";
 
+/** Máximo de partidos (legs) por boleto. */
+export const MAX_BET_LEGS = 30;
+
+/** Máximo de selecciones por partido (Bet Builder). */
+export const MAX_SELECTIONS_PER_LEG = 20;
+
 export const CURRENCIES = [
   { code: "PEN", label: "Sol peruano", symbol: "S/" },
   { code: "USD", label: "Dólar estadounidense", symbol: "$" },

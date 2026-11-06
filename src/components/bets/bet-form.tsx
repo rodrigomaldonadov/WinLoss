@@ -46,7 +46,12 @@ import {
   GOAL_LINE_PRESETS,
 } from "@/lib/line-utils";
 import { createBet, updateBet, type BetFormState } from "@/lib/actions/bet";
-import { MARKETS, SPORTS } from "@/lib/constants";
+import {
+  MARKETS,
+  MAX_BET_LEGS,
+  MAX_SELECTIONS_PER_LEG,
+  SPORTS,
+} from "@/lib/constants";
 import { totalOdds } from "@/lib/bet-math";
 import { toZonedDateTimeInput } from "@/lib/date";
 import { formatCurrency, formatPercent } from "@/lib/format";
@@ -60,7 +65,6 @@ const QUICK_STAKES = [10, 20, 50, 100] as const;
 const DRAFT_KEY = "winloss:bet-draft:v1";
 const LAST_BET_KEY = "winloss:last-bet:v1";
 const LAST_STAKE_KEY = "winloss:last-stake:v1";
-const MAX_LEGS = 20;
 
 export type BetFormLegDefaults = {
   sport?: string;
@@ -852,7 +856,7 @@ function SelectionsFields({
             size="sm"
             className="h-8 gap-1 text-xs"
             onClick={onAppend}
-            disabled={fields.length >= 20}
+            disabled={fields.length >= MAX_SELECTIONS_PER_LEG}
           >
             <Plus className="size-3.5" aria-hidden />
             Añadir selección
@@ -1366,7 +1370,7 @@ export function BetForm({
   };
 
   const addLeg = () => {
-    if (fields.length >= MAX_LEGS) return;
+    if (fields.length >= MAX_BET_LEGS) return;
     append(emptyLeg());
     setManualOdds(false);
   };
@@ -1387,9 +1391,19 @@ export function BetForm({
 
   const addEventsToBet = (events: ApiEvent[]) => {
     if (events.length === 0) return;
-    const legs = events.map(buildLegFromEvent);
     const singleEmpty =
       betMode === "SINGLE" && fields.length === 1 && isEmptyLeg(watchedLegs[0]);
+    const capacity = singleEmpty
+      ? MAX_BET_LEGS
+      : MAX_BET_LEGS - fields.length;
+
+    if (capacity <= 0) {
+      toast.error(`Máximo ${MAX_BET_LEGS} partidos por boleto.`);
+      return;
+    }
+
+    const legs = events.map(buildLegFromEvent).slice(0, capacity);
+    const truncated = legs.length < events.length;
 
     if (singleEmpty) {
       update(0, legs[0]!);
@@ -1403,9 +1417,15 @@ export function BetForm({
     }
 
     setManualOdds(false);
-    toast.success(
-      `${events.length} partido${events.length === 1 ? "" : "s"} añadido${events.length === 1 ? "" : "s"}`,
-    );
+    if (truncated) {
+      toast.warning(
+        `Se añadieron ${legs.length} de ${events.length} partidos (máximo ${MAX_BET_LEGS}).`,
+      );
+    } else {
+      toast.success(
+        `${legs.length} partido${legs.length === 1 ? "" : "s"} añadido${legs.length === 1 ? "" : "s"}`,
+      );
+    }
   };
 
   const handleSubmit = () => {
@@ -1487,7 +1507,10 @@ export function BetForm({
   const handleParsedBet = (data: ParsedBet) => {
     if (data.legs.length === 0) return;
 
-    const legs: LegValues[] = data.legs.map((leg) => ({
+    const limited = data.legs.slice(0, MAX_BET_LEGS);
+    const truncated = limited.length < data.legs.length;
+
+    const legs: LegValues[] = limited.map((leg) => ({
       sport: leg.sport || "Fútbol",
       competition: leg.competition,
       eventName: leg.eventName,
@@ -1540,6 +1563,11 @@ export function BetForm({
 
     if ("vibrate" in navigator) navigator.vibrate?.(10);
 
+    if (truncated) {
+      toast.warning(
+        `El boleto tiene ${data.legs.length} partidos; se cargaron los primeros ${MAX_BET_LEGS}.`,
+      );
+    }
     toast.success(
       `Boleto importado: ${legs.length} partido${legs.length === 1 ? "" : "s"}. Revisa y guarda.`,
     );
@@ -2059,7 +2087,7 @@ export function BetForm({
               <p className="text-xs text-muted-foreground">
                 {betMode === "SINGLE"
                   ? "Un partido. Usa Builder para combinar selecciones."
-                  : `${fields.length} partido${fields.length === 1 ? "" : "s"} · máximo ${MAX_LEGS}`}
+                  : `${fields.length} partido${fields.length === 1 ? "" : "s"} · máximo ${MAX_BET_LEGS}`}
               </p>
             </div>
             {betMode === "COMBINED" && (
@@ -2069,7 +2097,7 @@ export function BetForm({
                 size="sm"
                 className="h-10 gap-1"
                 onClick={addLeg}
-                disabled={fields.length >= MAX_LEGS}
+                disabled={fields.length >= MAX_BET_LEGS}
               >
                 <ListPlus className="size-4" aria-hidden />
                 Añadir

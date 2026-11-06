@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/auth";
+import {
+  MAX_BET_LEGS,
+  MAX_SELECTIONS_PER_LEG,
+} from "@/lib/constants";
 
 export const maxDuration = 60;
 
@@ -18,7 +22,7 @@ const legSchema = z.object({
   eventDate: z.string().nullish(),
   isBuilder: z.boolean(),
   odds: z.coerce.number().min(1.01).max(1000),
-  selections: z.array(selectionSchema).min(1).max(20),
+  selections: z.array(selectionSchema).min(1).max(MAX_SELECTIONS_PER_LEG),
 });
 
 const ticketSchema = z.object({
@@ -26,7 +30,7 @@ const ticketSchema = z.object({
   placedAt: z.string().nullish(),
   stake: z.coerce.number().positive().max(1_000_000),
   isFreeBet: z.boolean(),
-  legs: z.array(legSchema).min(1).max(20),
+  legs: z.array(legSchema).min(1).max(MAX_BET_LEGS),
 });
 
 const SYSTEM_PROMPT = `Eres un extractor de datos de boletos de apuestas deportivas.

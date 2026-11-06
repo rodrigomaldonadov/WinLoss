@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  MAX_BET_LEGS,
+  MAX_SELECTIONS_PER_LEG,
+} from "@/lib/constants";
+
 const optionalText = (max: number) =>
   z
     .string()
@@ -117,7 +122,10 @@ export const betLegSchema = z
     selections: z
       .array(legSelectionSchema)
       .min(1, "Añade al menos una selección")
-      .max(20, "Máximo 20 selecciones por partido"),
+      .max(
+        MAX_SELECTIONS_PER_LEG,
+        `Máximo ${MAX_SELECTIONS_PER_LEG} selecciones por partido`,
+      ),
   })
   .superRefine((leg, ctx) => {
     if (leg.isBuilder && leg.selections.length < 2) {
@@ -179,7 +187,7 @@ export const createBetSchema = z.object({
   legs: z
     .array(betLegSchema)
     .min(1, "Añade al menos un partido")
-    .max(20, "Máximo 20 partidos por boleto"),
+    .max(MAX_BET_LEGS, `Máximo ${MAX_BET_LEGS} partidos por boleto`),
 });
 
 export const updateBetSchema = createBetSchema.extend({
@@ -197,7 +205,7 @@ export const settleBetSchema = z.object({
   legs: z
     .array(settleLegSchema)
     .min(1, "Indica el resultado de al menos un partido")
-    .max(20),
+    .max(MAX_BET_LEGS),
   cashoutAmount: optionalDecimal("Importe de cashout inválido"),
 });
 
