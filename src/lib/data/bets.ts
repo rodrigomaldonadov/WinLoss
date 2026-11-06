@@ -316,6 +316,44 @@ export async function countBetsForUser(
   });
 }
 
+export type BetSummary = {
+  profit: number;
+  turnover: number;
+  roi: number;
+  pendingCount: number;
+};
+
+/** Beneficio, ROI y pendientes del periodo/filtros activos. */
+export async function getBetSummaryForUser(
+  userId: string,
+  query: Omit<BetListQuery, "take" | "skip"> = {},
+): Promise<BetSummary> {
+  const base: Prisma.BetWhereInput = {
+    userId,
+    ...buildBetFilters(query),
+  };
+
+  const [settled, pendingCount] = await Promise.all([
+    prisma.bet.aggregate({
+      where: { AND: [base, { status: { not: "PENDING" } }] },
+      _sum: { profit: true, stake: true },
+    }),
+    prisma.bet.count({
+      where: { AND: [base, { status: "PENDING" }] },
+    }),
+  ]);
+
+  const profit = Number(settled._sum.profit ?? 0);
+  const turnover = Number(settled._sum.stake ?? 0);
+
+  return {
+    profit,
+    turnover,
+    roi: turnover > 0 ? profit / turnover : 0,
+    pendingCount,
+  };
+}
+
 /** Deportes distintos registrados por el usuario (para el filtro avanzado). */
 export async function getBetSports(userId: string): Promise<string[]> {
   const legs = await prisma.betLeg.findMany({

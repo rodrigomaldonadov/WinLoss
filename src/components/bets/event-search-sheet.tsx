@@ -125,6 +125,18 @@ function readUsage(): Record<string, number> {
   }
 }
 
+function bumpUsage(labels: string[]) {
+  try {
+    const usage = readUsage();
+    for (const label of labels) {
+      if (label) usage[label] = (usage[label] ?? 0) + 1;
+    }
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(usage));
+  } catch {
+    // sin storage
+  }
+}
+
 export function EventSearchSheet({
   sport,
   competition,
@@ -260,6 +272,7 @@ export function EventSearchSheet({
     if (selectedCompetitions.length >= MAX_COMPETITIONS) return;
     const next = [...selectedCompetitions, label];
     setSelectedCompetitions(next);
+    bumpUsage([label]);
     setCompetitionPickerOpen(false);
     void runSearch(day, next);
   };
@@ -290,6 +303,7 @@ export function EventSearchSheet({
 
   const confirmSelection = () => {
     if (!onSelectMany || selectedEvents.length === 0) return;
+    bumpUsage(selectedCompetitions);
     onSelectMany(selectedEvents);
     setOpen(false);
   };

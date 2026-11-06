@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import type { LegMarketKey } from "@prisma/client";
 import {
   FormProvider,
@@ -1131,6 +1131,7 @@ export function BetForm({
   const [draftAvailable, setDraftAvailable] = useState<BetDraft | null>(null);
   const [lastStake, setLastStake] = useState("");
   const [draftChecked, setDraftChecked] = useState(false);
+  const hydratedRef = useRef(false);
 
   const errors = state.fieldErrors;
   const bankroll =
@@ -1162,6 +1163,8 @@ export function BetForm({
   // Recupera última casa/bankroll/stake y detecta borrador.
   useEffect(() => {
     const timer = setTimeout(() => {
+      if (hydratedRef.current) return;
+      hydratedRef.current = true;
       if (isEditing || !useLastUsed) {
         setDraftChecked(true);
         return;
@@ -1173,6 +1176,8 @@ export function BetForm({
             bankrollId?: string;
             bookmakerId?: string;
             stake?: string;
+            sport?: string;
+            competition?: string;
           };
           if (
             !defaults?.bankrollId &&
@@ -1186,6 +1191,26 @@ export function BetForm({
           }
           if (defaults?.stake === undefined && saved.stake) {
             setStake(saved.stake);
+          }
+
+          let hasDraft = false;
+          try {
+            hasDraft = Boolean(localStorage.getItem(DRAFT_KEY));
+          } catch {
+            // ignorar
+          }
+
+          if (
+            !hasDraft &&
+            !defaults?.legs &&
+            saved.sport &&
+            isEmptyLeg(watchedLegs[0])
+          ) {
+            update(0, {
+              ...emptyLeg(),
+              sport: saved.sport,
+              competition: saved.competition ?? "",
+            });
           }
         }
         const savedStake = localStorage.getItem(LAST_STAKE_KEY);
@@ -1219,7 +1244,10 @@ export function BetForm({
     defaults?.bankrollId,
     defaults?.bookmakerId,
     defaults?.stake,
+    defaults?.legs,
     bankrolls,
+    update,
+    watchedLegs,
   ]);
 
   // Guarda el borrador con debounce mientras se edita (solo creación).
@@ -1350,11 +1378,31 @@ export function BetForm({
   const handleSubmit = () => {
     if (typeof window !== "undefined") {
       try {
+        const firstLeg = watchedLegs[0];
         localStorage.setItem(
           LAST_BET_KEY,
-          JSON.stringify({ bankrollId, bookmakerId, stake }),
+          JSON.stringify({
+            bankrollId,
+            bookmakerId,
+            stake,
+            sport: firstLeg?.sport ?? "",
+            competition: firstLeg?.competition ?? "",
+          }),
         );
         if (stake) localStorage.setItem(LAST_STAKE_KEY, stake);
+
+        for (const leg of watchedLegs) {
+          if (leg.competition) {
+            const usage = JSON.parse(
+              localStorage.getItem("winloss:competition-usage:v1") ?? "{}",
+            ) as Record<string, number>;
+            usage[leg.competition] = (usage[leg.competition] ?? 0) + 1;
+            localStorage.setItem(
+              "winloss:competition-usage:v1",
+              JSON.stringify(usage),
+            );
+          }
+        }
       } catch {
         // sin storage
       }

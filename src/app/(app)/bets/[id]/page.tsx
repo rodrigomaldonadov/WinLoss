@@ -143,14 +143,32 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
           <h2 className="text-sm font-semibold">Partidos y selecciones</h2>
         </div>
 
-        <ol className="space-y-3">
-          {bet.legs.map((leg) => {
+        <ol className="relative space-y-3 border-l border-border pl-4">
+          {bet.legs.map((leg, index) => {
             const legStatus = getBetStatusMeta(leg.status);
+            const done =
+              leg.status === "WON" || leg.status === "HALF_WON";
+            const lost =
+              leg.status === "LOST" || leg.status === "HALF_LOST";
             return (
               <li
                 key={leg.id}
-                className="rounded-xl border bg-card p-4 shadow-xs"
+                className="relative rounded-xl border bg-card p-4 shadow-xs"
               >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute -left-[21px] top-5 size-2.5 rounded-full ring-4 ring-background",
+                    done
+                      ? "bg-success"
+                      : lost
+                        ? "bg-destructive"
+                        : leg.status === "PENDING"
+                          ? "bg-muted-foreground/60"
+                          : "bg-muted-foreground",
+                  )}
+                />
+                <span className="sr-only">Partido {index + 1}:</span>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5">

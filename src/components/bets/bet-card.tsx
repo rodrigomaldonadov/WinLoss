@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { CopyPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { BetActionsSheet } from "@/components/bets/bet-actions-sheet";
+import { QuickSettleButtons } from "@/components/bets/quick-settle-buttons";
 import { SettleBetSheet } from "@/components/bets/settle-bet-sheet";
 import { getBetTypeLabel } from "@/lib/bet-display";
 import { getBetStatusMeta } from "@/lib/bet-status";
@@ -48,6 +51,12 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
             <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
               {typeLabel}
             </Badge>
+            {bet.legs.length > 1 && (
+              <span className="text-[10px] font-medium tabular-nums text-muted-foreground">
+                {bet.legs.filter((leg) => leg.status !== "PENDING").length}/
+                {bet.legs.length} ✓
+              </span>
+            )}
             <p className="truncate text-xs text-muted-foreground">
               {bet.sport}
               {bet.competition ? ` · ${bet.competition}` : ""}
@@ -198,6 +207,10 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
         </div>
       )}
 
+      {pending && bet.legs.length === 1 && (
+        <QuickSettleButtons betId={bet.id} className="mt-3" />
+      )}
+
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
           {formatDateTime(bet.placedAt, timeZone)} · {bet.bankroll.name}
@@ -205,6 +218,17 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
           {bet.externalId ? ` · #${bet.externalId}` : ""}
         </p>
         <div className="flex shrink-0 items-center gap-1">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon-sm"
+            className="size-9"
+            aria-label="Copiar apuesta"
+          >
+            <Link href={`/bets/new?copy=${bet.id}`}>
+              <CopyPlus className="size-4" aria-hidden />
+            </Link>
+          </Button>
           {pending && <SettleBetSheet bet={bet} />}
           <BetActionsSheet bet={bet} />
         </div>

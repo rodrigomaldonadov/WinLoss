@@ -415,6 +415,93 @@ export async function undoCreateBet(
   return { ok: result.count > 0 };
 }
 
+/** Liquidación rápida de un boleto simple desde la tarjeta. */
+export async function quickSettleBet(
+  betId: string,
+  status: "WON" | "LOST" | "VOID",
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: "Sesión caducada." };
+
+  const bet = await prisma.bet.findFirst({
+    where: { id: betId, userId: session.user.id },
+    select: {
+      id: true,
+      status: true,
+      stake: true,
+      isFreeBet: true,
+      legs: { select: { id: true, odds: true, status: true } },
+    },
+  });
+
+  if (!bet) return { ok: false, error: "Apuesta no encontrada." };
+  if (bet.status !== "PENDING") {
+    return { ok: false, error: "La apuesta ya está liquidada." };
+  }
+  if (bet.legs.length !== 1) {
+    return { ok: false, error: "Usa la liquidación por partido para múltiples." };
+  }
+
+  const leg = bet.legs[0]!;
+  const settlement = settleBetMath(
+    [{ odds: leg.odds, status }],
+    bet.stake,
+    bet.isFreeBet,
+  );
+
+  await prisma.$transaction([
+    prisma.betLeg.update({
+      where: { id: leg.id },
+      data: { status, autoSettled: false },
+    }),
+    prisma.bet.update({
+      where: { id: bet.id },
+      data: {
+        status: settlement.status,
+        payout: settlement.payout,
+        profit: settlement.profit,
+        settledAt: new Date(),
+      },
+    }),
+  ]);
+
+  revalidateBetViews(bet.id);
+  return { ok: true };
+}
+
+/** Reabre un boleto liquidado (deshacer de la liquidación rápida). */
+export async function reopenBet(
+  betId: string,
+): Promise<{ ok: boolean }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false };
+
+  const bet = await prisma.bet.findFirst({
+    where: { id: betId, userId: session.user.id },
+    select: { id: true, legs: { select: { id: true } } },
+  });
+  if (!bet) return { ok: false };
+
+  await prisma.$transaction([
+    prisma.betLeg.updateMany({
+      where: { betId: bet.id },
+      data: { status: "PENDING", autoSettled: false },
+    }),
+    prisma.bet.update({
+      where: { id: bet.id },
+      data: {
+        status: "PENDING",
+        payout: null,
+        profit: null,
+        settledAt: null,
+      },
+    }),
+  ]);
+
+  revalidateBetViews(bet.id);
+  return { ok: true };
+}
+
 export async function updateBet(
   _prevState: BetFormState,
   formData: FormData,

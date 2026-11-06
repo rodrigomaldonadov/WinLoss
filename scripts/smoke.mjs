@@ -136,16 +136,13 @@ try {
   const betArticle = page
     .locator("article")
     .filter({ hasText: "Alianza Lima vs. Universitario" });
-  await betArticle.getByText("Ganada", { exact: true }).waitFor({
+  await betArticle.getByText("CLV", { exact: true }).first().waitFor({
     timeout: 15_000,
   });
   const betText = await betArticle.innerText();
   if (!betText.includes("10.00")) {
     throw new Error(`Beneficio no visible tras liquidar: ${betText}`);
   }
-  await betArticle.getByText("CLV", { exact: true }).first().waitFor({
-    timeout: 15_000,
-  });
   if (!betText.includes("8.1")) {
     throw new Error(`CLV esperado 8.1% no visible: ${betText}`);
   }
@@ -337,7 +334,7 @@ try {
   await page.locator("#settle-closing-1").fill("1.50");
   await page.getByRole("button", { name: "Confirmar resultado" }).click();
 
-  await multipleArticle.getByText("Ganada", { exact: true }).first().waitFor({
+  await multipleArticle.locator('[data-slot="badge"]').filter({ hasText: "Ganada" }).first().waitFor({
     timeout: 15_000,
   });
   const multipleSettledText = await multipleArticle.innerText();
@@ -387,7 +384,8 @@ try {
     .filter({ hasText: "Builder" })
     .filter({ hasText: "PSG vs. Marsella" });
   await builderSettledArticle
-    .getByText("Ganada", { exact: true })
+    .locator('[data-slot="badge"]')
+    .filter({ hasText: "Ganada" })
     .first()
     .waitFor({ timeout: 15_000 });
   const builderSettledText = await builderSettledArticle.innerText();
@@ -467,7 +465,8 @@ try {
     .locator("article")
     .filter({ hasText: "Auto Fake vs Test" });
   await autoArticle
-    .getByText("Ganada", { exact: true })
+    .locator('[data-slot="badge"]')
+    .filter({ hasText: "Ganada" })
     .first()
     .waitFor({ timeout: 20_000 });
   const autoText = await autoArticle.innerText();
@@ -477,6 +476,37 @@ try {
   if (!autoText.includes("2-1") || !autoText.includes("Auto")) {
     throw new Error(`Falta marcador o etiqueta Auto: ${autoText}`);
   }
+
+  // ── Buscador de un día + chips de mercado ───────────────────────────
+  await page.goto(`${BASE_URL}/bets/new`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Buscar evento" }).first().click();
+  await page.getByRole("heading", { name: "Buscar eventos" }).waitFor({
+    timeout: 10_000,
+  });
+  for (const label of ["Ayer", "Hoy", "Mañana"]) {
+    if (!(await page.getByRole("button", { name: label, exact: true }).isVisible())) {
+      throw new Error(`Falta el chip de día ${label}`);
+    }
+  }
+  await page.getByRole("button", { name: /Añadir/ }).click();
+  await page.getByLabel("Buscar competición").fill("Liga 1");
+  await page
+    .getByRole("button", { name: "Liga 1", exact: true })
+    .last()
+    .click();
+  await page.waitForTimeout(2_500);
+  await page.screenshot({
+    path: "artifacts/20-event-search-mobile.png",
+    fullPage: false,
+  });
+  await page.getByRole("button", { name: "Ingresar manualmente" }).click();
+
+  await page.getByLabel("Deporte", { exact: true }).click();
+  await page.getByRole("option", { name: "Fútbol", exact: true }).click();
+  await page.getByRole("button", { name: "Córneres", exact: true }).click();
+  await page.getByRole("button", { name: "Menos de", exact: true }).click();
+  await page.getByRole("button", { name: "9.5", exact: true }).click();
+  await page.getByText(/Menos de 9.5 córneres/).waitFor({ timeout: 5_000 });
 
   await page.goto(`${BASE_URL}/settings`, { waitUntil: "networkidle" });
   if (!(await page.getByText("Casas de apuestas").isVisible())) {

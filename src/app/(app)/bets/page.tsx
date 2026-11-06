@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Ticket } from "lucide-react";
+import { Plus, Ticket, X } from "lucide-react";
 
 import { auth } from "@/auth";
 import { BetCard } from "@/components/bets/bet-card";
@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
   getBetsForUser,
-  getBetCounts,
+  getBetSummaryForUser,
   getBetSports,
   countBetsForUser,
   type BetFilter,
@@ -21,6 +21,7 @@ import {
   type BetTypeFilter,
 } from "@/lib/data/bets";
 import { getUserPreferences } from "@/lib/data/user";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -168,7 +169,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const safePage = Math.min(Math.max(page, 1), totalPages);
 
-  const [bets, counts, sports, preferences] = await Promise.all([
+  const [bets, summary, sports, preferences] = await Promise.all([
     getBetsForUser(session.user.id, {
       filter,
       type,
@@ -180,7 +181,14 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
       sport,
       q,
     }),
-    getBetCounts(session.user.id),
+    getBetSummaryForUser(session.user.id, {
+      filter,
+      type,
+      from,
+      to,
+      sport,
+      q,
+    }),
     getBetSports(session.user.id),
     getUserPreferences(session.user.id),
   ]);
@@ -196,6 +204,62 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
   };
   const tabHref = (value: BetFilter) =>
     buildBetsHref({ page: 1, ...sharedParams, estado: value });
+
+  const activeChips = [
+    ...(sport
+      ? [
+          {
+            label: `Deporte: ${sport}`,
+            href: buildBetsHref({ page: 1, ...sharedParams, sport: undefined }),
+          },
+        ]
+      : []),
+    ...(firstParam(params.desde)
+      ? [
+          {
+            label: `Desde: ${firstParam(params.desde)}`,
+            href: buildBetsHref({
+              page: 1,
+              ...sharedParams,
+              desde: undefined,
+            }),
+          },
+        ]
+      : []),
+    ...(firstParam(params.hasta)
+      ? [
+          {
+            label: `Hasta: ${firstParam(params.hasta)}`,
+            href: buildBetsHref({
+              page: 1,
+              ...sharedParams,
+              hasta: undefined,
+            }),
+          },
+        ]
+      : []),
+    ...(q
+      ? [
+          {
+            label: `Buscar: “${q}”`,
+            href: buildBetsHref({ page: 1, ...sharedParams, q: undefined }),
+          },
+        ]
+      : []),
+    ...(order !== "recent"
+      ? [
+          {
+            label:
+              order === "oldest" ? "Más antiguas" : "Mayor beneficio",
+            href: buildBetsHref({
+              page: 1,
+              ...sharedParams,
+              orden: undefined,
+            }),
+          },
+        ]
+      : []),
+  ];
 
   const empty = EMPTY_COPY[filter];
 
@@ -224,28 +288,61 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
       {createdId && <CreatedBetBanner betId={createdId} />}
 
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Totales de tu historial
+        Resumen del periodo filtrado
       </p>
       <div className="-mt-2 grid grid-cols-3 gap-2">
         <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
+          <p
+            className={cn(
+              "text-lg font-semibold tabular-nums",
+              summary.profit > 0
+                ? "text-success"
+                : summary.profit < 0
+                  ? "text-loss"
+                  : "text-foreground",
+            )}
+          >
+            {formatCurrency(summary.profit, preferences.currency)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">Beneficio</p>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
+          <p
+            className={cn(
+              "text-lg font-semibold tabular-nums",
+              summary.roi > 0
+                ? "text-success"
+                : summary.roi < 0
+                  ? "text-loss"
+                  : "text-foreground",
+            )}
+          >
+            {formatPercent(summary.roi)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">ROI</p>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
           <p className="text-lg font-semibold tabular-nums">
-            {counts.pendingCount}
+            {summary.pendingCount}
           </p>
           <p className="text-[11px] text-muted-foreground">Pendientes</p>
         </div>
-        <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
-          <p className="text-lg font-semibold tabular-nums text-success">
-            {counts.wonCount}
-          </p>
-          <p className="text-[11px] text-muted-foreground">Ganadas</p>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
-          <p className="text-lg font-semibold tabular-nums text-loss">
-            {counts.lostCount}
-          </p>
-          <p className="text-[11px] text-muted-foreground">Perdidas</p>
-        </div>
       </div>
+
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap gap-1.5" aria-label="Filtros activos">
+          {activeChips.map((chip) => (
+            <Link
+              key={chip.label}
+              href={chip.href}
+              className="inline-flex h-8 items-center gap-1 rounded-full border bg-muted/40 pl-2.5 pr-1.5 text-xs font-medium text-foreground"
+            >
+              {chip.label}
+              <X className="size-3.5 text-muted-foreground" aria-hidden />
+            </Link>
+          ))}
+        </div>
+      )}
 
       <nav
         aria-label="Filtrar apuestas"
@@ -340,7 +437,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
               className="flex items-center justify-between gap-2"
             >
               {safePage > 1 ? (
-                <Button asChild variant="outline" className="h-11 flex-1">
+                <Button asChild variant="outline" className="h-12 flex-1">
                   <Link
                     href={buildBetsHref({
                       page: safePage - 1,
@@ -357,7 +454,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
                 Página {safePage} de {totalPages}
               </p>
               {safePage < totalPages ? (
-                <Button asChild variant="outline" className="h-11 flex-1">
+                <Button asChild variant="outline" className="h-12 flex-1">
                   <Link
                     href={buildBetsHref({
                       page: safePage + 1,
@@ -374,6 +471,14 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           )}
         </>
       )}
+
+      <Link
+        href="/bets/new"
+        aria-label="Registrar nueva apuesta"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-95 md:hidden"
+      >
+        <Plus className="size-6" strokeWidth={2.4} aria-hidden />
+      </Link>
     </div>
   );
 }
