@@ -189,19 +189,21 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 type SelectionsFieldsProps = {
   legIndex: number;
   isBuilder: boolean;
+  fields: Array<SelectionValues & { id: string }>;
+  onAppend: () => void;
+  onRemove: (index: number) => void;
 };
 
-function SelectionsFields({ legIndex, isBuilder }: SelectionsFieldsProps) {
-  const { control, register } = useFormContext<BetFormValues>();
-  const selectionPath = `legs.${legIndex}.selections` as FieldArrayPath<BetFormValues>;
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: selectionPath,
-  });
+function SelectionsFields({
+  legIndex,
+  isBuilder,
+  fields,
+  onAppend,
+  onRemove,
+}: SelectionsFieldsProps) {
+  const { register } = useFormContext<BetFormValues>();
 
-  const visibleFields = (isBuilder ? fields : fields.slice(0, 1)) as Array<
-    SelectionValues & { id: string }
-  >;
+  const visibleFields = isBuilder ? fields : fields.slice(0, 1);
 
   return (
     <div className="space-y-2">
@@ -215,7 +217,7 @@ function SelectionsFields({ legIndex, isBuilder }: SelectionsFieldsProps) {
             variant="outline"
             size="sm"
             className="h-8 gap-1 text-xs"
-            onClick={() => append(emptySelection())}
+            onClick={onAppend}
             disabled={fields.length >= 20}
           >
             <Plus className="size-3.5" aria-hidden />
@@ -277,7 +279,7 @@ function SelectionsFields({ legIndex, isBuilder }: SelectionsFieldsProps) {
               size="icon"
               className="mt-5 size-9 text-muted-foreground"
               aria-label={`Eliminar selección ${selectionIndex + 1}`}
-              onClick={() => remove(selectionIndex)}
+              onClick={() => onRemove(selectionIndex)}
               disabled={fields.length <= 2}
             >
               <Trash2 className="size-4" aria-hidden />
@@ -310,28 +312,23 @@ function LegFields({
   onRemove,
   onStructureChange,
 }: LegFieldsProps) {
-  const { getValues, register, setValue } = useFormContext<BetFormValues>();
+  const { control, register, setValue } = useFormContext<BetFormValues>();
+  const selectionsPath = `legs.${index}.selections` as FieldArrayPath<BetFormValues>;
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: selectionsPath,
+  });
   const isBuilder = Boolean(leg.isBuilder);
 
   const toggleBuilder = (checked: boolean) => {
     setValue(`legs.${index}.isBuilder` as FieldPath<BetFormValues>, checked);
 
-    const selections = getValues(
-      `legs.${index}.selections` as FieldPath<BetFormValues>,
-    ) as SelectionValues[];
-
-    if (checked && selections.length < 2) {
-      setValue(
-        `legs.${index}.selections` as FieldPath<BetFormValues>,
-        [...selections, emptySelection()],
-      );
+    if (checked && fields.length < 2) {
+      append(emptySelection());
     }
 
-    if (!checked && selections.length > 1) {
-      setValue(
-        `legs.${index}.selections` as FieldPath<BetFormValues>,
-        selections.slice(0, 1),
-      );
+    if (!checked && fields.length > 1) {
+      remove(fields.slice(1).map((_, selectionIndex) => selectionIndex + 1));
     }
 
     onStructureChange();
@@ -467,7 +464,19 @@ function LegFields({
         />
       </div>
 
-      <SelectionsFields legIndex={index} isBuilder={isBuilder} />
+      <SelectionsFields
+        legIndex={index}
+        isBuilder={isBuilder}
+        fields={fields as Array<SelectionValues & { id: string }>}
+        onAppend={() => {
+          append(emptySelection());
+          onStructureChange();
+        }}
+        onRemove={(selectionIndex) => {
+          remove(selectionIndex);
+          onStructureChange();
+        }}
+      />
     </div>
   );
 }

@@ -98,7 +98,7 @@ try {
   await page.getByLabel("Competición").fill("Liga 1");
   await page.getByLabel("Evento", { exact: true }).fill("Alianza Lima vs. Universitario");
   await page.getByLabel("Mercado").fill("Ganador del partido");
-  await page.getByLabel("Selección").fill("Alianza Lima");
+  await page.getByLabel("Selección", { exact: true }).fill("Alianza Lima");
   await page.getByLabel("Cuota del partido").fill("2.00");
   await page.getByLabel("Stake").fill("10.00");
   await page.getByText("Retorno potencial").waitFor({ timeout: 10_000 });
@@ -288,7 +288,7 @@ try {
   await page.getByLabel("Deporte").nth(0).fill("Fútbol");
   await page.getByLabel("Evento", { exact: true }).nth(0).fill("PSG vs. Marsella");
   await page.getByLabel("Mercado").nth(0).fill("Ganador del partido");
-  await page.getByLabel("Selección").nth(0).fill("PSG");
+  await page.getByLabel("Selección", { exact: true }).nth(0).fill("PSG");
   await page.getByLabel("Cuota del partido").nth(0).fill("1.55");
 
   await page.getByRole("button", { name: "Añadir partido" }).click();
@@ -296,7 +296,7 @@ try {
   await page.getByLabel("Deporte").nth(1).fill("Fútbol");
   await page.getByLabel("Evento", { exact: true }).nth(1).fill("Real Madrid vs. Barcelona");
   await page.getByLabel("Mercado").nth(1).fill("Ambos equipos marcan");
-  await page.getByLabel("Selección").nth(1).fill("Sí");
+  await page.getByLabel("Selección", { exact: true }).nth(1).fill("Sí");
   await page.getByLabel("Cuota del partido").nth(1).fill("1.44");
 
   const totalOdds = await page.getByLabel("Cuota total").inputValue();
@@ -324,7 +324,7 @@ try {
   await page.locator("#settle-closing-1").fill("1.50");
   await page.getByRole("button", { name: "Confirmar resultado" }).click();
 
-  await multipleArticle.getByText("Ganada", { exact: true }).waitFor({
+  await multipleArticle.getByText("Ganada", { exact: true }).first().waitFor({
     timeout: 15_000,
   });
   const multipleSettledText = await multipleArticle.innerText();
@@ -345,9 +345,9 @@ try {
   await page.getByRole("switch", { name: "Bet Builder" }).click();
 
   await page.getByLabel("Mercado").nth(0).fill("Total de goles");
-  await page.getByLabel("Selección").nth(0).fill("Más de 5.5 goles");
+  await page.getByLabel("Selección", { exact: true }).nth(0).fill("Más de 5.5 goles");
   await page.getByLabel("Mercado").nth(1).fill("Total de córneres");
-  await page.getByLabel("Selección").nth(1).fill("Más de 10.5 córneres");
+  await page.getByLabel("Selección", { exact: true }).nth(1).fill("Más de 10.5 córneres");
   await page.getByLabel("Cuota del builder").fill("3.00");
   await page.getByLabel("Stake").fill("100");
 
@@ -369,10 +369,15 @@ try {
   await page.getByRole("button", { name: "Todo ganado" }).click();
   await page.getByRole("button", { name: "Confirmar resultado" }).click();
 
-  await builderArticle.getByText("Ganada", { exact: true }).waitFor({
-    timeout: 15_000,
-  });
-  const builderSettledText = await builderArticle.innerText();
+  const builderSettledArticle = page
+    .locator("article")
+    .filter({ hasText: "Builder" })
+    .filter({ hasText: "PSG vs. Marsella" });
+  await builderSettledArticle
+    .getByText("Ganada", { exact: true })
+    .first()
+    .waitFor({ timeout: 15_000 });
+  const builderSettledText = await builderSettledArticle.innerText();
   if (!/\+S\/\s?200[.,]00/.test(builderSettledText)) {
     throw new Error(`Beneficio del builder incorrecto: ${builderSettledText}`);
   }
