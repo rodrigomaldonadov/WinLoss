@@ -85,7 +85,7 @@ model Bankroll {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  user User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   bets Bet[]
 
   @@unique([userId, name])
@@ -112,14 +112,23 @@ model Bet {
   userId      String
   bankrollId  String
   bookmakerId String?
+  // Identificador del boleto en la casa de apuestas (opcional).
+  externalId  String?
+  // @deprecated: la información del evento vive ahora en BetLeg/LegSelection.
   sport       String
+  // @deprecated: usar BetLeg.competition.
   competition String?
+  // @deprecated: usar BetLeg.eventName.
   eventName   String
+  // @deprecated: usar LegSelection.market.
   market      String
+  // @deprecated: usar LegSelection.selection.
   selection   String
-  odds        Decimal   @db.Decimal(8, 3)
+  // Cuota total del boleto. Puede sobrescribirse manualmente (boosts/redondeos).
+  odds        Decimal   @db.Decimal(10, 3)
   stake       Decimal   @db.Decimal(12, 2)
   status      BetStatus @default(PENDING)
+  // Derivado de la cantidad de legs para filtrar rápido.
   betType     BetType   @default(SINGLE)
   isFreeBet   Boolean   @default(false)
   placedAt    DateTime  @default(now())
@@ -128,7 +137,7 @@ model Bet {
   payout      Decimal?  @db.Decimal(12, 2)
   // Beneficio neto. Negativo si la apuesta se pierde.
   profit      Decimal?  @db.Decimal(12, 2)
-  // Cuota de cierre usada para calcular el Closing Line Value del trade.
+  // @deprecated: el CLV se calcula por leg en BetLeg.closingOdds.
   closingOdds Decimal?  @db.Decimal(8, 3)
   notes       String?
   createdAt   DateTime  @default(now())
@@ -137,10 +146,44 @@ model Bet {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   bankroll  Bankroll   @relation(fields: [bankrollId], references: [id], onDelete: Restrict)
   bookmaker Bookmaker? @relation(fields: [bookmakerId], references: [id], onDelete: SetNull)
+  legs      BetLeg[]
 
+  @@unique([userId, externalId])
   @@index([userId, placedAt])
   @@index([bankrollId, status])
   @@index([bookmakerId])
+}
+
+model BetLeg {
+  id          String    @id @default(cuid())
+  betId       String
+  position    Int
+  sport       String
+  competition String?
+  eventName   String
+  eventDate   DateTime?
+  // Un Bet Builder combina 2+ selecciones del mismo evento con una cuota manual.
+  isBuilder   Boolean   @default(false)
+  odds        Decimal   @db.Decimal(8, 3)
+  closingOdds Decimal?  @db.Decimal(8, 3)
+  status      LegStatus @default(PENDING)
+
+  bet        Bet            @relation(fields: [betId], references: [id], onDelete: Cascade)
+  selections LegSelection[]
+
+  @@index([betId])
+}
+
+model LegSelection {
+  id        String @id @default(cuid())
+  legId     String
+  position  Int
+  market    String
+  selection String
+
+  leg BetLeg @relation(fields: [legId], references: [id], onDelete: Cascade)
+
+  @@index([legId])
 }
 
 enum BetStatus {
@@ -156,4 +199,13 @@ enum BetStatus {
 enum BetType {
   SINGLE
   COMBINED
+}
+
+enum LegStatus {
+  PENDING
+  WON
+  LOST
+  VOID
+  HALF_WON
+  HALF_LOST
 }
