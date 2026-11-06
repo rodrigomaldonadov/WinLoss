@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
 import { OfflineIndicator } from "@/components/offline/offline-indicator";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 import "./globals.css";
 
@@ -30,13 +31,32 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: APP_NAME,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false },
+  icons: {
+    icon: [
+      {
+        url: "/icons/icon-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/icons/icon-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/icons/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
-// Simplified PWA icons - using link tags in the HTML instead of Metadata icons property
-// to avoid TypeScript complexity until @serwist/next is installed.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -45,13 +65,11 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0f" },
   ],
 };
 
-export default function RootLayout({ children }: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
@@ -59,7 +77,8 @@ export default function RootLayout({ children }: {
       suppressHydrationWarning
     >
       <body className="flex min-h-dvh flex-col">
-        <OfflineIndicator mobileOnly={true} />
+        <ServiceWorkerRegister />
+        <OfflineIndicator />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

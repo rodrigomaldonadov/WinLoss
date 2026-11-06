@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Sin conexión · WinLoss</title>
+    <meta name="theme-color" content="#0a0a0f" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: #0a0a0f;
+        color: #f4f4f5;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .card {
+        width: 100%;
+        max-width: 420px;
+        border: 1px solid #27272a;
+        border-radius: 16px;
+        padding: 28px;
+        text-align: center;
+        background: #111116;
+      }
+      .icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 16px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        font-size: 28px;
+      }
+      h1 { font-size: 20px; margin: 0 0 8px; }
+      p { margin: 0 0 20px; color: #a1a1aa; font-size: 14px; line-height: 1.5; }
+      button {
+        width: 100%;
+        min-height: 48px;
+        border: 0;
+        border-radius: 12px;
+        background: #10b981;
+        color: #04120c;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:active { opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="icon" aria-hidden="true">📡</div>
+      <h1>Sin conexión a internet</h1>
+      <p>
+        No pudimos cargar esta página. Revisa tu conexión e inténtalo de nuevo:
+        tus datos volverán a sincronizarse automáticamente.
+      </p>
+      <button type="button" onclick="location.reload()">Reintentar</button>
+    </main>
+  </body>
+</html>

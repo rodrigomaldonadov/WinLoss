@@ -1,75 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type OfflineIndicatorProps = {
-  /** Mostrar solo en móviles (sm y abajo) */
-  mobileOnly?: boolean;
-};
+import { WifiOff } from "lucide-react";
 
 /**
- * Componente que muestra un banner indicando si el usuario está online o offline.
- * Usa los eventos del navegador y la API Service Worker para detectar estado.
+ * Banner discreto que aparece cuando el navegador pierde la conexión.
+ * No bloquea la interacción: informa y permite reintentar.
  */
-export function OfflineIndicator({ mobileOnly = true }: OfflineIndicatorProps = {}) {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [swReady, setSwReady] = useState(false);
+export function OfflineIndicator() {
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
-    // Listeners de conexión online/offline
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const update = () => setIsOffline(!navigator.onLine);
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
     };
   }, []);
 
-  // Detectar si el SW está activo (basado en la disponibilidad de navigator.serviceWorker)
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.ready.then((registration) => {
-        setSwReady(true);
+  if (!isOffline) return null;
 
-        // Escuchar mensajes del SW sobre estado de caché/sincronización
-        const subscriber = registration.active as any;
-        if (subscriber?.postMessage) {
-          subscriber.postMessage({ type: "GET_STATUS" }).catch(() => {});
-        }
-      });
-    }
-  }, []);
-
-  if (!isOnline) {
-    return (
-      <div
-        className="fixed top-0 left-0 right-0 z-50 bg-destructive/90 backdrop-blur-sm border-b border-destructive/20 text-sm"
-        aria-live="polite"
-      >
-        <div className="p-4 text-sm text-destructive">
-          <strong>Sin conexión a internet</strong><br/>
-          Estás operando en modo offline. Algunas funciones pueden estar
-          limitadas. Los datos se sincronizarán cuando restablezcas la conexión.
-          <a
-            href="#"
-            onClick={() => window.location.reload()}
-            className="mt-2 hover:underline text-muted-foreground/60"
-          >
-            Reintentar
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  // Mostrar solo en móviles si el prop lo indica y no estamos en modo estricto offline
-  if (mobileOnly && isOnline && !swReady) {
-    return null;
-  }
-
-  return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-xs font-medium text-amber-200 backdrop-blur-md"
+    >
+      <WifiOff className="size-4 shrink-0" aria-hidden />
+      <span>Sin conexión · mostrando datos guardados</span>
+    </div>
+  );
 }
