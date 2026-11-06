@@ -64,9 +64,6 @@ export default async function DashboardPage() {
   // ─── HISTÓRICO PARA EL LINE CHART ──────────────────────────────────
   const history = await getBankrollHistory(session.user.id, 180);
 
-  // ─── COMPONENTS RESPONSIVE ─────────────────────────────────────────
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -178,30 +175,23 @@ export default async function DashboardPage() {
       >
         <h2 className="text-sm font-semibold">Análisis</h2>
 
-        {/* Tabs: móvil = pestañas separadas; desktop = grid lado a lado */}
-        {isMobile ? (
-          // MÓVIL: Tabs con dos paneles
-          <Tabs defaultValue="evolucion" className="mb-4">
-            <TabsList>
-              <TabsTrigger value="evolucion">Evolución</TabsTrigger>
-              <TabsTrigger value="distribución">Distribución</TabsTrigger>
-            </TabsList>
+        {/* Tabs con comportamiento responsivo built-in de shadcn/ui:
+         - En móviles (group-data-vertical): pestañas apiladas verticalmente
+         - En desktop (group-data-horizontal): lado a lado */}
+        <Tabs defaultValue="evolucion" className="mb-4">
+          <TabsList>
+            <TabsTrigger value="evolucion">Evolución</TabsTrigger>
+            <TabsTrigger value="distribución">Distribución</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="evolucion">
-              <BankrollLineChart bankrolls={history} width={350} height={250} />
-            </TabsContent>
+          <TabsContent value="evolucion">
+            <BankrollLineChart bankrolls={history} width={350} height={250} />
+          </TabsContent>
 
-            <TabsContent value="distribución">
-              <SportsPieChart bets={recentBets} width={350} height={250} />
-            </TabsContent>
-          </Tabs>
-        ) : (
-          // ESCRITORIO: grid 2×1 sin Tabs
-          <div className="grid grid-cols-2 gap-4">
-            <BankrollLineChart bankrolls={history} width={600} height={300} />
-            <SportsPieChart bets={recentBets} width={600} height={300} />
-          </div>
-        )}
+          <TabsContent value="distribución">
+            <SportsPieChart bets={recentBets} width={350} height={250} />
+          </TabsContent>
+        </Tabs>
       </section>
     </div>
   );
