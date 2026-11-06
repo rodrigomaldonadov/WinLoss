@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { SerwistProvider } from "@serwist/turbopack/react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
 import { OfflineIndicator } from "@/components/offline/offline-indicator";
-import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 import "./globals.css";
 
@@ -77,17 +77,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="flex min-h-dvh flex-col">
-        <ServiceWorkerRegister />
-        <OfflineIndicator />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
+        <SerwistProvider
+          swUrl="/serwist/sw.js"
+          cacheOnNavigation
+          reloadOnOnline
         >
-          {children}
-          <Toaster position="top-center" richColors />
-        </ThemeProvider>
+          <OfflineIndicator />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster position="top-center" richColors />
+          </ThemeProvider>
+        </SerwistProvider>
       </body>
     </html>
   );
