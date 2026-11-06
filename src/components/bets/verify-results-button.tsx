@@ -98,7 +98,8 @@ export function VerifyResultsButton({
         type="button"
         variant={variant}
         size="sm"
-        className={cn("h-9 gap-1.5 text-xs", className)}
+        className={cn("size-11 gap-0 p-0 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-3", className)}
+        aria-label="Verificar resultados"
         onClick={() => void handleSync()}
         disabled={loading}
       >
@@ -107,7 +108,7 @@ export function VerifyResultsButton({
         ) : (
           <RefreshCw className="size-4" aria-hidden />
         )}
-        Verificar resultados
+        <span className="hidden text-xs sm:inline">Verificar resultados</span>
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>

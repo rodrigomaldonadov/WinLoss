@@ -44,7 +44,7 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
   const hiddenLegs = bet.legs.length - visibleLegs.length;
 
   return (
-    <article className="rounded-xl border bg-card p-4 shadow-xs">
+    <article className="min-w-0 rounded-xl border bg-card p-3.5 shadow-xs sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
@@ -57,7 +57,7 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
                 {bet.legs.length} ✓
               </span>
             )}
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="min-w-0 truncate text-xs text-muted-foreground">
               {bet.sport}
               {bet.competition ? ` · ${bet.competition}` : ""}
             </p>
@@ -68,7 +68,7 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
             </Link>
           </h2>
           {bet.legs.length === 1 && (
-            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
               {bet.legs[0]?.selections
                 .map((selection) => selection.selection)
                 .join(" · ") ?? `${bet.market} · ${bet.selection}`}
@@ -96,7 +96,7 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
       </div>
 
       {bet.legs.length > 1 && (
-        <ul className="mt-3 space-y-2 border-t pt-3">
+        <ul className="mt-2.5 space-y-1.5 border-t pt-2.5">
           {visibleLegs.map((leg) => {
             const legStatus = getBetStatusMeta(leg.status);
             return (
@@ -152,21 +152,21 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
         </ul>
       )}
 
-      <dl className="mt-3 grid grid-cols-3 gap-2 border-t pt-3">
+      <dl className="mt-2.5 grid grid-cols-3 gap-2 border-t pt-2.5">
         <div>
-          <dt className="text-[11px] text-muted-foreground">Cuota</dt>
+          <dt className="text-[10px] text-muted-foreground">Cuota</dt>
           <dd className="mt-0.5 text-xs font-medium tabular-nums">
             {formatOdds(bet.odds)}
           </dd>
         </div>
         <div>
-          <dt className="text-[11px] text-muted-foreground">Stake</dt>
+          <dt className="text-[10px] text-muted-foreground">Stake</dt>
           <dd className="mt-0.5 text-xs font-medium tabular-nums">
             {formatCurrency(bet.stake, currency)}
           </dd>
         </div>
         <div>
-          <dt className="text-[11px] text-muted-foreground">
+          <dt className="text-[10px] text-muted-foreground">
             {pending
               ? bet.isFreeBet
                 ? "Ganancia"
@@ -190,7 +190,7 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
       </dl>
 
       {!pending && closingValue && closingPercentage !== null && (
-        <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs">
+        <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-1.5 text-xs">
           <span className="text-muted-foreground">CLV</span>
           <span
             className={cn(
@@ -208,10 +208,10 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
       )}
 
       {pending && bet.legs.length === 1 && (
-        <QuickSettleButtons betId={bet.id} className="mt-3" />
+        <QuickSettleButtons betId={bet.id} className="mt-2.5" />
       )}
 
-      <div className="mt-3 flex items-center justify-between gap-2">
+      <div className="mt-2.5 flex items-center justify-between gap-2">
         <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
           {formatDateTime(bet.placedAt, timeZone)} · {bet.bankroll.name}
           {bet.bookmaker ? ` · ${bet.bookmaker.name}` : ""}
@@ -221,8 +221,8 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
           <Button
             asChild
             variant="ghost"
-            size="icon-sm"
-            className="size-9"
+            size="icon"
+            className="text-muted-foreground"
             aria-label="Copiar apuesta"
           >
             <Link href={`/bets/new?copy=${bet.id}`}>

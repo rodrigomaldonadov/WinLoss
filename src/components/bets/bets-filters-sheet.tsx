@@ -91,11 +91,16 @@ export function BetsFiltersSheet({ sports }: BetsFiltersSheetProps) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="h-10 gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label="Filtros"
+          className="relative size-11 gap-0 p-0 sm:h-10 sm:w-auto sm:gap-2 sm:px-3"
+        >
           <SlidersHorizontal className="size-4" aria-hidden />
-          Filtros
+          <span className="hidden text-xs sm:inline">Filtros</span>
           {activeCount > 0 && (
-            <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+            <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground sm:static sm:size-5 sm:text-[11px]">
               {activeCount}
             </span>
           )}

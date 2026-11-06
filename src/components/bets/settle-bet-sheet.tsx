@@ -125,7 +125,7 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
       }}
     >
       <SheetTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="h-10">
+        <Button type="button" variant="outline" size="sm" className="h-11">
           <Gavel className="size-4" aria-hidden />
           Liquidar
         </Button>

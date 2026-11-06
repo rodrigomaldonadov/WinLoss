@@ -57,7 +57,7 @@ export function QuickSettleButtons({
         type="button"
         variant="outline"
         size="sm"
-        className="h-9 gap-1 border-success/30 text-[11px] text-success"
+        className="h-11 gap-1 border-success/30 text-[11px] text-success"
         disabled={pending}
         onClick={() => settle("WON", "Ganada")}
       >
@@ -67,7 +67,7 @@ export function QuickSettleButtons({
         type="button"
         variant="outline"
         size="sm"
-        className="h-9 gap-1 border-destructive/30 text-[11px] text-destructive"
+        className="h-11 gap-1 border-destructive/30 text-[11px] text-destructive"
         disabled={pending}
         onClick={() => settle("LOST", "Perdida")}
       >
@@ -77,7 +77,7 @@ export function QuickSettleButtons({
         type="button"
         variant="outline"
         size="sm"
-        className="h-9 text-[11px]"
+        className="h-11 text-[11px]"
         disabled={pending}
         onClick={() => settle("VOID", "Nula")}
       >

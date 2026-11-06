@@ -264,8 +264,9 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
   const empty = EMPTY_COPY[filter];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
+        className="pb-0"
         title="Apuestas"
         description={
           total === 0
@@ -273,28 +274,36 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
             : `${total} apuesta${total === 1 ? "" : "s"} registrada${total === 1 ? "" : "s"}`
         }
         action={
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center gap-1.5">
             <VerifyResultsButton />
-            <Button asChild size="icon" aria-label="Registrar apuesta">
+            <BetsFiltersSheet sports={sports} />
+            <Button
+              asChild
+              size="icon"
+              className="hidden md:inline-flex"
+              aria-label="Registrar apuesta"
+            >
               <Link href="/bets/new">
                 <Plus className="size-5" aria-hidden />
               </Link>
             </Button>
-            <BetsFiltersSheet sports={sports} />
           </div>
         }
       />
 
       {createdId && <CreatedBetBanner betId={createdId} />}
 
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Resumen del periodo filtrado
-      </p>
-      <div className="-mt-2 grid grid-cols-3 gap-2">
-        <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
+      <section
+        aria-label="Resumen del periodo filtrado"
+        className="grid grid-cols-3 divide-x rounded-xl border bg-card shadow-xs"
+      >
+        <div className="px-3 py-2.5 text-center">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Beneficio
+          </p>
           <p
             className={cn(
-              "text-lg font-semibold tabular-nums",
+              "mt-0.5 text-base font-semibold tabular-nums",
               summary.profit > 0
                 ? "text-success"
                 : summary.profit < 0
@@ -304,12 +313,14 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           >
             {formatCurrency(summary.profit, preferences.currency)}
           </p>
-          <p className="text-[11px] text-muted-foreground">Beneficio</p>
         </div>
-        <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
+        <div className="px-3 py-2.5 text-center">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            ROI
+          </p>
           <p
             className={cn(
-              "text-lg font-semibold tabular-nums",
+              "mt-0.5 text-base font-semibold tabular-nums",
               summary.roi > 0
                 ? "text-success"
                 : summary.roi < 0
@@ -319,34 +330,20 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           >
             {formatPercent(summary.roi)}
           </p>
-          <p className="text-[11px] text-muted-foreground">ROI</p>
         </div>
-        <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
-          <p className="text-lg font-semibold tabular-nums">
+        <div className="px-3 py-2.5 text-center">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Pendientes
+          </p>
+          <p className="mt-0.5 text-base font-semibold tabular-nums">
             {summary.pendingCount}
           </p>
-          <p className="text-[11px] text-muted-foreground">Pendientes</p>
         </div>
-      </div>
-
-      {activeChips.length > 0 && (
-        <div className="flex flex-wrap gap-1.5" aria-label="Filtros activos">
-          {activeChips.map((chip) => (
-            <Link
-              key={chip.label}
-              href={chip.href}
-              className="inline-flex h-8 items-center gap-1 rounded-full border bg-muted/40 pl-2.5 pr-1.5 text-xs font-medium text-foreground"
-            >
-              {chip.label}
-              <X className="size-3.5 text-muted-foreground" aria-hidden />
-            </Link>
-          ))}
-        </div>
-      )}
+      </section>
 
       <nav
         aria-label="Filtrar apuestas"
-        className="flex gap-1 rounded-lg border bg-muted/40 p-1"
+        className="flex gap-1 rounded-lg bg-muted/50 p-1"
       >
         {FILTERS.map((item) => {
           const active = item.value === filter;
@@ -356,7 +353,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
               href={tabHref(item.value)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-10 flex-1 items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "flex h-11 flex-1 items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 active
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground active:bg-background/60",
@@ -370,7 +367,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
 
       <nav
         aria-label="Filtrar apuestas por tipo"
-        className="flex gap-1 overflow-x-auto rounded-lg border bg-muted/40 p-1"
+        className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {TYPE_FILTERS.map((item) => {
           const active = item.value === (type ?? "all");
@@ -384,10 +381,10 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
               })}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-9 flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-3.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 active
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground active:bg-background/60",
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "bg-background text-muted-foreground active:bg-muted",
               )}
             >
               {item.label}
@@ -395,6 +392,30 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           );
         })}
       </nav>
+
+      {activeChips.length > 0 && (
+        <div
+          className="flex flex-wrap items-center gap-1.5"
+          aria-label="Filtros activos"
+        >
+          {activeChips.map((chip) => (
+            <Link
+              key={chip.label}
+              href={chip.href}
+              className="inline-flex h-11 max-w-full items-center gap-1 rounded-full border bg-muted/40 pl-2.5 pr-1.5 text-xs font-medium text-foreground"
+            >
+              <span className="truncate">{chip.label}</span>
+              <X className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            </Link>
+          ))}
+          <Link
+            href="/bets"
+            className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Limpiar todo
+          </Link>
+        </div>
+      )}
 
       {bets.length === 0 ? (
         <EmptyState
@@ -471,14 +492,6 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           )}
         </>
       )}
-
-      <Link
-        href="/bets/new"
-        aria-label="Registrar nueva apuesta"
-        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-95 md:hidden"
-      >
-        <Plus className="size-6" strokeWidth={2.4} aria-hidden />
-      </Link>
     </div>
   );
 }
