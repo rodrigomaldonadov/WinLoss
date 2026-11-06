@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 
 export type BetFilter = "pending" | "settled" | "all";
 export type BetTypeFilter = "single" | "multiple" | "builder";
+export type BetOrder = "recent" | "oldest" | "profit";
 
 export type LegSelectionItem = {
   id: string;
@@ -179,10 +180,14 @@ export type BetListQuery = {
   to?: Date;
   /** Deporte exacto. */
   sport?: string;
+  /** Texto libre: evento, competición, selección o ID externo. */
+  q?: string;
+  /** Orden de resultados. */
+  order?: BetOrder;
 };
 
 function buildBetFilters(query: BetListQuery): Prisma.BetWhereInput {
-  const { filter = "all", type, from, to, sport } = query;
+  const { filter = "all", type, from, to, sport, q } = query;
 
   const placedAt: { gte?: Date; lte?: Date } = {};
   if (from) placedAt.gte = from;
@@ -202,6 +207,33 @@ function buildBetFilters(query: BetListQuery): Prisma.BetWhereInput {
     and.push({ legs: { some: { sport: { equals: sport } } } });
   }
 
+  if (q) {
+    and.push({
+      OR: [
+        { externalId: { contains: q, mode: "insensitive" } },
+        {
+          legs: {
+            some: { eventName: { contains: q, mode: "insensitive" } },
+          },
+        },
+        {
+          legs: {
+            some: { competition: { contains: q, mode: "insensitive" } },
+          },
+        },
+        {
+          legs: {
+            some: {
+              selections: {
+                some: { selection: { contains: q, mode: "insensitive" } },
+              },
+            },
+          },
+        },
+      ],
+    });
+  }
+
   return {
     ...(filter === "pending"
       ? { status: "PENDING" }
@@ -217,11 +249,18 @@ export async function getBetsForUser(
   userId: string,
   query: BetListQuery = {},
 ): Promise<BetListItem[]> {
-  const { take = 100, skip = 0 } = query;
+  const { take = 100, skip = 0, order = "recent" } = query;
+
+  const orderBy: Prisma.BetOrderByWithRelationInput[] =
+    order === "oldest"
+      ? [{ placedAt: "asc" }, { createdAt: "asc" }]
+      : order === "profit"
+        ? [{ profit: { sort: "desc", nulls: "last" } }, { placedAt: "desc" }]
+        : [{ placedAt: "desc" }, { createdAt: "desc" }];
 
   const bets = await prisma.bet.findMany({
     where: { userId, ...buildBetFilters(query) },
-    orderBy: [{ placedAt: "desc" }, { createdAt: "desc" }],
+    orderBy,
     take,
     skip,
     include: BET_RELATIONS_INCLUDE,

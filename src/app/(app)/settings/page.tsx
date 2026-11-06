@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, Globe, LogOut, Store, Sun, Wallet } from "lucide-react";
+import { ChevronRight, Globe, LogOut, Palette, Store, Wallet } from "lucide-react";
 
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
@@ -88,8 +88,8 @@ export default async function SettingsPage() {
 
         <div className="flex flex-col gap-3 border-t px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Sun className="size-[18px] text-muted-foreground" aria-hidden />
-            <span className="text-sm">Modo oscuro</span>
+            <Palette className="size-[18px] text-muted-foreground" aria-hidden />
+            <span className="text-sm">Tema</span>
           </div>
           <div className="sm:w-56">
             <ThemePreference />
@@ -123,7 +123,11 @@ export default async function SettingsPage() {
         <h2 className="text-sm font-semibold">Cuenta</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Miembro desde{" "}
-          {formatDate(user.createdAt, { month: "long", year: "numeric" })}.
+          {formatDate(user.createdAt, {
+            month: "long",
+            year: "numeric",
+            timeZone: user.timezone,
+          })}.
         </p>
         <form action={signOutAction} className="mt-4">
           <Button

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { getBankrollsForUser } from "@/lib/data/bankrolls";
 import { getBetForUser } from "@/lib/data/bets";
 import { getBookmakerOptions } from "@/lib/data/bookmakers";
+import { getUserPreferences } from "@/lib/data/user";
 import { toZonedDateTimeInput } from "@/lib/date";
 
 export const metadata: Metadata = {
@@ -28,10 +29,11 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
   const params = await searchParams;
   const copyId = Array.isArray(params.copy) ? params.copy[0] : params.copy;
 
-  const [bankrolls, bookmakers, copiedBet] = await Promise.all([
+  const [bankrolls, bookmakers, copiedBet, preferences] = await Promise.all([
     getBankrollsForUser(session.user.id),
     getBookmakerOptions(session.user.id),
     copyId ? getBetForUser(session.user.id, copyId) : Promise.resolve(null),
+    getUserPreferences(session.user.id),
   ]);
 
   const activeBankrolls = bankrolls.filter((bankroll) => bankroll.isActive);
@@ -119,7 +121,11 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
           <BetForm
             bankrolls={activeBankrolls}
             bookmakers={bookmakers}
-            defaultPlacedAt={toZonedDateTimeInput(new Date())}
+            defaultPlacedAt={toZonedDateTimeInput(
+              new Date(),
+              preferences.timezone,
+            )}
+            timeZone={preferences.timezone}
             defaults={betDefaults}
           />
         </>

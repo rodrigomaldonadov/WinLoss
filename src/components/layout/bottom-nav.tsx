@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Settings, Ticket, Wallet } from "lucide-react";
+import { House, Plus, Settings, Ticket, Wallet } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -39,11 +39,9 @@ export function BottomNav() {
           <Link
             href="/bets/new"
             aria-label="Registrar nueva apuesta"
-            className="-mt-7 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
+            className="-mt-7 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95"
           >
-            <span className="text-2xl leading-none" aria-hidden>
-              +
-            </span>
+            <Plus className="size-6" strokeWidth={2.4} aria-hidden />
           </Link>
         </div>
 
@@ -72,7 +70,7 @@ function NavItem({ href, label, icon: Icon, active }: NavItemProps) {
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors",
+        "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active ? "text-primary" : "text-muted-foreground",
       )}
     >

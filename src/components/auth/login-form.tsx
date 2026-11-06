@@ -69,6 +69,14 @@ export function LoginForm() {
             {errors.password[0]}
           </p>
         )}
+        <div className="flex justify-end">
+          <Link
+            href="/forgot-password"
+            className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
       </div>
 
       <Button type="submit" className="h-12 w-full" disabled={pending}>

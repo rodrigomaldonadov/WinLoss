@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,15 +38,28 @@ export function BetsFiltersSheet({ sports }: BetsFiltersSheetProps) {
   const hasta = searchParams.get("hasta") ?? "";
   const sport = searchParams.get("sport") ?? "all";
   const tipo = searchParams.get("tipo") ?? "all";
+  const q = searchParams.get("q") ?? "";
+  const orden = searchParams.get("orden") ?? "recent";
 
   const [sportDraft, setSportDraft] = useState(sport);
   const [tipoDraft, setTipoDraft] = useState(tipo);
   const [desdeDraft, setDesdeDraft] = useState(desde);
   const [hastaDraft, setHastaDraft] = useState(hasta);
+  const [qDraft, setQDraft] = useState(q);
+  const [ordenDraft, setOrdenDraft] = useState(orden);
 
   const invalidRange = Boolean(
     desdeDraft && hastaDraft && desdeDraft > hastaDraft,
   );
+
+  const activeCount = [
+    sport !== "all",
+    tipo !== "all",
+    Boolean(desde),
+    Boolean(hasta),
+    Boolean(q),
+    orden !== "recent",
+  ].filter(Boolean).length;
 
   const applyFilters = () => {
     if (invalidRange) return;
@@ -56,6 +69,9 @@ export function BetsFiltersSheet({ sports }: BetsFiltersSheetProps) {
     if (hastaDraft) params.set("hasta", hastaDraft);
     if (sportDraft && sportDraft !== "all") params.set("sport", sportDraft);
     if (tipoDraft && tipoDraft !== "all") params.set("tipo", tipoDraft);
+    const trimmed = qDraft.trim();
+    if (trimmed) params.set("q", trimmed);
+    if (ordenDraft && ordenDraft !== "recent") params.set("orden", ordenDraft);
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     setOpen(false);
@@ -66,6 +82,8 @@ export function BetsFiltersSheet({ sports }: BetsFiltersSheetProps) {
     setTipoDraft("all");
     setDesdeDraft("");
     setHastaDraft("");
+    setQDraft("");
+    setOrdenDraft("recent");
     router.push(pathname, { scroll: false });
     setOpen(false);
   };
@@ -76,6 +94,11 @@ export function BetsFiltersSheet({ sports }: BetsFiltersSheetProps) {
         <Button variant="outline" size="sm" className="h-10 gap-2">
           <SlidersHorizontal className="size-4" aria-hidden />
           Filtros
+          {activeCount > 0 && (
+            <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+              {activeCount}
+            </span>
+          )}
         </Button>
       </SheetTrigger>
       <SheetContent
@@ -85,11 +108,46 @@ export function BetsFiltersSheet({ sports }: BetsFiltersSheetProps) {
         <SheetHeader className="pb-2">
           <SheetTitle>Filtros</SheetTitle>
           <SheetDescription>
-            Tipo, rango de fechas y deporte de tu historial.
+            Busca, ordena y acota tu historial por tipo, fechas y deporte.
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-5 px-4 pb-6">
+          <div className="space-y-2">
+            <Label htmlFor="bets-q">Buscar</Label>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                id="bets-q"
+                type="search"
+                inputMode="search"
+                autoComplete="off"
+                placeholder="Evento, selección o #ID"
+                value={qDraft}
+                onChange={(event) => setQDraft(event.target.value)}
+                maxLength={80}
+                className="h-12 w-full pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="bets-order">Ordenar por</Label>
+            <Select value={ordenDraft} onValueChange={setOrdenDraft}>
+              <SelectTrigger id="bets-order" className="h-12 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Más recientes</SelectItem>
+                <SelectItem value="oldest">Más antiguas</SelectItem>
+                <SelectItem value="profit">Mayor beneficio</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="bets-type">Tipo</Label>
             <Select value={tipoDraft} onValueChange={setTipoDraft}>

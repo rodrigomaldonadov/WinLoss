@@ -15,8 +15,10 @@ import {
   getBetSports,
   countBetsForUser,
   type BetFilter,
+  type BetOrder,
   type BetTypeFilter,
 } from "@/lib/data/bets";
+import { getUserPreferences } from "@/lib/data/user";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -95,6 +97,16 @@ function parsePage(value?: string | string[]): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+function parseOrder(value?: string | string[]): BetOrder {
+  const raw = firstParam(value);
+  return raw === "oldest" || raw === "profit" ? raw : "recent";
+}
+
+function parseQuery(value?: string | string[]): string | undefined {
+  const raw = firstParam(value)?.trim();
+  return raw ? raw.slice(0, 80) : undefined;
+}
+
 function buildBetsHref(params: {
   page: number;
   estado?: string;
@@ -102,6 +114,8 @@ function buildBetsHref(params: {
   hasta?: string;
   sport?: string;
   tipo?: string;
+  q?: string;
+  orden?: string;
 }): string {
   const searchParams = new URLSearchParams();
   const estado = params.estado ?? "all";
@@ -111,6 +125,10 @@ function buildBetsHref(params: {
   if (params.hasta) searchParams.set("hasta", params.hasta);
   if (params.sport) searchParams.set("sport", params.sport);
   if (params.tipo) searchParams.set("tipo", params.tipo);
+  if (params.q) searchParams.set("q", params.q);
+  if (params.orden && params.orden !== "recent") {
+    searchParams.set("orden", params.orden);
+  }
   const qs = searchParams.toString();
   return qs ? `/bets?${qs}` : "/bets";
 }
@@ -130,8 +148,10 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
   const from = parseDate(params.desde);
   const to = parseDate(params.hasta, true);
   const sport = firstParam(params.sport) ?? undefined;
+  const q = parseQuery(params.q);
+  const order = parseOrder(params.orden);
   const hasFilters = Boolean(
-    from || to || sport || type || filter !== "all",
+    from || to || sport || type || q || order !== "recent" || filter !== "all",
   );
 
   const total = await countBetsForUser(session.user.id, {
@@ -140,23 +160,39 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
     from,
     to,
     sport,
+    q,
   });
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const safePage = Math.min(Math.max(page, 1), totalPages);
 
-  const [bets, counts, sports] = await Promise.all([
+  const [bets, counts, sports, preferences] = await Promise.all([
     getBetsForUser(session.user.id, {
       filter,
       type,
+      order,
       take: PER_PAGE,
       skip: (safePage - 1) * PER_PAGE,
       from,
       to,
       sport,
+      q,
     }),
     getBetCounts(session.user.id),
     getBetSports(session.user.id),
+    getUserPreferences(session.user.id),
   ]);
+
+  const sharedParams = {
+    estado: filter,
+    desde: firstParam(params.desde),
+    hasta: firstParam(params.hasta),
+    sport,
+    tipo: type,
+    q,
+    orden: order,
+  };
+  const tabHref = (value: BetFilter) =>
+    buildBetsHref({ page: 1, ...sharedParams, estado: value });
 
   const empty = EMPTY_COPY[filter];
 
@@ -214,14 +250,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           return (
             <Link
               key={item.value}
-              href={buildBetsHref({
-                page: 1,
-                estado: item.value,
-                desde: firstParam(params.desde),
-                hasta: firstParam(params.hasta),
-                sport: firstParam(params.sport) ?? undefined,
-                tipo: type,
-              })}
+              href={tabHref(item.value)}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex h-10 flex-1 items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -247,10 +276,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
               key={item.value}
               href={buildBetsHref({
                 page: 1,
-                estado: filter,
-                desde: firstParam(params.desde),
-                hasta: firstParam(params.hasta),
-                sport: firstParam(params.sport) ?? undefined,
+                ...sharedParams,
                 tipo: item.value === "all" ? undefined : item.value,
               })}
               aria-current={active ? "page" : undefined}
@@ -294,7 +320,11 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
         <>
           <div className="grid gap-3 lg:grid-cols-2">
             {bets.map((bet) => (
-              <BetCard key={bet.id} bet={bet} />
+              <BetCard
+                key={bet.id}
+                bet={bet}
+                timeZone={preferences.timezone}
+              />
             ))}
           </div>
 
@@ -308,11 +338,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
                   <Link
                     href={buildBetsHref({
                       page: safePage - 1,
-                      estado: filter,
-                      desde: firstParam(params.desde),
-                      hasta: firstParam(params.hasta),
-                      sport: firstParam(params.sport) ?? undefined,
-                      tipo: type,
+                      ...sharedParams,
                     })}
                   >
                     ← Anterior
@@ -329,11 +355,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
                   <Link
                     href={buildBetsHref({
                       page: safePage + 1,
-                      estado: filter,
-                      desde: firstParam(params.desde),
-                      hasta: firstParam(params.hasta),
-                      sport: firstParam(params.sport) ?? undefined,
-                      tipo: type,
+                      ...sharedParams,
                     })}
                   >
                     Siguiente →

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { getBetForUser } from "@/lib/data/bets";
 import { getBankrollsForUser } from "@/lib/data/bankrolls";
 import { getBookmakersForUser } from "@/lib/data/bookmakers";
+import { getUserPreferences } from "@/lib/data/user";
 import { toZonedDateTimeInput } from "@/lib/date";
 import { BET_STATUS_LABELS } from "@/lib/constants";
 
@@ -30,9 +31,10 @@ export default async function EditBetPage({ params }: EditBetPageProps) {
 
   if (!bet) notFound();
 
-  const [bankrolls, bookmakers] = await Promise.all([
+  const [bankrolls, bookmakers, preferences] = await Promise.all([
     getBankrollsForUser(session.user.id),
     getBookmakersForUser(session.user.id),
+    getUserPreferences(session.user.id),
   ]);
 
   // Un bankroll archivado sigue disponible al editar para no romper historial.
@@ -75,7 +77,11 @@ export default async function EditBetPage({ params }: EditBetPageProps) {
           id: bookmakerId,
           name,
         }))}
-        defaultPlacedAt={toZonedDateTimeInput(bet.placedAt)}
+        defaultPlacedAt={toZonedDateTimeInput(
+          bet.placedAt,
+          preferences.timezone,
+        )}
+        timeZone={preferences.timezone}
         defaults={{
           id: bet.id,
           bankrollId: bet.bankrollId,
@@ -85,14 +91,17 @@ export default async function EditBetPage({ params }: EditBetPageProps) {
           odds: bet.odds,
           stake: bet.stake,
           isFreeBet: bet.isFreeBet,
-          placedAt: toZonedDateTimeInput(bet.placedAt),
+          placedAt: toZonedDateTimeInput(bet.placedAt, preferences.timezone),
           notes: bet.notes,
           legs: bet.legs.map((leg) => ({
             sport: leg.sport,
             competition: leg.competition,
             eventName: leg.eventName,
             eventDate: leg.eventDate
-              ? toZonedDateTimeInput(leg.eventDate).slice(0, 10)
+              ? toZonedDateTimeInput(
+                  leg.eventDate,
+                  preferences.timezone,
+                ).slice(0, 10)
               : null,
             isBuilder: leg.isBuilder,
             odds: leg.odds,

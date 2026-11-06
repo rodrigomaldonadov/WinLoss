@@ -60,8 +60,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
@@ -81,6 +79,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           swUrl="/serwist/sw.js"
           cacheOnNavigation
           reloadOnOnline
+          // En desarrollo el SW cachea HTML con IDs de Server Action obsoletos.
+          disable={process.env.NODE_ENV !== "production"}
         >
           <OfflineIndicator />
           <ThemeProvider

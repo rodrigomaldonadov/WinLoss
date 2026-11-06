@@ -18,11 +18,12 @@ import { cn } from "@/lib/utils";
 
 type BetCardProps = {
   bet: BetListItem;
+  timeZone?: string;
 };
 
 const MAX_VISIBLE_LEGS = 3;
 
-export function BetCard({ bet }: BetCardProps) {
+export function BetCard({ bet, timeZone }: BetCardProps) {
   const status = getBetStatusMeta(bet.status);
   const currency = bet.bankroll.currency;
   const pending = bet.status === "PENDING";
@@ -174,7 +175,7 @@ export function BetCard({ bet }: BetCardProps) {
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
-          {formatDateTime(bet.placedAt)} · {bet.bankroll.name}
+          {formatDateTime(bet.placedAt, timeZone)} · {bet.bankroll.name}
           {bet.bookmaker ? ` · ${bet.bookmaker.name}` : ""}
           {bet.externalId ? ` · #${bet.externalId}` : ""}
         </p>

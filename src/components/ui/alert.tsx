@@ -1,44 +1,61 @@
 import { cn } from "@/lib/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "./alert-dialog";
 
-type AlertVariant = "default" | "destructive" | "secondary";
+type AlertVariant = "default" | "destructive" | "warning" | "success";
 
 interface AlertProps {
   title: React.ReactNode;
   description: React.ReactNode;
-  action: React.ReactNode;
+  action?: React.ReactNode;
   variant?: AlertVariant;
+  className?: string;
 }
 
-export function Alert({ title, description, action, variant = "default" }: AlertProps) {
-  const isDestructive = variant === "destructive";
+const containerStyles: Record<AlertVariant, string> = {
+  default: "border-border bg-card",
+  destructive: "border-destructive/30 bg-destructive/10",
+  warning: "border-amber-500/30 bg-amber-500/10",
+  success: "border-success/30 bg-success/10",
+};
 
+const titleStyles: Record<AlertVariant, string> = {
+  default: "text-foreground",
+  destructive: "text-destructive",
+  warning: "text-amber-600 dark:text-amber-400",
+  success: "text-success",
+};
+
+const descriptionStyles: Record<AlertVariant, string> = {
+  default: "text-muted-foreground",
+  destructive: "text-destructive/90",
+  warning: "text-amber-700 dark:text-amber-200/90",
+  success: "text-success/90",
+};
+
+export function Alert({
+  title,
+  description,
+  action,
+  variant = "default",
+  className,
+}: AlertProps) {
   return (
-    <div className="rounded-md border p-4 mb-4">
-      <AlertDialog>
-        <AlertDialogHeader className={cn("flex items-start gap-2", isDestructive && "border-destructive/10 text-destructive")}>
-          <AlertDialogTitle className={cn("flex-1", isDestructive && "text-destructive")}>
-            {title}
-          </AlertDialogTitle>
-        </AlertDialogHeader>
-
-        <AlertDialogDescription className="mt-1 text-sm line-clamp-3">
+    <div
+      role={variant === "destructive" ? "alert" : "status"}
+      className={cn(
+        "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between",
+        containerStyles[variant],
+        className,
+      )}
+    >
+      <div className="min-w-0 space-y-1">
+        <p className={cn("text-sm font-semibold", titleStyles[variant])}>
+          {title}
+        </p>
+        <div className={cn("text-sm leading-relaxed", descriptionStyles[variant])}>
           {description}
-        </AlertDialogDescription>
-
-        <AlertDialogFooter className="mt-3 flex justify-end">
-          {action}
-        </AlertDialogFooter>
-      </AlertDialog>
+        </div>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

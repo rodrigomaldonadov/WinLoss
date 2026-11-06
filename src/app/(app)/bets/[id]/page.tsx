@@ -13,6 +13,7 @@ import { getBetTypeLabel } from "@/lib/bet-display";
 import { getBetStatusMeta } from "@/lib/bet-status";
 import { calculateBetClosingLineValue } from "@/lib/bet-math";
 import { getBetForUser } from "@/lib/data/bets";
+import { getUserPreferences } from "@/lib/data/user";
 import {
   formatCurrency,
   formatDate,
@@ -40,6 +41,9 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
 
   if (!bet) notFound();
 
+  const preferences = await getUserPreferences(session.user.id);
+  const timeZone = preferences.timezone;
+
   const status = getBetStatusMeta(bet.status);
   const currency = bet.bankroll.currency;
   const pending = bet.status === "PENDING";
@@ -62,7 +66,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
 
       <PageHeader
         title={bet.eventName}
-        description={`${getBetTypeLabel(bet)} · ${formatDateTime(bet.placedAt)}`}
+        description={`${getBetTypeLabel(bet)} · ${formatDateTime(bet.placedAt, timeZone)}`}
       />
 
       <section className="rounded-xl border bg-card p-4 shadow-xs">
@@ -125,7 +129,9 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
         <p className="mt-3 border-t pt-3 text-[11px] text-muted-foreground">
           {bet.bankroll.name}
           {bet.bookmaker ? ` · ${bet.bookmaker.name}` : ""}
-          {bet.settledAt ? ` · Liquidada ${formatDateTime(bet.settledAt)}` : ""}
+          {bet.settledAt
+            ? ` · Liquidada ${formatDateTime(bet.settledAt, timeZone)}`
+            : ""}
         </p>
       </section>
 
@@ -163,6 +169,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
+                            timeZone,
                           })}`
                         : ""}
                     </p>

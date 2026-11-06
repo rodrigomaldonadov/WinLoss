@@ -56,6 +56,7 @@ type BetFormProps = {
   bookmakers: { id: string; name: string }[];
   defaultPlacedAt: string;
   mode?: "create" | "edit";
+  timeZone?: string;
   defaults?: BetFormDefaults;
 };
 
@@ -486,6 +487,7 @@ export function BetForm({
   bookmakers,
   defaultPlacedAt,
   mode = "create",
+  timeZone,
   defaults,
 }: BetFormProps) {
   const isEditing = mode === "edit";
@@ -609,7 +611,7 @@ export function BetForm({
     if (data.placedAt) {
       const placedAt = new Date(data.placedAt);
       if (!Number.isNaN(placedAt.getTime())) {
-        setPlacedAtValue(toZonedDateTimeInput(placedAt));
+        setPlacedAtValue(toZonedDateTimeInput(placedAt, timeZone));
       }
     }
     setManualOdds(false);

@@ -77,11 +77,15 @@ export function formatDate(
   return new Intl.DateTimeFormat(LOCALE, options).format(date);
 }
 
-export function formatDateTime(value: Date | string): string {
+export function formatDateTime(
+  value: Date | string,
+  timeZone?: string,
+): string {
   return formatDate(value, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    ...(timeZone ? { timeZone } : {}),
   });
 }
