@@ -184,6 +184,7 @@ model BetLeg {
   selections LegSelection[]
 
   @@index([betId])
+  @@index([status, eventDate])
   @@index([externalProvider, externalEventId])
 }
 

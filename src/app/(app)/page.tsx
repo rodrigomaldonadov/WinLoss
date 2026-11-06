@@ -3,6 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowUpRight,
+  BarChart3,
+  ChevronRight,
   Percent,
   Target,
   Ticket,
@@ -202,6 +204,27 @@ export default async function DashboardPage() {
               icon={TrendingUp}
             />
           </section>
+
+          <Link
+            href="/analysis"
+            className="flex items-center justify-between gap-3 rounded-xl border bg-card p-4 shadow-xs transition-colors hover:bg-muted/40"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <BarChart3 className="size-5" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Consenso de picks</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  Mira qué se está jugando en los próximos partidos.
+                </p>
+              </div>
+            </div>
+            <ChevronRight
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+          </Link>
 
           {/* 3. CLV por casa: solo si hay datos */}
           {clvByBookmaker.length > 0 && (

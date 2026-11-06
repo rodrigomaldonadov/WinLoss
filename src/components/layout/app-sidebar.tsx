@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Plus, Settings, Ticket, Wallet } from "lucide-react";
+import {
+  BarChart3,
+  House,
+  Plus,
+  Settings,
+  Ticket,
+  Wallet,
+} from "lucide-react";
 
 import { Brand } from "@/components/brand";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -13,6 +20,7 @@ import { cn } from "@/lib/utils";
 const items = [
   { href: "/", label: "Inicio", icon: House },
   { href: "/bets", label: "Apuestas", icon: Ticket },
+  { href: "/analysis", label: "Consenso", icon: BarChart3 },
   { href: "/bankroll", label: "Bankroll", icon: Wallet },
   { href: "/settings", label: "Ajustes", icon: Settings },
 ] as const;

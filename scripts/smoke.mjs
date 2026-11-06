@@ -553,6 +553,19 @@ PEN 132.00`);
   }
   await page.getByText("S/ 138.60").first().waitFor({ timeout: 5_000 });
 
+  // ── Consenso de picks ───────────────────────────────────────────────
+  await page.goto(`${BASE_URL}/analysis`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Consenso" }).waitFor({
+    timeout: 10_000,
+  });
+  if (
+    !(await page
+      .getByText("Conteo anónimo de los picks registrados")
+      .isVisible())
+  ) {
+    throw new Error("La página de consenso no muestra el aviso de privacidad");
+  }
+
   await page.goto(`${BASE_URL}/settings`, { waitUntil: "networkidle" });
   if (!(await page.getByText("Casas de apuestas").isVisible())) {
     throw new Error("Ajustes no enlaza a casas de apuestas");
