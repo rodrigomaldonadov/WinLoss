@@ -80,17 +80,27 @@ export default async function EditBetPage({ params }: EditBetPageProps) {
           id: bet.id,
           bankrollId: bet.bankrollId,
           bookmakerId: bet.bookmakerId,
+          externalId: bet.externalId,
           betType: bet.betType,
-          sport: bet.sport,
-          competition: bet.competition,
-          eventName: bet.eventName,
-          market: bet.market,
-          selection: bet.selection,
           odds: bet.odds,
           stake: bet.stake,
           isFreeBet: bet.isFreeBet,
           placedAt: toZonedDateTimeInput(bet.placedAt),
           notes: bet.notes,
+          legs: bet.legs.map((leg) => ({
+            sport: leg.sport,
+            competition: leg.competition,
+            eventName: leg.eventName,
+            eventDate: leg.eventDate
+              ? toZonedDateTimeInput(leg.eventDate).slice(0, 10)
+              : null,
+            isBuilder: leg.isBuilder,
+            odds: leg.odds,
+            selections: leg.selections.map((selection) => ({
+              market: selection.market,
+              selection: selection.selection,
+            })),
+          })),
         }}
       />
     </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { getBetTypeLabel } from "@/lib/bet-display";
 import { getBetStatusMeta } from "@/lib/bet-status";
 import type { BetListItem } from "@/lib/data/bets";
 import {
@@ -20,13 +21,16 @@ export function BetRow({ bet }: BetRowProps) {
 
   return (
     <Link
-      href="/bets"
+      href={`/bets/${bet.id}`}
       className="flex items-center gap-3 px-4 py-3 transition-colors active:bg-muted/60"
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{bet.eventName}</p>
+        <p className="truncate text-sm font-medium">
+          {bet.eventName}
+          {bet.legs.length > 1 ? ` +${bet.legs.length - 1}` : ""}
+        </p>
         <p className="truncate text-xs text-muted-foreground">
-          {bet.selection} · {formatOdds(bet.odds)}
+          {getBetTypeLabel(bet)} · {bet.selection} · {formatOdds(bet.odds)}
         </p>
       </div>
       <div className="shrink-0 text-right">

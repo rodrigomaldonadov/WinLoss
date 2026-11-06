@@ -12,10 +12,6 @@ import { getBankrollsForUser } from "@/lib/data/bankrolls";
 import { getBetForUser } from "@/lib/data/bets";
 import { getBookmakerOptions } from "@/lib/data/bookmakers";
 import { toZonedDateTimeInput } from "@/lib/date";
-import { formatPercent } from "@/lib/format";
-import { toast } from "sonner";
-
-import { NewBetOCRButton } from "@/components/bets/ocr/new-bet-ocr-button";
 
 export const metadata: Metadata = {
   title: "Nueva apuesta",
@@ -55,13 +51,22 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
           bankrollId: copiedBankrollId,
           bookmakerId: copiedBookmakerId ?? null,
           betType: copiedBet.betType,
-          sport: copiedBet.sport,
-          competition: copiedBet.competition,
-          eventName: copiedBet.eventName,
-          market: copiedBet.market,
-          selection: copiedBet.selection,
           odds: copiedBet.odds,
           isFreeBet: false,
+          legs: copiedBet.legs.map((leg) => ({
+            sport: leg.sport,
+            competition: leg.competition,
+            eventName: leg.eventName,
+            eventDate: leg.eventDate
+              ? leg.eventDate.toISOString().slice(0, 10)
+              : null,
+            isBuilder: leg.isBuilder,
+            odds: leg.odds,
+            selections: leg.selections.map((selection) => ({
+              market: selection.market,
+              selection: selection.selection,
+            })),
+          })),
         }
       : undefined;
 
@@ -74,16 +79,6 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
             Volver
           </Link>
         </Button>
-
-        <NewBetOCRButton />
-
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          id="bet-ocr-file"
-        />
       </div>
 
       <PageHeader

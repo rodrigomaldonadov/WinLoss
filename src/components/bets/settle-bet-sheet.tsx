@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { CircleAlert, Gavel } from "lucide-react";
-import type { BetStatus } from "@prisma/client";
+import type { BetStatus, LegStatus } from "@prisma/client";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,21 +17,32 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { settleBet, type SettleBetState } from "@/lib/actions/bet";
-import { calculateBetResult } from "@/lib/bet-math";
+import { calculateBetResult, settleBet as settleBetMath } from "@/lib/bet-math";
 import { BET_STATUS_LABELS } from "@/lib/constants";
-import { formatCurrency, formatSignedCurrency } from "@/lib/format";
+import {
+  formatCurrency,
+  formatOdds,
+  formatSignedCurrency,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const initialState: SettleBetState = {};
 
-const SETTLE_OPTIONS: Exclude<BetStatus, "PENDING">[] = [
+const LEG_OPTIONS: LegStatus[] = [
   "WON",
   "LOST",
   "VOID",
   "HALF_WON",
   "HALF_LOST",
-  "CASHOUT",
 ];
+
+type SettleLeg = {
+  id: string;
+  eventName: string;
+  odds: number;
+  status: LegStatus;
+  selections: { market: string; selection: string }[];
+};
 
 type SettleBetSheetProps = {
   bet: {
@@ -41,14 +52,21 @@ type SettleBetSheetProps = {
     odds: number;
     isFreeBet: boolean;
     bankroll: { currency: string };
+    legs: SettleLeg[];
   };
 };
 
+function initialStatuses(legs: SettleLeg[]): Record<string, LegStatus> {
+  return Object.fromEntries(legs.map((leg) => [leg.id, "WON" as LegStatus]));
+}
+
 export function SettleBetSheet({ bet }: SettleBetSheetProps) {
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<Exclude<BetStatus, "PENDING">>("WON");
+  const [statuses, setStatuses] = useState<Record<string, LegStatus>>(() =>
+    initialStatuses(bet.legs),
+  );
+  const [closingOdds, setClosingOdds] = useState<Record<string, string>>({});
   const [cashout, setCashout] = useState("");
-  const [closingOdds, setClosingOdds] = useState("");
   const [state, formAction, pending] = useActionState(
     settleBet,
     initialState,
@@ -63,26 +81,47 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
   const sheetOpen = open && !state.ok;
 
   const cashoutValue = Number(cashout.replace(",", "."));
-  const preview = calculateBetResult({
-    stake: bet.stake,
-    odds: bet.odds,
-    status,
-    isFreeBet: bet.isFreeBet,
-    cashoutAmount:
-      status === "CASHOUT" && Number.isFinite(cashoutValue)
-        ? cashoutValue
-        : undefined,
-  });
+  const hasCashout = Number.isFinite(cashoutValue) && cashoutValue > 0;
+
+  const previewMath = hasCashout
+    ? null
+    : settleBetMath(
+        bet.legs.map((leg) => ({
+          odds: leg.odds,
+          status: statuses[leg.id] ?? "PENDING",
+        })),
+        bet.stake,
+        bet.isFreeBet,
+      );
+
+  const preview = hasCashout
+    ? calculateBetResult({
+        stake: bet.stake,
+        odds: bet.odds,
+        status: "CASHOUT",
+        isFreeBet: bet.isFreeBet,
+        cashoutAmount: cashoutValue,
+      })
+    : previewMath!;
+
+  const previewStatus: BetStatus = hasCashout ? "CASHOUT" : previewMath!.status;
   const previewProfit = preview.profit.toNumber();
-  const canPreview =
-    status !== "CASHOUT" || (Number.isFinite(cashoutValue) && cashoutValue > 0);
+  const canSubmit = hasCashout || previewStatus !== "PENDING";
+
+  const setAllStatuses = (status: LegStatus) => {
+    setStatuses(Object.fromEntries(bet.legs.map((leg) => [leg.id, status])));
+  };
 
   return (
     <Sheet
       open={sheetOpen}
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) setStatus("WON");
+        if (next) {
+          setStatuses(initialStatuses(bet.legs));
+          setClosingOdds({});
+          setCashout("");
+        }
       }}
     >
       <SheetTrigger asChild>
@@ -99,12 +138,12 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
           <SheetTitle>Liquidar apuesta</SheetTitle>
           <SheetDescription className="line-clamp-2">
             {bet.eventName}
+            {bet.legs.length > 1 ? ` · ${bet.legs.length} partidos` : ""}
           </SheetDescription>
         </SheetHeader>
 
         <form action={formAction} className="space-y-4 px-4">
           <input type="hidden" name="id" value={bet.id} />
-          <input type="hidden" name="status" value={status} />
 
           {state.error && (
             <div
@@ -117,64 +156,143 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            {SETTLE_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setStatus(option)}
-                aria-pressed={status === option}
-                className={cn(
-                  "flex h-11 items-center justify-center rounded-lg border px-2 text-sm font-medium transition-colors",
-                  status === option
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "bg-background text-muted-foreground active:bg-muted",
-                )}
-              >
-                {BET_STATUS_LABELS[option]}
-              </button>
-            ))}
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 text-xs"
+              onClick={() => setAllStatuses("WON")}
+            >
+              Todo ganado
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 text-xs"
+              onClick={() => setAllStatuses("LOST")}
+            >
+              Todo perdido
+            </Button>
           </div>
 
-          {status === "CASHOUT" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="settle-cashout">Importe del cashout</Label>
-              <Input
-                id="settle-cashout"
-                name="cashoutAmount"
-                type="text"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={cashout}
-                onChange={(event) => setCashout(event.target.value)}
-                required
-                className="h-12 tabular-nums"
-              />
-              <p className="text-xs text-muted-foreground">
-                Total devuelto por la casa, no el beneficio.
-              </p>
-            </div>
-          )}
+          <div className="space-y-3">
+            {bet.legs.map((leg, index) => {
+              const status = statuses[leg.id] ?? "PENDING";
+              return (
+                <div
+                  key={leg.id}
+                  className="space-y-2 rounded-lg border bg-background p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {leg.eventName}
+                    </p>
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {leg.selections
+                        .map(
+                          (selection) =>
+                            `${selection.market}: ${selection.selection}`,
+                        )
+                        .join(" · ")}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+                      Cuota {formatOdds(leg.odds)}
+                    </p>
+                  </div>
+
+                  <input
+                    type="hidden"
+                    name={`legs.${index}.id`}
+                    value={leg.id}
+                  />
+                  <input
+                    type="hidden"
+                    name={`legs.${index}.status`}
+                    value={status}
+                  />
+
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {LEG_OPTIONS.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() =>
+                          setStatuses((current) => ({
+                            ...current,
+                            [leg.id]: option,
+                          }))
+                        }
+                        aria-pressed={status === option}
+                        className={cn(
+                          "flex h-9 items-center justify-center rounded-md border px-1 text-[11px] font-medium transition-colors",
+                          status === option
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "bg-background text-muted-foreground active:bg-muted",
+                        )}
+                      >
+                        {BET_STATUS_LABELS[option]}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor={`settle-closing-${index}`}
+                      className="text-[11px] text-muted-foreground"
+                    >
+                      Cuota de cierre (opcional)
+                    </Label>
+                    <Input
+                      id={`settle-closing-${index}`}
+                      name={`legs.${index}.closingOdds`}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="1.85"
+                      value={closingOdds[leg.id] ?? ""}
+                      onChange={(event) =>
+                        setClosingOdds((current) => ({
+                          ...current,
+                          [leg.id]: event.target.value,
+                        }))
+                      }
+                      className="h-9 tabular-nums"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="settle-closing-odds">Cuota de cierre</Label>
+            <Label htmlFor="settle-cashout">
+              Cashout{" "}
+              <span className="font-normal text-muted-foreground">
+                (opcional)
+              </span>
+            </Label>
             <Input
-              id="settle-closing-odds"
-              name="closingOdds"
+              id="settle-cashout"
+              name="cashoutAmount"
               type="text"
               inputMode="decimal"
-              placeholder="1.85"
-              value={closingOdds}
-              onChange={(event) => setClosingOdds(event.target.value)}
-              required
-              className="h-12 tabular-nums"
+              placeholder="0.00"
+              value={cashout}
+              onChange={(event) => setCashout(event.target.value)}
+              className="h-11 tabular-nums"
             />
             <p className="text-xs text-muted-foreground">
-              Cuota a la que cerró la línea cuando saliste del mercado. Se usa
-              para calcular el CLV del trade.
+              Total devuelto por la casa, no el beneficio. Si lo indicas, el
+              boleto se liquida como cashout.
             </p>
           </div>
 
-          {canPreview && (
+          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5 text-sm">
+            <span className="text-muted-foreground">Estado resultante</span>
+            <span className="font-semibold">
+              {BET_STATUS_LABELS[previewStatus]}
+            </span>
+          </div>
+
+          {canSubmit && (
             <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5 text-sm">
               <span className="text-muted-foreground">Beneficio resultante</span>
               <span
@@ -195,7 +313,7 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
           <div className="flex items-center justify-between rounded-lg border px-3 py-2.5 text-xs text-muted-foreground">
             <span>
               Stake {formatCurrency(bet.stake, bet.bankroll.currency)} · Cuota{" "}
-              {bet.odds.toFixed(2)}
+              {formatOdds(bet.odds)}
             </span>
             {bet.isFreeBet && (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
@@ -207,7 +325,7 @@ export function SettleBetSheet({ bet }: SettleBetSheetProps) {
           <Button
             type="submit"
             className="h-12 w-full"
-            disabled={pending || !canPreview}
+            disabled={pending || !canSubmit}
           >
             {pending ? "Guardando…" : "Confirmar resultado"}
           </Button>

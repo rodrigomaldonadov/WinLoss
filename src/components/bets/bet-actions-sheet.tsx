@@ -31,6 +31,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { deleteBet, type DeleteBetState } from "@/lib/actions/bet";
+import { getBetTypeLabel } from "@/lib/bet-display";
 import { getBetStatusMeta } from "@/lib/bet-status";
 import { formatCurrency, formatOdds } from "@/lib/format";
 
@@ -45,6 +46,8 @@ type BetActionsSheetProps = {
     odds: number;
     isFreeBet: boolean;
     bankroll: { currency: string };
+    betType: "SINGLE" | "COMBINED";
+    legs: { isBuilder: boolean }[];
   };
 };
 
@@ -91,7 +94,7 @@ export function BetActionsSheet({ bet }: BetActionsSheetProps) {
               <Badge className={status.badgeClassName}>{status.label}</Badge>
             </div>
             <SheetDescription>
-              {formatOdds(bet.odds)} ·{" "}
+              {getBetTypeLabel(bet)} · {formatOdds(bet.odds)} ·{" "}
               {formatCurrency(bet.stake, bet.bankroll.currency)}
               {bet.isFreeBet ? " · Free bet" : ""}
             </SheetDescription>

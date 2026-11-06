@@ -15,6 +15,7 @@ import {
   getBetSports,
   countBetsForUser,
   type BetFilter,
+  type BetTypeFilter,
 } from "@/lib/data/bets";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,13 @@ const FILTERS: { label: string; value: BetFilter }[] = [
   { label: "Todas", value: "all" },
   { label: "Pendientes", value: "pending" },
   { label: "Liquidadas", value: "settled" },
+];
+
+const TYPE_FILTERS: { label: string; value: BetTypeFilter | "all" }[] = [
+  { label: "Todos", value: "all" },
+  { label: "Simple", value: "single" },
+  { label: "Múltiple", value: "multiple" },
+  { label: "Builder", value: "builder" },
 ];
 
 const EMPTY_COPY: Record<
@@ -55,16 +63,30 @@ function parseFilter(value?: string | string[]): BetFilter {
   return raw === "pending" || raw === "settled" ? raw : "all";
 }
 
+function parseTypeFilter(
+  value?: string | string[],
+): BetTypeFilter | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === "single" || raw === "multiple" || raw === "builder"
+    ? raw
+    : undefined;
+}
+
 function firstParam(value?: string | string[]): string | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
   return raw ?? undefined;
 }
 
-function parseDate(value?: string | string[]): Date | undefined {
+function parseDate(
+  value?: string | string[],
+  endOfDay = false,
+): Date | undefined {
   const raw = firstParam(value);
   if (!raw) return undefined;
   const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? undefined : date;
+  if (Number.isNaN(date.getTime())) return undefined;
+  if (endOfDay) date.setHours(23, 59, 59, 999);
+  return date;
 }
 
 function parsePage(value?: string | string[]): number {
@@ -79,6 +101,7 @@ function buildBetsHref(params: {
   desde?: string;
   hasta?: string;
   sport?: string;
+  tipo?: string;
 }): string {
   const searchParams = new URLSearchParams();
   const estado = params.estado ?? "all";
@@ -87,6 +110,7 @@ function buildBetsHref(params: {
   if (params.desde) searchParams.set("desde", params.desde);
   if (params.hasta) searchParams.set("hasta", params.hasta);
   if (params.sport) searchParams.set("sport", params.sport);
+  if (params.tipo) searchParams.set("tipo", params.tipo);
   const qs = searchParams.toString();
   return qs ? `/bets?${qs}` : "/bets";
 }
@@ -101,27 +125,39 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
 
   const params = await searchParams;
   const filter = parseFilter(params.estado);
+  const type = parseTypeFilter(params.tipo);
   const page = parsePage(params.page);
   const from = parseDate(params.desde);
-  const to = parseDate(params.hasta);
+  const to = parseDate(params.hasta, true);
   const sport = firstParam(params.sport) ?? undefined;
+  const hasFilters = Boolean(
+    from || to || sport || type || filter !== "all",
+  );
 
-  const [bets, counts, sports, total] = await Promise.all([
+  const total = await countBetsForUser(session.user.id, {
+    filter,
+    type,
+    from,
+    to,
+    sport,
+  });
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+
+  const [bets, counts, sports] = await Promise.all([
     getBetsForUser(session.user.id, {
       filter,
+      type,
       take: PER_PAGE,
-      skip: (page - 1) * PER_PAGE,
+      skip: (safePage - 1) * PER_PAGE,
       from,
       to,
       sport,
     }),
     getBetCounts(session.user.id),
     getBetSports(session.user.id),
-    countBetsForUser(session.user.id, { filter, from, to, sport }),
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
   const empty = EMPTY_COPY[filter];
 
   return (
@@ -145,7 +181,10 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
         }
       />
 
-      <div className="grid grid-cols-3 gap-2">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Totales de tu historial
+      </p>
+      <div className="-mt-2 grid grid-cols-3 gap-2">
         <div className="rounded-lg border bg-card px-3 py-2.5 text-center shadow-xs">
           <p className="text-lg font-semibold tabular-nums">
             {counts.pendingCount}
@@ -166,8 +205,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
         </div>
       </div>
 
-      <div
-        role="tablist"
+      <nav
         aria-label="Filtrar apuestas"
         className="flex gap-1 rounded-lg border bg-muted/40 p-1"
       >
@@ -176,15 +214,17 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           return (
             <Link
               key={item.value}
-              href={
-                item.value === "all"
-                  ? "/bets"
-                  : `/bets?estado=${item.value}&page=1`
-              }
-              role="tab"
-              aria-selected={active}
+              href={buildBetsHref({
+                page: 1,
+                estado: item.value,
+                desde: firstParam(params.desde),
+                hasta: firstParam(params.hasta),
+                sport: firstParam(params.sport) ?? undefined,
+                tipo: type,
+              })}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-10 flex-1 items-center justify-center rounded-md text-sm font-medium transition-colors",
+                "flex h-10 flex-1 items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 active
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground active:bg-background/60",
@@ -194,17 +234,60 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
             </Link>
           );
         })}
-      </div>
+      </nav>
+
+      <nav
+        aria-label="Filtrar apuestas por tipo"
+        className="flex gap-1 overflow-x-auto rounded-lg border bg-muted/40 p-1"
+      >
+        {TYPE_FILTERS.map((item) => {
+          const active = item.value === (type ?? "all");
+          return (
+            <Link
+              key={item.value}
+              href={buildBetsHref({
+                page: 1,
+                estado: filter,
+                desde: firstParam(params.desde),
+                hasta: firstParam(params.hasta),
+                sport: firstParam(params.sport) ?? undefined,
+                tipo: item.value === "all" ? undefined : item.value,
+              })}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex h-9 flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                active
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground active:bg-background/60",
+              )}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
 
       {bets.length === 0 ? (
         <EmptyState
           icon={Ticket}
-          title={empty.title}
-          description={empty.description}
+          title={
+            hasFilters ? "No hay apuestas con estos filtros" : empty.title
+          }
+          description={
+            hasFilters
+              ? "Prueba con otro rango de fechas o deporte, o limpia los filtros."
+              : empty.description
+          }
           action={
-            <Button asChild>
-              <Link href="/bets/new">Registrar apuesta</Link>
-            </Button>
+            hasFilters ? (
+              <Button asChild variant="outline">
+                <Link href="/bets">Limpiar filtros</Link>
+              </Button>
+            ) : (
+              <Button asChild>
+                <Link href="/bets/new">Registrar apuesta</Link>
+              </Button>
+            )
           }
         />
       ) : (
@@ -229,6 +312,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
                       desde: firstParam(params.desde),
                       hasta: firstParam(params.hasta),
                       sport: firstParam(params.sport) ?? undefined,
+                      tipo: type,
                     })}
                   >
                     ← Anterior
@@ -249,6 +333,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
                       desde: firstParam(params.desde),
                       hasta: firstParam(params.hasta),
                       sport: firstParam(params.sport) ?? undefined,
+                      tipo: type,
                     })}
                   >
                     Siguiente →
