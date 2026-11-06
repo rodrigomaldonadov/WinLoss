@@ -218,7 +218,7 @@ export default async function BankrollPage({
                       className={cn(
                         "flex size-9 shrink-0 items-center justify-center rounded-lg",
                         positive
-                          ? "bg-success/10 text-success"
+                          ? "bg-primary/10 text-primary"
                           : "bg-muted text-muted-foreground",
                       )}
                     >
@@ -250,7 +250,7 @@ export default async function BankrollPage({
                     <p
                       className={cn(
                         "shrink-0 text-xs font-semibold tabular-nums",
-                        positive ? "text-success" : "text-foreground",
+                        "text-foreground",
                       )}
                     >
                       {formatCurrency(

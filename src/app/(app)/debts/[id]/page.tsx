@@ -234,17 +234,28 @@ export default async function DebtDetailPage({
             </p>
           </div>
         ) : (
-          <ol className="space-y-2">
+          <ol className="relative space-y-2 border-l border-border pl-4">
             {debt.payments.map((payment) => {
               const voided = Boolean(payment.voidedAt);
               return (
                 <li
                   key={payment.id}
                   className={cn(
-                    "rounded-xl border bg-card p-3 shadow-xs",
+                    "relative rounded-xl border bg-card p-3 shadow-xs",
                     voided && "opacity-60",
                   )}
                 >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute -left-[21px] top-4 size-2.5 rounded-full ring-4 ring-background",
+                      voided
+                        ? "bg-muted-foreground/50"
+                        : payment.source === "FROM_BANKROLL"
+                          ? "bg-primary"
+                          : "bg-success",
+                    )}
+                  />
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold tabular-nums">
