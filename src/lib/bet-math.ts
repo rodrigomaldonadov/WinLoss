@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import type { BetStatus } from "@prisma/client";
+import type { BetStatus, LegStatus } from "@prisma/client";
 
 export type Numeric = Decimal | number | string;
 
@@ -78,6 +78,148 @@ export type BetMathResult = {
   return { payout: roundMoney(payout), profit: roundMoney(profit) };
 }
 
+// ---------------------------------------------------------------------------
+// Motor de legs (Simple / Múltiple / Bet Builder)
+// ---------------------------------------------------------------------------
+
+export type LegMathInput = {
+  odds: Numeric;
+  status: LegStatus;
+};
+
+/** Cuota efectiva de un leg según su resultado. PENDING no se puede resolver. */
+export function effectiveLegOdds(
+  odds: Numeric,
+  status: LegStatus,
+): Decimal | null {
+  switch (status) {
+    case "WON":
+      return toDecimal(odds);
+    case "VOID":
+      return new Decimal(1);
+    case "HALF_WON":
+      return toDecimal(odds).plus(1).div(2);
+    case "HALF_LOST":
+      return new Decimal("0.5");
+    case "LOST":
+      return new Decimal(0);
+    case "PENDING":
+    default:
+      return null;
+  }
+}
+
+/** Producto de cuotas de legs con 3 decimales de precisión. */
+export function totalOdds(legs: { odds: Numeric }[]): Decimal {
+  const product = legs.reduce(
+    (acc, leg) => acc.mul(toDecimal(leg.odds)),
+    new Decimal(1),
+  );
+  return product.toDecimalPlaces(3, Decimal.ROUND_HALF_UP);
+}
+
+export type SettleBetResult = {
+  status: Exclude<BetStatus, "CASHOUT" | "PENDING"> | "PENDING";
+  /** Cuota efectiva combinada (producto de cuotas efectivas por leg). */
+  effectiveOdds: Decimal;
+  /** Total devuelto (stake incluido, salvo free bets). */
+  payout: Decimal;
+  /** Beneficio neto; negativo si se pierde. */
+  profit: Decimal;
+};
+
+/**
+ * Liquida un boleto a partir del estado de sus legs.
+ *
+ * Reglas:
+ * - Cualquier leg LOST pierde el boleto completo, aunque haya pendientes.
+ * - Si no hay LOST y queda algún PENDING, el boleto sigue PENDING.
+ * - Todos VOID -> VOID.
+ * - Con legs HALF_*: eff > 1 -> HALF_WON, eff < 1 -> HALF_LOST, eff = 1 -> VOID.
+ * - Sin halves -> WON.
+ * - Free bet: el stake no se devuelve; el beneficio ganado es stake * (eff - 1).
+ */
+export function settleBet(
+  legs: LegMathInput[],
+  stake: Numeric,
+  isFreeBet = false,
+): SettleBetResult {
+  const stakeValue = toDecimal(stake);
+
+  if (legs.length === 0) {
+    return {
+      status: "PENDING",
+      effectiveOdds: new Decimal(0),
+      payout: new Decimal(0),
+      profit: new Decimal(0),
+    };
+  }
+
+  if (legs.some((leg) => leg.status === "LOST")) {
+    return {
+      status: "LOST",
+      effectiveOdds: new Decimal(0),
+      payout: new Decimal(0),
+      profit: isFreeBet ? new Decimal(0) : roundMoney(stakeValue.negated()),
+    };
+  }
+
+  if (legs.some((leg) => leg.status === "PENDING")) {
+    return {
+      status: "PENDING",
+      effectiveOdds: new Decimal(0),
+      payout: new Decimal(0),
+      profit: new Decimal(0),
+    };
+  }
+
+  const allVoid = legs.every((leg) => leg.status === "VOID");
+  const hasHalves = legs.some(
+    (leg) => leg.status === "HALF_WON" || leg.status === "HALF_LOST",
+  );
+
+  const effectiveOdds = legs.reduce((acc, leg) => {
+    const legOdds = effectiveLegOdds(leg.odds, leg.status);
+    return acc.mul(legOdds ?? 0);
+  }, new Decimal(1));
+
+  let status: SettleBetResult["status"];
+  if (allVoid) {
+    status = "VOID";
+  } else if (hasHalves) {
+    status = effectiveOdds.gt(1)
+      ? "HALF_WON"
+      : effectiveOdds.lt(1)
+        ? "HALF_LOST"
+        : "VOID";
+  } else {
+    status = "WON";
+  }
+
+  const grossPayout = stakeValue.mul(effectiveOdds);
+  const grossProfit = grossPayout.minus(stakeValue);
+
+  let payout = grossPayout;
+  let profit = grossProfit;
+
+  if (isFreeBet) {
+    if (status === "VOID" || effectiveOdds.lt(1)) {
+      payout = new Decimal(0);
+      profit = new Decimal(0);
+    } else {
+      payout = grossProfit;
+      profit = grossProfit;
+    }
+  }
+
+  return {
+    status,
+    effectiveOdds: effectiveOdds.toDecimalPlaces(3, Decimal.ROUND_HALF_UP),
+    payout: roundMoney(payout),
+    profit: roundMoney(profit),
+  };
+}
+
 export type BetLike = {
   status: BetStatus;
   stake: Numeric;
@@ -113,33 +255,83 @@ export function calculateClosingLineValue(
   if (closing.lte(0)) return null;
 
   const value = toDecimal(takenOdds).div(closing).minus(1);
-  const rounded = roundMoney(value);
+  // 4 decimales bastan para mostrar 8,1 % sin perder precisión.
+  const rounded = value.toDecimalPlaces(4, Decimal.ROUND_HALF_UP);
 
   return {
     closingOdds: closing,
     value: rounded,
-    percentage: roundMoney(rounded.mul(100)),
+    percentage: rounded.mul(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP),
   };
 }
 
+export type LegWithClosingOdds = {
+  odds: Numeric;
+  closingOdds?: Numeric | null;
+};
+
 /**
- * Promedio de CLV sobre las apuestas liquidadas que tengan cuota de cierre.
- * Devuelve null cuando ninguna tiene closing odds.
+ * CLV de un boleto: producto de los CLV (ratio tomada/cierre) de sus legs.
+ * Los legs sin closingOdds se omiten del cálculo.
+ */
+export function calculateBetClosingLineValue(
+  legs: LegWithClosingOdds[],
+): ClosingLineValue | null {
+  const legsWithClosing = legs.filter(
+    (leg) => leg.closingOdds !== null && leg.closingOdds !== undefined,
+  );
+
+  if (legsWithClosing.length === 0) return null;
+
+  let combinedRatio = new Decimal(1);
+  let combinedClosingOdds = new Decimal(1);
+
+  for (const leg of legsWithClosing) {
+    const closing = toDecimal(leg.closingOdds as Numeric);
+    if (closing.lte(0)) continue;
+    combinedRatio = combinedRatio.mul(toDecimal(leg.odds).div(closing));
+    combinedClosingOdds = combinedClosingOdds.mul(closing);
+  }
+
+  const value = combinedRatio.minus(1).toDecimalPlaces(4, Decimal.ROUND_HALF_UP);
+
+  return {
+    closingOdds: combinedClosingOdds.toDecimalPlaces(3, Decimal.ROUND_HALF_UP),
+    value,
+    percentage: value.mul(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP),
+  };
+}
+
+export type ClosingLineValueSource = {
+  legs?: LegWithClosingOdds[];
+  odds?: Numeric;
+  closingOdds?: Numeric | null;
+};
+
+/**
+ * Promedio de CLV sobre los boletos que tengan al menos un leg con cuota de
+ * cierre. Devuelve una fracción (0.081 → 8,1 % con `formatPercent`) o null.
  */
 export function calculateAverageClosingLineValue(
-  bets: BetLike[],
+  bets: ClosingLineValueSource[],
 ): Decimal | null {
   const values = bets
-    .map((bet) => calculateClosingLineValue(bet.odds, bet.closingOdds))
+    .map((bet) => {
+      if (bet.legs && bet.legs.length > 0) {
+        return calculateBetClosingLineValue(bet.legs);
+      }
+      if (bet.odds === undefined) return null;
+      return calculateClosingLineValue(bet.odds, bet.closingOdds);
+    })
     .filter((value): value is ClosingLineValue => value !== null);
 
   if (values.length === 0) return null;
 
   const sum = values.reduce(
-    (acc, current) => acc.plus(current.percentage),
+    (acc, current) => acc.plus(current.value),
     new Decimal(0),
   );
-  return roundMoney(sum.div(values.length));
+  return sum.div(values.length).toDecimalPlaces(4, Decimal.ROUND_HALF_UP);
 }
 
 export type BettingStats = {
