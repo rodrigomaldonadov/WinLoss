@@ -61,6 +61,15 @@ export const legStatusSchema = z.enum([
 
 export const betTypeSchema = z.enum(["SINGLE", "COMBINED"]);
 
+export const legMarketKeySchema = z.enum([
+  "CUSTOM",
+  "MATCH_RESULT",
+  "DOUBLE_CHANCE",
+  "DRAW_NO_BET",
+  "TOTAL_GOALS",
+  "BTTS",
+]);
+
 export const legSelectionSchema = z.object({
   market: z
     .string()
@@ -72,6 +81,9 @@ export const legSelectionSchema = z.object({
     .trim()
     .min(1, "Indica tu selección")
     .max(100, "Máximo 100 caracteres"),
+  marketKey: legMarketKeySchema.default("CUSTOM"),
+  line: optionalDecimal("Línea inválida"),
+  pick: optionalText(20),
 });
 
 export const betLegSchema = z
@@ -89,6 +101,10 @@ export const betLegSchema = z
       z.boolean(),
     ),
     odds: requiredOdds,
+    externalProvider: optionalText(30),
+    externalEventId: optionalText(120),
+    homeTeam: optionalText(120),
+    awayTeam: optionalText(120),
     selections: z
       .array(legSelectionSchema)
       .min(1, "Añade al menos una selección")

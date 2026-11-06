@@ -67,6 +67,9 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
             selections: leg.selections.map((selection) => ({
               market: selection.market,
               selection: selection.selection,
+              marketKey: selection.marketKey,
+              line: selection.line,
+              pick: selection.pick,
             })),
           })),
         }

@@ -6,6 +6,7 @@ import { ChevronRight, Globe, LogOut, Palette, Store, Wallet } from "lucide-reac
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { UserProfileSheet } from "@/components/settings/user-profile-sheet";
+import { AutoSettlePreference } from "@/components/settings/auto-settle-preference";
 import { ThemePreference } from "@/components/settings/theme-preference";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions/auth";
@@ -28,6 +29,7 @@ export default async function SettingsPage() {
       email: true,
       currency: true,
       timezone: true,
+      autoSettleMode: true,
       createdAt: true,
     },
   });
@@ -95,6 +97,18 @@ export default async function SettingsPage() {
             <ThemePreference />
           </div>
         </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl border bg-card p-4 shadow-xs">
+        <div>
+          <h2 className="text-sm font-semibold">Liquidación automática</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Solo se liquidan mercados estructurados (1X2, doble oportunidad,
+            DNB, goles y BTTS) cuando el proveedor confirma el resultado final.
+            Los mercados manuales siempre se revisan a mano.
+          </p>
+        </div>
+        <AutoSettlePreference mode={user.autoSettleMode} />
       </section>
 
       <section className="overflow-hidden rounded-xl border bg-card shadow-xs">

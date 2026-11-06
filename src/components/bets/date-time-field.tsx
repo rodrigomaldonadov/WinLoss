@@ -82,7 +82,7 @@ export function DateTimeCompact({
             type="button"
             id={id}
             disabled={disabled}
-            aria-invalid={aria["aria-invalid"]}
+            data-invalid={aria["aria-invalid"] || undefined}
             aria-describedby={aria["aria-describedby"]}
             className={cn(
               "flex h-9 min-w-0 items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-left text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50",

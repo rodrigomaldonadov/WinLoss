@@ -6,6 +6,7 @@ import { ArrowLeft, ReceiptText } from "lucide-react";
 import { auth } from "@/auth";
 import { BetActionsSheet } from "@/components/bets/bet-actions-sheet";
 import { SettleBetSheet } from "@/components/bets/settle-bet-sheet";
+import { VerifyResultsButton } from "@/components/bets/verify-results-button";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
       <PageHeader
         title={bet.eventName}
         description={`${getBetTypeLabel(bet)} · ${formatDateTime(bet.placedAt, timeZone)}`}
+        action={<VerifyResultsButton />}
       />
 
       <section className="rounded-xl border bg-card p-4 shadow-xs">
@@ -160,6 +162,11 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
                           Builder
                         </Badge>
                       )}
+                      {leg.autoSettled && (
+                        <Badge className="px-1.5 py-0 text-[10px]">
+                          Auto
+                        </Badge>
+                      )}
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {leg.sport}
@@ -179,6 +186,9 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
                       {legStatus.label}
                     </Badge>
                     <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {leg.scoreHome !== null && leg.scoreAway !== null
+                        ? `${leg.scoreHome}-${leg.scoreAway} · `
+                        : ""}
                       {formatOdds(leg.odds)}
                     </span>
                   </div>

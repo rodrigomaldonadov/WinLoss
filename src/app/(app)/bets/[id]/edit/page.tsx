@@ -98,16 +98,20 @@ export default async function EditBetPage({ params }: EditBetPageProps) {
             competition: leg.competition,
             eventName: leg.eventName,
             eventDate: leg.eventDate
-              ? toZonedDateTimeInput(
-                  leg.eventDate,
-                  preferences.timezone,
-                ).slice(0, 10)
+              ? toZonedDateTimeInput(leg.eventDate, preferences.timezone)
               : null,
             isBuilder: leg.isBuilder,
             odds: leg.odds,
+            externalProvider: leg.externalProvider,
+            externalEventId: leg.externalEventId,
+            homeTeam: leg.homeTeam,
+            awayTeam: leg.awayTeam,
             selections: leg.selections.map((selection) => ({
               market: selection.market,
               selection: selection.selection,
+              marketKey: selection.marketKey,
+              line: selection.line,
+              pick: selection.pick,
             })),
           })),
         }}

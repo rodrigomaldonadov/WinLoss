@@ -23,6 +23,7 @@ model User {
   passwordHash  String?
   currency      String    @default("PEN")
   timezone      String    @default("America/Lima")
+  autoSettleMode AutoSettleMode @default(SUGGEST)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -168,10 +169,20 @@ model BetLeg {
   closingOdds Decimal?  @db.Decimal(8, 3)
   status      LegStatus @default(PENDING)
 
+  // Evento de proveedor externo (opcional, para auto-liquidación).
+  externalProvider String?
+  externalEventId  String?
+  homeTeam         String?
+  awayTeam         String?
+  scoreHome        Int?
+  scoreAway        Int?
+  autoSettled      Boolean @default(false)
+
   bet        Bet            @relation(fields: [betId], references: [id], onDelete: Cascade)
   selections LegSelection[]
 
   @@index([betId])
+  @@index([externalProvider, externalEventId])
 }
 
 model LegSelection {
@@ -180,6 +191,11 @@ model LegSelection {
   position  Int
   market    String
   selection String
+
+  // Mercado estructurado para auto-liquidación.
+  marketKey LegMarketKey @default(CUSTOM)
+  line      Decimal?     @db.Decimal(6, 2)
+  pick      String?
 
   leg BetLeg @relation(fields: [legId], references: [id], onDelete: Cascade)
 
@@ -208,4 +224,18 @@ enum LegStatus {
   VOID
   HALF_WON
   HALF_LOST
+}
+
+enum LegMarketKey {
+  CUSTOM
+  MATCH_RESULT
+  DOUBLE_CHANCE
+  DRAW_NO_BET
+  TOTAL_GOALS
+  BTTS
+}
+
+enum AutoSettleMode {
+  SUGGEST
+  AUTO
 }

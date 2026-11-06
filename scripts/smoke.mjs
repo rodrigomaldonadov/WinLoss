@@ -110,8 +110,8 @@ try {
   await selectSport(0, "Fútbol");
   await selectCompetition(0, "Liga 1", "Liga 1");
   await page.getByLabel("Evento", { exact: true }).fill("Alianza Lima vs. Universitario");
-  await page.getByLabel("Mercado").fill("Ganador del partido");
-  await page.getByLabel("Selección", { exact: true }).fill("Alianza Lima");
+  await page.getByLabel("Mercado manual", { exact: true }).fill("Ganador del partido");
+  await page.getByLabel("Selección manual", { exact: true }).fill("Alianza Lima");
   await page.getByLabel("Cuota del partido").fill("2.00");
   await page.getByLabel("Stake").fill("10.00");
   await page.getByText("Retorno potencial").waitFor({ timeout: 10_000 });
@@ -300,16 +300,16 @@ try {
 
   await selectSport(0, "Fútbol");
   await page.getByLabel("Evento", { exact: true }).nth(0).fill("PSG vs. Marsella");
-  await page.getByLabel("Mercado").nth(0).fill("Ganador del partido");
-  await page.getByLabel("Selección", { exact: true }).nth(0).fill("PSG");
+  await page.getByLabel("Mercado manual", { exact: true }).nth(0).fill("Ganador del partido");
+  await page.getByLabel("Selección manual", { exact: true }).nth(0).fill("PSG");
   await page.getByLabel("Cuota del partido").nth(0).fill("1.55");
 
   await page.getByRole("button", { name: "Añadir partido" }).click();
 
   await selectSport(1, "Fútbol");
   await page.getByLabel("Evento", { exact: true }).nth(1).fill("Real Madrid vs. Barcelona");
-  await page.getByLabel("Mercado").nth(1).fill("Ambos equipos marcan");
-  await page.getByLabel("Selección", { exact: true }).nth(1).fill("Sí");
+  await page.getByLabel("Mercado manual", { exact: true }).nth(1).fill("Ambos equipos marcan");
+  await page.getByLabel("Selección manual", { exact: true }).nth(1).fill("Sí");
   await page.getByLabel("Cuota del partido").nth(1).fill("1.44");
 
   const totalOdds = await page.getByLabel("Cuota total").inputValue();
@@ -357,10 +357,10 @@ try {
   await page.getByLabel("Evento", { exact: true }).nth(0).fill("PSG vs. Marsella");
   await page.getByRole("switch", { name: "Bet Builder" }).click();
 
-  await page.getByLabel("Mercado").nth(0).fill("Total de goles");
-  await page.getByLabel("Selección", { exact: true }).nth(0).fill("Más de 5.5 goles");
-  await page.getByLabel("Mercado").nth(1).fill("Total de córneres");
-  await page.getByLabel("Selección", { exact: true }).nth(1).fill("Más de 10.5 córneres");
+  await page.getByLabel("Mercado manual", { exact: true }).nth(0).fill("Total de goles");
+  await page.getByLabel("Selección manual", { exact: true }).nth(0).fill("Más de 5.5 goles");
+  await page.getByLabel("Mercado manual", { exact: true }).nth(1).fill("Total de córneres");
+  await page.getByLabel("Selección manual", { exact: true }).nth(1).fill("Más de 10.5 córneres");
   await page.getByLabel("Cuota del builder").fill("3.00");
   await page.getByLabel("Stake").fill("100");
 
@@ -399,6 +399,83 @@ try {
   const afterBuilder = await page.locator("body").innerText();
   if (!afterBuilder.includes("823.70") && !afterBuilder.includes("823,70")) {
     throw new Error(`Bankroll tras builder incorrecto: ${afterBuilder}`);
+  }
+
+  // ── Auto-liquidación (proveedor fake) ───────────────────────────────
+  const dbUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  const dbBankroll = await prisma.bankroll.findFirst({
+    where: { userId: dbUser.id },
+    select: { id: true },
+  });
+  await prisma.bet.create({
+    data: {
+      userId: dbUser.id,
+      bankrollId: dbBankroll.id,
+      sport: "Fútbol",
+      competition: "Liga 1",
+      eventName: "Auto Fake vs Test",
+      market: "Resultado final (1X2)",
+      selection: "Local",
+      odds: 2,
+      stake: 10,
+      status: "PENDING",
+      betType: "SINGLE",
+      legs: {
+        create: [
+          {
+            position: 0,
+            sport: "Fútbol",
+            competition: "Liga 1",
+            eventName: "Auto Fake vs Test",
+            eventDate: new Date(Date.now() - 2 * 60 * 60 * 1000),
+            isBuilder: false,
+            odds: 2,
+            status: "PENDING",
+            externalProvider: "fake",
+            externalEventId: "fake:match-1",
+            homeTeam: "PSG",
+            awayTeam: "Marsella",
+            selections: {
+              create: [
+                {
+                  position: 0,
+                  market: "Resultado final (1X2)",
+                  selection: "Local",
+                  marketKey: "MATCH_RESULT",
+                  pick: "HOME",
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  await page.goto(`${BASE_URL}/bets`, { waitUntil: "networkidle" });
+  await page
+    .getByRole("button", { name: "Verificar resultados" })
+    .first()
+    .click();
+  await page.getByText("Resultados propuestos").waitFor({ timeout: 20_000 });
+  await page.getByRole("button", { name: "Aplicar resultados" }).click();
+
+  const autoArticle = page
+    .locator("article")
+    .filter({ hasText: "Auto Fake vs Test" });
+  await autoArticle
+    .getByText("Ganada", { exact: true })
+    .first()
+    .waitFor({ timeout: 20_000 });
+  const autoText = await autoArticle.innerText();
+  if (!/\+S\/\s?10[.,]00/.test(autoText)) {
+    throw new Error(`Auto-liquidación con importe incorrecto: ${autoText}`);
+  }
+  if (!autoText.includes("2-1") || !autoText.includes("Auto")) {
+    throw new Error(`Falta marcador o etiqueta Auto: ${autoText}`);
   }
 
   await page.goto(`${BASE_URL}/settings`, { waitUntil: "networkidle" });

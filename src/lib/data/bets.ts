@@ -2,7 +2,12 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import Decimal from "decimal.js";
-import type { BetStatus, BetType, LegStatus } from "@prisma/client";
+import type {
+  BetStatus,
+  BetType,
+  LegMarketKey,
+  LegStatus,
+} from "@prisma/client";
 
 import {
   calculateBetClosingLineValue,
@@ -19,6 +24,9 @@ export type LegSelectionItem = {
   position: number;
   market: string;
   selection: string;
+  marketKey: LegMarketKey;
+  line: number | null;
+  pick: string | null;
 };
 
 export type BetLegItem = {
@@ -32,6 +40,13 @@ export type BetLegItem = {
   odds: number;
   closingOdds: number | null;
   status: LegStatus;
+  externalProvider: string | null;
+  externalEventId: string | null;
+  homeTeam: string | null;
+  awayTeam: string | null;
+  scoreHome: number | null;
+  scoreAway: number | null;
+  autoSettled: boolean;
   selections: LegSelectionItem[];
 };
 
@@ -96,11 +111,21 @@ type BetRecord = {
     odds: { toString(): string };
     closingOdds: { toString(): string } | null;
     status: LegStatus;
+    externalProvider: string | null;
+    externalEventId: string | null;
+    homeTeam: string | null;
+    awayTeam: string | null;
+    scoreHome: number | null;
+    scoreAway: number | null;
+    autoSettled: boolean;
     selections: {
       id: string;
       position: number;
       market: string;
       selection: string;
+      marketKey: LegMarketKey;
+      line: { toString(): string } | null;
+      pick: string | null;
     }[];
   }[];
 };
@@ -129,11 +154,21 @@ export function toBetListItem(bet: BetRecord): BetListItem {
     odds: Number(leg.odds),
     closingOdds: leg.closingOdds === null ? null : Number(leg.closingOdds),
     status: leg.status,
+    externalProvider: leg.externalProvider,
+    externalEventId: leg.externalEventId,
+    homeTeam: leg.homeTeam,
+    awayTeam: leg.awayTeam,
+    scoreHome: leg.scoreHome,
+    scoreAway: leg.scoreAway,
+    autoSettled: leg.autoSettled,
     selections: leg.selections.map((selection) => ({
       id: selection.id,
       position: selection.position,
       market: selection.market,
       selection: selection.selection,
+      marketKey: selection.marketKey,
+      line: selection.line === null ? null : Number(selection.line),
+      pick: selection.pick,
     })),
   }));
 

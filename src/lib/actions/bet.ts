@@ -45,6 +45,14 @@ function revalidateBetViews(betId?: string) {
   if (betId) revalidatePath(`/bets/${betId}`);
 }
 
+type RawSelection = {
+  market?: unknown;
+  selection?: unknown;
+  marketKey?: unknown;
+  line?: unknown;
+  pick?: unknown;
+};
+
 type RawLeg = {
   sport?: unknown;
   competition?: unknown;
@@ -52,7 +60,11 @@ type RawLeg = {
   eventDate?: unknown;
   isBuilder?: unknown;
   odds?: unknown;
-  selections: Map<number, { market?: unknown; selection?: unknown }>;
+  externalProvider?: unknown;
+  externalEventId?: unknown;
+  homeTeam?: unknown;
+  awayTeam?: unknown;
+  selections: Map<number, RawSelection>;
 };
 
 /**
@@ -65,16 +77,17 @@ function readBetForm(formData: FormData) {
   const rawLegs = new Map<number, RawLeg>();
 
   for (const [key, value] of formData.entries()) {
-    const selectionMatch = /^legs\.(\d+)\.selections\.(\d+)\.(market|selection)$/.exec(
-      key,
-    );
+    const selectionMatch =
+      /^legs\.(\d+)\.selections\.(\d+)\.(market|selection|marketKey|line|pick)$/.exec(
+        key,
+      );
     if (selectionMatch) {
       const legIndex = Number(selectionMatch[1]);
       const selectionIndex = Number(selectionMatch[2]);
-      const field = selectionMatch[3] as "market" | "selection";
+      const field = selectionMatch[3] as keyof RawSelection;
       const leg: RawLeg =
         rawLegs.get(legIndex) ?? { selections: new Map() };
-      const selection: { market?: unknown; selection?: unknown } =
+      const selection: RawSelection =
         leg.selections.get(selectionIndex) ?? {};
       selection[field] = value;
       leg.selections.set(selectionIndex, selection);
@@ -82,9 +95,10 @@ function readBetForm(formData: FormData) {
       continue;
     }
 
-    const legMatch = /^legs\.(\d+)\.(sport|competition|eventName|eventDate|isBuilder|odds)$/.exec(
-      key,
-    );
+    const legMatch =
+      /^legs\.(\d+)\.(sport|competition|eventName|eventDate|isBuilder|odds|externalProvider|externalEventId|homeTeam|awayTeam)$/.exec(
+        key,
+      );
     if (!legMatch) continue;
 
     const legIndex = Number(legMatch[1]);
@@ -103,11 +117,18 @@ function readBetForm(formData: FormData) {
       eventDate: leg.eventDate,
       isBuilder: leg.isBuilder ?? "false",
       odds: leg.odds,
+      externalProvider: leg.externalProvider,
+      externalEventId: leg.externalEventId,
+      homeTeam: leg.homeTeam,
+      awayTeam: leg.awayTeam,
       selections: [...leg.selections.entries()]
         .sort(([a], [b]) => a - b)
         .map(([, selection]) => ({
           market: selection.market,
           selection: selection.selection,
+          marketKey: selection.marketKey ?? "CUSTOM",
+          line: selection.line,
+          pick: selection.pick,
         })),
     }));
 
@@ -339,12 +360,19 @@ export async function createBet(
               : null,
             isBuilder: leg.isBuilder,
             odds: leg.odds,
+            externalProvider: leg.externalProvider ?? null,
+            externalEventId: leg.externalEventId ?? null,
+            homeTeam: leg.homeTeam ?? null,
+            awayTeam: leg.awayTeam ?? null,
             status: "PENDING" as const,
             selections: {
               create: leg.selections.map((selection, selectionIndex) => ({
                 position: selectionIndex,
                 market: selection.market,
                 selection: selection.selection,
+                marketKey: selection.marketKey,
+                line: selection.line ?? null,
+                pick: selection.pick ?? null,
               })),
             },
           })),
@@ -397,7 +425,17 @@ export async function updateBet(
       isFreeBet: true,
       legs: {
         orderBy: { position: "asc" },
-        select: { status: true, closingOdds: true },
+        select: {
+          status: true,
+          closingOdds: true,
+          externalProvider: true,
+          externalEventId: true,
+          homeTeam: true,
+          awayTeam: true,
+          scoreHome: true,
+          scoreAway: true,
+          autoSettled: true,
+        },
       },
     },
   });
@@ -434,6 +472,15 @@ export async function updateBet(
       : null,
     status: existing.legs[index]?.status ?? ("PENDING" as const),
     closingOdds: existing.legs[index]?.closingOdds ?? null,
+    externalProvider:
+      leg.externalProvider ?? existing.legs[index]?.externalProvider ?? null,
+    externalEventId:
+      leg.externalEventId ?? existing.legs[index]?.externalEventId ?? null,
+    homeTeam: leg.homeTeam ?? existing.legs[index]?.homeTeam ?? null,
+    awayTeam: leg.awayTeam ?? existing.legs[index]?.awayTeam ?? null,
+    scoreHome: existing.legs[index]?.scoreHome ?? null,
+    scoreAway: existing.legs[index]?.scoreAway ?? null,
+    autoSettled: existing.legs[index]?.autoSettled ?? false,
   }));
 
   let status = existing.status;
@@ -496,11 +543,21 @@ export async function updateBet(
             odds: leg.odds,
             closingOdds: leg.closingOdds,
             status: leg.status,
+            externalProvider: leg.externalProvider,
+            externalEventId: leg.externalEventId,
+            homeTeam: leg.homeTeam,
+            awayTeam: leg.awayTeam,
+            scoreHome: leg.scoreHome,
+            scoreAway: leg.scoreAway,
+            autoSettled: leg.autoSettled,
             selections: {
               create: leg.selections.map((selection, selectionIndex) => ({
                 position: selectionIndex,
                 market: selection.market,
                 selection: selection.selection,
+                marketKey: selection.marketKey,
+                line: selection.line ?? null,
+                pick: selection.pick ?? null,
               })),
             },
           })),
@@ -641,6 +698,7 @@ export async function settleBet(
         data: {
           status: leg.status,
           closingOdds: leg.closingOdds,
+          autoSettled: false,
         },
       });
     }

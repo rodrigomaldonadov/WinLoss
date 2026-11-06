@@ -6,6 +6,7 @@ import { Plus, Ticket } from "lucide-react";
 import { auth } from "@/auth";
 import { BetCard } from "@/components/bets/bet-card";
 import { BetsFiltersSheet } from "@/components/bets/bets-filters-sheet";
+import { VerifyResultsButton } from "@/components/bets/verify-results-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -206,7 +207,8 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
             : `${total} apuesta${total === 1 ? "" : "s"} registrada${total === 1 ? "" : "s"}`
         }
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <VerifyResultsButton />
             <Button asChild size="icon" aria-label="Registrar apuesta">
               <Link href="/bets/new">
                 <Plus className="size-5" aria-hidden />

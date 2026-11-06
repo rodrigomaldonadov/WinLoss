@@ -62,7 +62,7 @@ export function SportField({ index }: CatalogFieldProps) {
       <input type="hidden" {...register(sportPath)} />
 
       <Select
-        value={isKnown ? sportValue : isOther ? OTHER_SPORT : undefined}
+        value={sportValue}
         onValueChange={(value) => {
           setValue(sportPath, value, { shouldDirty: true });
           // Al cambiar de deporte, la competición deja de ser válida.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import type { LegMarketKey } from "@prisma/client";
 import {
   FormProvider,
   useFieldArray,
@@ -33,6 +34,8 @@ import {
   SportField,
 } from "@/components/bets/leg-catalog-fields";
 import { DateTimeCompact } from "@/components/bets/date-time-field";
+import { EventSearchSheet } from "@/components/bets/event-search-sheet";
+import type { ApiEvent } from "@/lib/sports-api/types";
 import { createBet, updateBet, type BetFormState } from "@/lib/actions/bet";
 import { MARKETS, SPORTS } from "@/lib/constants";
 import { totalOdds } from "@/lib/bet-math";
@@ -53,7 +56,17 @@ export type BetFormLegDefaults = {
   eventDate?: string | null;
   isBuilder?: boolean;
   odds?: number;
-  selections?: { market: string; selection: string }[];
+  externalProvider?: string | null;
+  externalEventId?: string | null;
+  homeTeam?: string | null;
+  awayTeam?: string | null;
+  selections?: {
+    market: string;
+    selection: string;
+    marketKey?: LegMarketKey;
+    line?: number | null;
+    pick?: string | null;
+  }[];
 };
 
 type BetFormProps = {
@@ -89,6 +102,9 @@ type BetMode = "SINGLE" | "COMBINED";
 type SelectionValues = {
   market: string;
   selection: string;
+  marketKey: LegMarketKey;
+  line: string;
+  pick: string;
 };
 
 type LegValues = {
@@ -98,6 +114,10 @@ type LegValues = {
   eventDate: string;
   isBuilder: boolean;
   odds: string;
+  externalProvider: string;
+  externalEventId: string;
+  homeTeam: string;
+  awayTeam: string;
   selections: SelectionValues[];
 };
 
@@ -111,7 +131,13 @@ function toNumber(value: string): number {
 }
 
 function emptySelection(): SelectionValues {
-  return { market: "", selection: "" };
+  return {
+    market: "",
+    selection: "",
+    marketKey: "CUSTOM",
+    line: "",
+    pick: "",
+  };
 }
 
 function emptyLeg(): LegValues {
@@ -122,6 +148,10 @@ function emptyLeg(): LegValues {
     eventDate: "",
     isBuilder: false,
     odds: "",
+    externalProvider: "",
+    externalEventId: "",
+    homeTeam: "",
+    awayTeam: "",
     selections: [emptySelection()],
   };
 }
@@ -132,6 +162,12 @@ function toLegValues(leg: BetFormLegDefaults): LegValues {
       ? leg.selections.map((selection) => ({
           market: selection.market,
           selection: selection.selection,
+          marketKey: selection.marketKey ?? "CUSTOM",
+          line:
+            selection.line === null || selection.line === undefined
+              ? ""
+              : String(selection.line),
+          pick: selection.pick ?? "",
         }))
       : [emptySelection()];
 
@@ -142,6 +178,10 @@ function toLegValues(leg: BetFormLegDefaults): LegValues {
     eventDate: leg.eventDate ?? "",
     isBuilder: leg.isBuilder ?? false,
     odds: leg.odds !== undefined ? String(leg.odds) : "",
+    externalProvider: leg.externalProvider ?? "",
+    externalEventId: leg.externalEventId ?? "",
+    homeTeam: leg.homeTeam ?? "",
+    awayTeam: leg.awayTeam ?? "",
     selections,
   };
 }
@@ -166,10 +206,17 @@ function buildInitialLegs(defaults?: BetFormDefaults): LegValues[] {
         eventDate: "",
         isBuilder: false,
         odds: defaults?.odds !== undefined ? String(defaults.odds) : "",
+        externalProvider: "",
+        externalEventId: "",
+        homeTeam: "",
+        awayTeam: "",
         selections: [
           {
             market: defaults?.market ?? "",
             selection: defaults?.selection ?? "",
+            marketKey: "CUSTOM",
+            line: "",
+            pick: "",
           },
         ],
       },
@@ -200,6 +247,255 @@ type SelectionsFieldsProps = {
   onRemove: (index: number) => void;
 };
 
+const MARKET_OPTIONS: { value: LegMarketKey; label: string }[] = [
+  { value: "CUSTOM", label: "Otro mercado (manual)" },
+  { value: "MATCH_RESULT", label: "Resultado final (1X2)" },
+  { value: "DOUBLE_CHANCE", label: "Doble oportunidad" },
+  { value: "DRAW_NO_BET", label: "Empate no válido (DNB)" },
+  { value: "TOTAL_GOALS", label: "Total de goles" },
+  { value: "BTTS", label: "Ambos equipos marcan" },
+];
+
+const MARKET_LABELS: Record<LegMarketKey, string> = Object.fromEntries(
+  MARKET_OPTIONS.map((option) => [option.value, option.label]),
+) as Record<LegMarketKey, string>;
+
+const MARKET_PICKS: Record<
+  Exclude<LegMarketKey, "CUSTOM">,
+  { value: string; label: string }[]
+> = {
+  MATCH_RESULT: [
+    { value: "HOME", label: "Local" },
+    { value: "DRAW", label: "Empate" },
+    { value: "AWAY", label: "Visitante" },
+  ],
+  DOUBLE_CHANCE: [
+    { value: "HOME_DRAW", label: "1X" },
+    { value: "HOME_AWAY", label: "12" },
+    { value: "DRAW_AWAY", label: "X2" },
+  ],
+  DRAW_NO_BET: [
+    { value: "HOME", label: "Local" },
+    { value: "AWAY", label: "Visitante" },
+  ],
+  TOTAL_GOALS: [
+    { value: "OVER", label: "Más de" },
+    { value: "UNDER", label: "Menos de" },
+  ],
+  BTTS: [
+    { value: "YES", label: "Sí" },
+    { value: "NO", label: "No" },
+  ],
+};
+
+function pickLabel(marketKey: LegMarketKey, pick: string): string {
+  if (marketKey === "CUSTOM") return "";
+  return (
+    MARKET_PICKS[marketKey as Exclude<LegMarketKey, "CUSTOM">]?.find(
+      (option) => option.value === pick,
+    )?.label ?? pick
+  );
+}
+
+function buildSelectionLabel(
+  marketKey: LegMarketKey,
+  pick: string,
+  line: string,
+): string {
+  if (!pick) return "";
+  const label = pickLabel(marketKey, pick);
+  if (marketKey === "TOTAL_GOALS") {
+    return line ? `${label} ${line}` : `${label} …`;
+  }
+  return label;
+}
+
+type SelectionEditorProps = {
+  legIndex: number;
+  selectionIndex: number;
+  canRemove: boolean;
+  disableRemove: boolean;
+  onRemove: () => void;
+};
+
+function SelectionEditor({
+  legIndex,
+  selectionIndex,
+  canRemove,
+  disableRemove,
+  onRemove,
+}: SelectionEditorProps) {
+  const { register, setValue, control } = useFormContext<BetFormValues>();
+  const base = `legs.${legIndex}.selections.${selectionIndex}`;
+  const path = (field: string) => `${base}.${field}` as FieldPath<BetFormValues>;
+
+  const marketKey =
+    (useWatch({ control, name: path("marketKey") }) as LegMarketKey) ??
+    "CUSTOM";
+  const pick = (useWatch({ control, name: path("pick") }) as string) ?? "";
+  const line = (useWatch({ control, name: path("line") }) as string) ?? "";
+  const isStructured = marketKey !== "CUSTOM";
+  const pickOptions = isStructured
+    ? MARKET_PICKS[marketKey as Exclude<LegMarketKey, "CUSTOM">]
+    : [];
+
+  const changeMarket = (next: LegMarketKey) => {
+    setValue(path("marketKey"), next);
+    setValue(path("line"), "");
+    setValue(path("pick"), "");
+    if (next === "CUSTOM") {
+      setValue(path("market"), "");
+      setValue(path("selection"), "");
+    } else {
+      setValue(path("market"), MARKET_LABELS[next]);
+      setValue(path("selection"), "");
+    }
+  };
+
+  const changePick = (value: string) => {
+    setValue(path("pick"), value);
+    setValue(path("selection"), buildSelectionLabel(marketKey, value, line));
+  };
+
+  const changeLine = (value: string) => {
+    setValue(path("line"), value);
+    if (pick) {
+      setValue(path("selection"), buildSelectionLabel(marketKey, pick, value));
+    }
+  };
+
+  const selectionValue =
+    (useWatch({ control, name: path("selection") }) as string) ?? "";
+
+  return (
+    <div className="space-y-2 rounded-lg border bg-background p-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <Label
+          htmlFor={`leg-${legIndex}-sel-${selectionIndex}-market-key`}
+          className="text-[11px] text-muted-foreground"
+        >
+          Mercado
+        </Label>
+        {canRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground"
+            aria-label={`Eliminar selección ${selectionIndex + 1}`}
+            onClick={onRemove}
+            disabled={disableRemove}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </Button>
+        )}
+      </div>
+
+      <input type="hidden" {...register(path("marketKey"))} />
+      <input type="hidden" {...register(path("pick"))} />
+
+      <Select value={marketKey} onValueChange={changeMarket}>
+        <SelectTrigger
+          id={`leg-${legIndex}-sel-${selectionIndex}-market-key`}
+          className="h-10 w-full"
+          aria-label="Tipo de mercado"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {MARKET_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {isStructured ? (
+        <>
+          <input type="hidden" {...register(path("market"))} />
+          <input type="hidden" {...register(path("selection"))} />
+
+          {marketKey === "TOTAL_GOALS" && (
+            <div className="flex items-end gap-2">
+              <div className="space-y-1">
+                <Label
+                  htmlFor={`leg-${legIndex}-sel-${selectionIndex}-line`}
+                  className="text-[11px] text-muted-foreground"
+                >
+                  Línea
+                </Label>
+                <Input
+                  id={`leg-${legIndex}-sel-${selectionIndex}-line`}
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="2.5"
+                  required
+                  value={line}
+                  onChange={(event) => changeLine(event.target.value)}
+                  className="h-10 w-20 tabular-nums"
+                />
+              </div>
+              <p className="pb-2.5 text-xs text-muted-foreground">
+                goles totales (90 min)
+              </p>
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "grid gap-1.5",
+              pickOptions.length === 3 ? "grid-cols-3" : "grid-cols-2",
+            )}
+          >
+            {pickOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={pick === option.value}
+                onClick={() => changePick(option.value)}
+                className={cn(
+                  "flex h-9 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors",
+                  pick === option.value
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "bg-background text-muted-foreground active:bg-muted",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            {selectionValue
+              ? `Se guardará: ${MARKET_LABELS[marketKey]} · ${selectionValue}`
+              : "Elige una opción para completar la selección."}
+          </p>
+        </>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input
+            aria-label="Mercado manual"
+            placeholder="Ganador del partido"
+            maxLength={80}
+            required
+            className="h-10"
+            {...register(path("market"))}
+          />
+          <Input
+            aria-label="Selección manual"
+            placeholder="Alianza Lima"
+            maxLength={100}
+            required
+            className="h-10"
+            {...register(path("selection"))}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SelectionsFields({
   legIndex,
   isBuilder,
@@ -207,8 +503,6 @@ function SelectionsFields({
   onAppend,
   onRemove,
 }: SelectionsFieldsProps) {
-  const { register } = useFormContext<BetFormValues>();
-
   const visibleFields = isBuilder ? fields : fields.slice(0, 1);
 
   return (
@@ -233,65 +527,14 @@ function SelectionsFields({
       </div>
 
       {visibleFields.map((field, selectionIndex) => (
-        <div
+        <SelectionEditor
           key={field.id}
-          className="grid gap-2 rounded-lg border bg-background p-2.5 sm:grid-cols-[1fr_1fr_auto]"
-        >
-          <div className="space-y-1">
-            <Label
-              htmlFor={`leg-${legIndex}-sel-${selectionIndex}-market`}
-              className="text-[11px] text-muted-foreground"
-            >
-              Mercado
-            </Label>
-            <Input
-              id={`leg-${legIndex}-sel-${selectionIndex}-market`}
-              list="bet-markets"
-              placeholder="Ganador del partido"
-              maxLength={80}
-              required
-              className="h-10"
-              defaultValue={field.market}
-              {...register(
-                `legs.${legIndex}.selections.${selectionIndex}.market` as FieldPath<BetFormValues>,
-              )}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label
-              htmlFor={`leg-${legIndex}-sel-${selectionIndex}-pick`}
-              className="text-[11px] text-muted-foreground"
-            >
-              Selección
-            </Label>
-            <Input
-              id={`leg-${legIndex}-sel-${selectionIndex}-pick`}
-              placeholder="Alianza Lima"
-              maxLength={100}
-              required
-              className="h-10"
-              defaultValue={field.selection}
-              {...register(
-                `legs.${legIndex}.selections.${selectionIndex}.selection` as FieldPath<BetFormValues>,
-              )}
-            />
-          </div>
-
-          {isBuilder && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="mt-5 size-9 text-muted-foreground"
-              aria-label={`Eliminar selección ${selectionIndex + 1}`}
-              onClick={() => onRemove(selectionIndex)}
-              disabled={fields.length <= 2}
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          )}
-        </div>
+          legIndex={legIndex}
+          selectionIndex={selectionIndex}
+          canRemove={isBuilder}
+          disableRemove={fields.length <= 2}
+          onRemove={() => onRemove(selectionIndex)}
+        />
       ))}
 
       {isBuilder && fields.length < 2 && (
@@ -306,6 +549,7 @@ function SelectionsFields({
 type LegFieldsProps = {
   index: number;
   leg: LegValues;
+  timeZone?: string;
   canRemove: boolean;
   onRemove: () => void;
   onStructureChange: () => void;
@@ -314,6 +558,7 @@ type LegFieldsProps = {
 function LegFields({
   index,
   leg,
+  timeZone,
   canRemove,
   onRemove,
   onStructureChange,
@@ -343,6 +588,22 @@ function LegFields({
     onStructureChange();
   };
 
+  const handleEventSelect = (event: ApiEvent) => {
+    const path = (field: string) =>
+      `legs.${index}.${field}` as FieldPath<BetFormValues>;
+    setValue(path("eventName"), `${event.home} vs. ${event.away}`);
+    setValue(path("sport"), event.sport);
+    setValue(path("competition"), event.competition);
+    setValue(
+      path("eventDate"),
+      toZonedDateTimeInput(new Date(event.kickoffUtc), timeZone),
+    );
+    setValue(path("externalProvider"), event.provider);
+    setValue(path("externalEventId"), event.externalId);
+    setValue(path("homeTeam"), event.home);
+    setValue(path("awayTeam"), event.away);
+  };
+
   return (
     <div className="space-y-3 rounded-lg border bg-background p-3">
       <div className="flex items-center justify-between gap-2">
@@ -368,6 +629,22 @@ function LegFields({
         name={`legs.${index}.isBuilder`}
         value={isBuilder ? "true" : "false"}
       />
+      <input
+        type="hidden"
+        {...register(`legs.${index}.externalProvider` as FieldPath<BetFormValues>)}
+      />
+      <input
+        type="hidden"
+        {...register(`legs.${index}.externalEventId` as FieldPath<BetFormValues>)}
+      />
+      <input
+        type="hidden"
+        {...register(`legs.${index}.homeTeam` as FieldPath<BetFormValues>)}
+      />
+      <input
+        type="hidden"
+        {...register(`legs.${index}.awayTeam` as FieldPath<BetFormValues>)}
+      />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <SportField index={index} />
@@ -389,6 +666,19 @@ function LegFields({
             `legs.${index}.eventName` as FieldPath<BetFormValues>,
           )}
         />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] text-muted-foreground">
+            {leg.externalEventId
+              ? `Vinculado a ${leg.externalProvider ?? "proveedor"} · ${leg.homeTeam} vs. ${leg.awayTeam}`
+              : "O busca el partido para auto-liquidarlo."}
+          </p>
+          <EventSearchSheet
+            sport={leg.sport}
+            competition={leg.competition}
+            timeZone={timeZone}
+            onSelect={handleEventSelect}
+          />
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -570,11 +860,18 @@ export function BetForm({
       eventDate: leg.eventDate ? leg.eventDate.slice(0, 10) : "",
       isBuilder: leg.isBuilder,
       odds: String(leg.odds),
+      externalProvider: "",
+      externalEventId: "",
+      homeTeam: "",
+      awayTeam: "",
       selections:
         leg.selections.length > 0
           ? leg.selections.map((selection) => ({
               market: selection.market,
               selection: selection.selection,
+              marketKey: "CUSTOM" as LegMarketKey,
+              line: "",
+              pick: "",
             }))
           : [emptySelection()],
     }));
@@ -815,6 +1112,7 @@ export function BetForm({
                 key={field.id}
                 index={index}
                 leg={watchedLegs[index] ?? initialLegs[index] ?? emptyLeg()}
+                timeZone={timeZone}
                 canRemove={betMode === "COMBINED" && fields.length > 1}
                 onRemove={() => {
                   remove(index);

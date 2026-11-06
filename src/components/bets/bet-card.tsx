@@ -68,6 +68,18 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <Badge className={status.badgeClassName}>{status.label}</Badge>
+          {bet.legs.length === 1 &&
+            bet.legs[0]?.scoreHome !== null &&
+            bet.legs[0]?.scoreAway !== null && (
+              <span className="text-[10px] font-medium tabular-nums text-muted-foreground">
+                {bet.legs[0].scoreHome}-{bet.legs[0].scoreAway}
+              </span>
+            )}
+          {bet.legs.length === 1 && bet.legs[0]?.autoSettled && (
+            <span className="rounded bg-primary/10 px-1 text-[10px] font-semibold text-primary">
+              Auto
+            </span>
+          )}
           {bet.isFreeBet && (
             <span className="text-[10px] font-medium text-primary">Free bet</span>
           )}
@@ -99,10 +111,23 @@ export function BetCard({ bet, timeZone }: BetCardProps) {
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-[11px] font-medium tabular-nums">
+                    {leg.scoreHome !== null && leg.scoreAway !== null
+                      ? `${leg.scoreHome}-${leg.scoreAway} · `
+                      : ""}
                     {formatOdds(leg.odds)}
                   </p>
                   {!pending && (
-                    <p className={cn("text-[10px]", legStatus.textClassName)}>
+                    <p
+                      className={cn(
+                        "flex items-center justify-end gap-1 text-[10px]",
+                        legStatus.textClassName,
+                      )}
+                    >
+                      {leg.autoSettled && (
+                        <span className="rounded bg-primary/10 px-1 font-semibold text-primary">
+                          Auto
+                        </span>
+                      )}
                       {legStatus.label}
                     </p>
                   )}
