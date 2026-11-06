@@ -13,11 +13,32 @@ function percent(share: number): number {
   return Math.round(share * 100);
 }
 
-/** Tarjeta de consenso para un partido próximo. */
+function probabilityLabel(value: number | null): string {
+  return value === null ? "—" : `${percent(value)}%`;
+}
+
+/** Tarjeta de consenso y probabilidad estimada para un partido próximo. */
 export function ConsensusCard({ match, timeZone }: ConsensusCardProps) {
   const primary = match.primary;
   const secondary = match.markets.slice(1, 4);
   const lowSample = primary.total < 3 || match.users < 2;
+  const leaderProbability = primary.leader.probability;
+
+  const components: string[] = [];
+  if (primary.leader.marketProbability !== null) {
+    components.push(
+      `cuota ${probabilityLabel(primary.leader.marketProbability)}`,
+    );
+  }
+  if (
+    primary.leader.historyRate !== null &&
+    primary.leader.historySettled > 0
+  ) {
+    components.push(
+      `histórico ${probabilityLabel(primary.leader.historyRate)} (${primary.leader.historySettled})`,
+    );
+  }
+  components.push(`${primary.total} picks`);
 
   return (
     <article className="min-w-0 rounded-xl border bg-card p-4 shadow-xs">
@@ -54,67 +75,85 @@ export function ConsensusCard({ match, timeZone }: ConsensusCardProps) {
         <p className="mt-1 text-sm">
           <span className="font-semibold">{primary.leader.label}</span>
           <span className="text-muted-foreground">
-            {" "}
-            · {percent(primary.leader.share)}% de {primary.total} picks
+            {leaderProbability !== null
+              ? ` · ${percent(leaderProbability)}% prob. estimada`
+              : ` · ${primary.leader.count} de ${primary.total} picks`}
           </span>
         </p>
 
-        <ul className="mt-2 space-y-1.5">
-          {primary.options.slice(0, 4).map((option) => {
-            const active = option.key === primary.leader.key;
-            return (
-              <li key={option.key} className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "w-24 shrink-0 truncate text-[11px]",
-                    active
-                      ? "font-semibold text-foreground"
-                      : "text-muted-foreground",
-                  )}
-                  title={option.label}
-                >
-                  {option.label}
-                </span>
-                <span
-                  className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
-                  aria-hidden
-                >
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
+          {components.join(" · ")}
+        </p>
+
+        {primary.hasDistribution ? (
+          <ul className="mt-2 space-y-1.5">
+            {primary.options.slice(0, 4).map((option) => {
+              const active = option.key === primary.leader.key;
+              const value = option.probability ?? option.share;
+              return (
+                <li key={option.key} className="flex items-center gap-2">
                   <span
                     className={cn(
-                      "block h-full rounded-full",
-                      active ? "bg-primary" : "bg-primary/35",
+                      "w-24 shrink-0 truncate text-[11px]",
+                      active
+                        ? "font-semibold text-foreground"
+                        : "text-muted-foreground",
                     )}
-                    style={{ width: `${Math.max(4, percent(option.share))}%` }}
-                  />
-                </span>
-                <span className="w-9 shrink-0 text-right text-[11px] font-medium tabular-nums">
-                  {percent(option.share)}%
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+                    title={option.label}
+                  >
+                    {option.label}
+                  </span>
+                  <span
+                    className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
+                    aria-hidden
+                  >
+                    <span
+                      className={cn(
+                        "block h-full rounded-full",
+                        active ? "bg-primary" : "bg-primary/35",
+                      )}
+                      style={{ width: `${Math.max(4, percent(value))}%` }}
+                    />
+                  </span>
+                  <span className="w-9 shrink-0 text-right text-[11px] font-medium tabular-nums">
+                    {percent(value)}%
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Solo hay picks para una opción; la probabilidad no se compara con
+            otras opciones del mercado.
+          </p>
+        )}
       </div>
 
       {secondary.length > 0 && (
         <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
-          {secondary.map((market) => (
-            <li
-              key={market.key}
-              className="min-w-0 rounded-lg border bg-background px-2.5 py-2"
-            >
-              <p className="truncate text-[10px] text-muted-foreground">
-                {market.label}
-              </p>
-              <p className="mt-0.5 truncate text-xs font-medium">
-                {market.leader.label} · {percent(market.leader.share)}%
-              </p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                {market.total} pick{market.total === 1 ? "" : "s"}
-                {market.total < 3 ? " · muestra baja" : ""}
-              </p>
-            </li>
-          ))}
+          {secondary.map((market) => {
+            const hasProbability = market.leader.probability !== null;
+            const value = market.leader.probability ?? market.leader.share;
+            return (
+              <li
+                key={market.key}
+                className="min-w-0 rounded-lg border bg-background px-2.5 py-2"
+              >
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {market.label}
+                </p>
+                <p className="mt-0.5 truncate text-xs font-medium">
+                  {market.leader.label} · {percent(value)}%
+                  {hasProbability ? " prob." : " de picks"}
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  {market.total} pick{market.total === 1 ? "" : "s"}
+                  {market.total < 3 ? " · muestra baja" : ""}
+                </p>
+              </li>
+            );
+          })}
         </ul>
       )}
 

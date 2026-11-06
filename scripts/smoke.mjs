@@ -560,7 +560,7 @@ PEN 132.00`);
   });
   if (
     !(await page
-      .getByText("Conteo anónimo de los picks registrados")
+      .getByText("Probabilidad estimada combinando la cuota")
       .isVisible())
   ) {
     throw new Error("La página de consenso no muestra el aviso de privacidad");

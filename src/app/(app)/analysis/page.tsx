@@ -5,6 +5,7 @@ import { BarChart3, Info, Plus, Users } from "lucide-react";
 
 import { auth } from "@/auth";
 import { ConsensusCard } from "@/components/analysis/consensus-card";
+import { HistoryStats } from "@/components/analysis/history-stats";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -79,7 +80,7 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
       <PageHeader
         className="pb-0"
         title="Consenso"
-        description={`Lo más jugado para los próximos ${days} días.`}
+        description={`Probabilidades estimadas para los próximos ${days} días.`}
         action={
           <Button asChild size="icon" aria-label="Registrar pick">
             <Link href="/bets/new">
@@ -92,8 +93,9 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
       <div className="flex items-start gap-2 rounded-xl border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
         <p>
-          Conteo anónimo de los picks registrados para partidos próximos. No es
-          una predicción garantizada ni una cuota.
+          Probabilidad estimada combinando la cuota media de los picks, el
+          histórico de resultados y el consenso. Datos agregados y anónimos; no
+          es una predicción garantizada.
         </p>
       </div>
 
@@ -178,6 +180,8 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
         </div>
       </section>
 
+      <HistoryStats stats={consensus.history} scope={scope} />
+
       {!hasData ? (
         <EmptyState
           icon={BarChart3}
@@ -213,9 +217,37 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
         </p>
       )}
 
+      <details className="rounded-xl border bg-card p-4 text-xs shadow-xs">
+        <summary className="cursor-pointer font-medium">
+          Cómo se calcula la probabilidad
+        </summary>
+        <ul className="mt-2 list-inside list-disc space-y-1 text-muted-foreground">
+          <li>
+            <strong className="text-foreground">Cuota media:</strong>{" "}
+            probabilidad implícita (1 / cuota) de las cuotas registradas en los
+            picks, normalizada dentro del mercado.
+          </li>
+          <li>
+            <strong className="text-foreground">Histórico:</strong> tasa de
+            acierto por tipo de selección (local/empate/visitante, línea,
+            etc.), suavizada con un prior bayesiano (k = 5) para no sobreactuar
+            con muestras pequeñas.
+          </li>
+          <li>
+            <strong className="text-foreground">Consenso:</strong> porcentaje de
+            picks de los usuarios para esa opción.
+          </li>
+          <li>
+            Los pesos crecen con el tamaño de muestra; el histórico solo usa
+            legs simples liquidados. Las cuotas son las registradas en la app,
+            no un feed externo en vivo.
+          </li>
+        </ul>
+      </details>
+
       <p className="pb-2 text-center text-[10px] text-muted-foreground">
-        Los porcentajes indican cuántos picks eligen cada opción, no la
-        probabilidad real del resultado.
+        Las probabilidades son estimaciones estadísticas, no una garantía del
+        resultado.
       </p>
     </div>
   );

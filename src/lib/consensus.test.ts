@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   aggregateConsensus,
+  type ConsensusHistoryLegInput,
   type ConsensusLegInput,
 } from "./consensus";
 
@@ -23,6 +24,29 @@ function leg(
     ...overrides,
   };
 }
+
+function historyLeg(
+  status: ConsensusHistoryLegInput["status"],
+  selection: ConsensusHistoryLegInput["selections"][number],
+  odds = 1.8,
+  isBuilder = false,
+): ConsensusHistoryLegInput {
+  return {
+    odds,
+    isBuilder,
+    status,
+    selections: [selection],
+  };
+}
+
+const homeSelection: ConsensusLegInput["selections"][number] = {
+  market: "Resultado final (1X2)",
+  selection: "Alianza Lima",
+  marketKey: "MATCH_RESULT",
+  line: null,
+  pick: "HOME",
+  subject: null,
+};
 
 describe("aggregateConsensus", () => {
   it("agrupa picks del mismo partido y calcula consenso", () => {
@@ -275,5 +299,189 @@ describe("aggregateConsensus", () => {
 
     expect(JSON.stringify(result)).not.toContain("secreto");
     expect(result.matches[0]?.users).toBe(1);
+  });
+});
+
+describe("modelo de probabilidad", () => {
+  const eventName = "Alianza Lima vs Universitario";
+  const drawSelection: ConsensusLegInput["selections"][number] = {
+    market: "Resultado final (1X2)",
+    selection: "Empate",
+    marketKey: "MATCH_RESULT",
+    line: null,
+    pick: "DRAW",
+    subject: null,
+  };
+  const awaySelection: ConsensusLegInput["selections"][number] = {
+    market: "Resultado final (1X2)",
+    selection: "Universitario",
+    marketKey: "MATCH_RESULT",
+    line: null,
+    pick: "AWAY",
+    subject: null,
+  };
+
+  it("normaliza la probabilidad implícita de las cuotas", () => {
+    const result = aggregateConsensus(
+      [
+        leg({
+          userId: "u1",
+          eventName,
+          odds: 2,
+          selections: [homeSelection],
+        }),
+        leg({
+          userId: "u2",
+          eventName,
+          odds: 4,
+          selections: [drawSelection],
+        }),
+        leg({
+          userId: "u3",
+          eventName,
+          odds: 4,
+          selections: [awaySelection],
+        }),
+      ],
+      { now: NOW, days: 7 },
+    );
+
+    const primary = result.matches[0]!.primary;
+    expect(primary.hasDistribution).toBe(true);
+    const sum = primary.options.reduce(
+      (total, option) => total + (option.probability ?? 0),
+      0,
+    );
+    expect(sum).toBeCloseTo(1, 3);
+
+    const home = primary.options.find((option) => option.key === "HOME");
+    expect(home?.marketProbability).toBeCloseTo(0.5, 2);
+    expect(home?.probability).toBeGreaterThan(0.45);
+  });
+
+  it("mejora la probabilidad cuando el histórico respalda la opción", () => {
+    const pending = [
+      leg({ userId: "u1", eventName, odds: 2, selections: [homeSelection] }),
+      leg({ userId: "u2", eventName, odds: 2, selections: [homeSelection] }),
+      leg({ userId: "u3", eventName, odds: 2, selections: [homeSelection] }),
+      leg({ userId: "u4", eventName, odds: 2, selections: [drawSelection] }),
+    ];
+
+    const withoutHistory = aggregateConsensus(pending, {
+      now: NOW,
+      days: 7,
+    });
+    const history = [
+      ...Array.from({ length: 10 }, () =>
+        historyLeg("WON", homeSelection, 2),
+      ),
+      ...Array.from({ length: 2 }, () =>
+        historyLeg("LOST", homeSelection, 2),
+      ),
+    ];
+    const withHistory = aggregateConsensus(pending, {
+      now: NOW,
+      days: 7,
+      history,
+    });
+
+    const before = withoutHistory.matches[0]?.primary.options.find(
+      (option) => option.key === "HOME",
+    );
+    const after = withHistory.matches[0]?.primary.options.find(
+      (option) => option.key === "HOME",
+    );
+
+    expect(after?.historySettled).toBe(12);
+    expect(after?.historyRate).toBeCloseTo(10 / 12, 2);
+    expect(after!.probability!).toBeGreaterThan(before!.probability!);
+    expect(withHistory.history[0]).toMatchObject({
+      marketLabel: "Resultado final",
+      optionLabel: "Local",
+      wins: 10,
+      settled: 12,
+    });
+  });
+
+  it("excluye builders del histórico por selección", () => {
+    const result = aggregateConsensus([], {
+      now: NOW,
+      days: 7,
+      history: [historyLeg("WON", homeSelection, 1.8, true)],
+    });
+
+    expect(result.history).toEqual([]);
+  });
+
+  it("cuenta media ganada como 0.5 en el histórico", () => {
+    const result = aggregateConsensus([], {
+      now: NOW,
+      days: 7,
+      history: [
+        historyLeg("HALF_WON", homeSelection, 2),
+        historyLeg("LOST", homeSelection, 2),
+      ],
+    });
+
+    expect(result.history[0]).toMatchObject({
+      wins: 0.5,
+      settled: 2,
+      rate: 0.25,
+    });
+  });
+
+  it("no inventa probabilidad si no hay cuota ni histórico", () => {
+    const result = aggregateConsensus(
+      [
+        leg({
+          userId: "u1",
+          eventName,
+          odds: 0,
+          selections: [
+            {
+              market: "Total de goles",
+              selection: "Más de 2.5",
+              marketKey: "TOTAL_GOALS",
+              line: 2.5,
+              pick: "OVER",
+              subject: null,
+            },
+          ],
+        }),
+      ],
+      { now: NOW, days: 7 },
+    );
+
+    const primary = result.matches[0]!.primary;
+    expect(primary.hasDistribution).toBe(false);
+    expect(primary.leader.probability).toBeNull();
+  });
+
+  it("estima probabilidad en un mercado de una sola opción si hay cuota", () => {
+    const result = aggregateConsensus(
+      [
+        leg({
+          userId: "u1",
+          eventName,
+          odds: 1.9,
+          selections: [
+            {
+              market: "Total de goles",
+              selection: "Más de 2.5",
+              marketKey: "TOTAL_GOALS",
+              line: 2.5,
+              pick: "OVER",
+              subject: null,
+            },
+          ],
+        }),
+      ],
+      { now: NOW, days: 7 },
+    );
+
+    const primary = result.matches[0]!.primary;
+    expect(primary.hasDistribution).toBe(false);
+    expect(primary.leader.probability).not.toBeNull();
+    expect(primary.leader.probability!).toBeGreaterThan(0.4);
   });
 });

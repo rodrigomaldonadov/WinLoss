@@ -216,7 +216,7 @@ export default async function DashboardPage() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold">Consenso de picks</p>
                 <p className="truncate text-xs text-muted-foreground">
-                  Mira qué se está jugando en los próximos partidos.
+                  Probabilidades estimadas para los próximos partidos.
                 </p>
               </div>
             </div>
