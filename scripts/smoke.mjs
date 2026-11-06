@@ -96,10 +96,10 @@ try {
   await page.getByRole("option", { name: "Betsson" }).click();
   await page.getByLabel("Deporte").fill("Fútbol");
   await page.getByLabel("Competición").fill("Liga 1");
-  await page.getByLabel("Evento").fill("Alianza Lima vs. Universitario");
+  await page.getByLabel("Evento", { exact: true }).fill("Alianza Lima vs. Universitario");
   await page.getByLabel("Mercado").fill("Ganador del partido");
   await page.getByLabel("Selección").fill("Alianza Lima");
-  await page.getByLabel("Cuota").fill("2.00");
+  await page.getByLabel("Cuota del partido").fill("2.00");
   await page.getByLabel("Stake").fill("10.00");
   await page.getByText("Retorno potencial").waitFor({ timeout: 10_000 });
   await page.screenshot({
@@ -116,10 +116,8 @@ try {
 
   // Liquidación como ganada
   await page.getByRole("button", { name: "Liquidar" }).click();
-  await page
-    .getByRole("button", { name: "Ganada", exact: true })
-    .click();
-  await page.locator("#settle-closing-odds").fill("1.85");
+  await page.getByRole("button", { name: "Todo ganado" }).click();
+  await page.locator("#settle-closing-0").fill("1.85");
   await page.getByRole("button", { name: "Confirmar resultado" }).click();
 
   const betArticle = page
@@ -135,6 +133,9 @@ try {
   await betArticle.getByText("CLV", { exact: true }).first().waitFor({
     timeout: 15_000,
   });
+  if (!betText.includes("8.1")) {
+    throw new Error(`CLV esperado 8.1% no visible: ${betText}`);
+  }
   await page.screenshot({
     path: "artifacts/07-bets-mobile.png",
     fullPage: false,
@@ -149,6 +150,13 @@ try {
   ) {
     throw new Error(`Bankroll actual no recalculado: ${dashboardText}`);
   }
+  if (!dashboardText.includes("+8.1%")) {
+    throw new Error(`CLV del dashboard incorrecto: ${dashboardText}`);
+  }
+  await page
+    .locator('section:has(h2:text("Análisis")) svg.recharts-surface')
+    .first()
+    .waitFor({ timeout: 15_000 });
   await page.screenshot({
     path: "artifacts/08-dashboard-data-mobile.png",
     fullPage: false,
@@ -169,7 +177,7 @@ try {
   await page.getByRole("link", { name: /Duplicar/ }).click();
   await page.waitForURL(/\/bets\/new\?copy=/, { timeout: 15_000 });
 
-  if (!(await page.getByLabel("Evento").inputValue()).includes("Alianza")) {
+  if (!(await page.getByLabel("Evento", { exact: true }).inputValue()).includes("Alianza")) {
     throw new Error("Duplicar no prellenó el evento");
   }
   if ((await page.getByLabel("Stake").inputValue()) !== "") {
@@ -271,6 +279,108 @@ try {
   const restored = await page.locator("body").innerText();
   if (!restored.includes("500.50") && !restored.includes("500,50")) {
     throw new Error(`Bankroll no restaurado al borrar: ${restored}`);
+  }
+
+  // ── Múltiple: 1.55 x 1.44 con stake 100 → payout 223.20 ──────────────
+  await page.goto(`${BASE_URL}/bets/new`, { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "Múltiple" }).click();
+
+  await page.getByLabel("Deporte").nth(0).fill("Fútbol");
+  await page.getByLabel("Evento", { exact: true }).nth(0).fill("PSG vs. Marsella");
+  await page.getByLabel("Mercado").nth(0).fill("Ganador del partido");
+  await page.getByLabel("Selección").nth(0).fill("PSG");
+  await page.getByLabel("Cuota del partido").nth(0).fill("1.55");
+
+  await page.getByRole("button", { name: "Añadir partido" }).click();
+
+  await page.getByLabel("Deporte").nth(1).fill("Fútbol");
+  await page.getByLabel("Evento", { exact: true }).nth(1).fill("Real Madrid vs. Barcelona");
+  await page.getByLabel("Mercado").nth(1).fill("Ambos equipos marcan");
+  await page.getByLabel("Selección").nth(1).fill("Sí");
+  await page.getByLabel("Cuota del partido").nth(1).fill("1.44");
+
+  const totalOdds = await page.getByLabel("Cuota total").inputValue();
+  if (totalOdds !== "2.232") {
+    throw new Error(`Cuota total del múltiple incorrecta: ${totalOdds}`);
+  }
+
+  await page.getByLabel("Stake").fill("100");
+  await page.getByRole("button", { name: "Registrar apuesta" }).click();
+  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+
+  const multipleArticle = page
+    .locator("article")
+    .filter({ hasText: "PSG vs. Marsella" })
+    .filter({ hasText: "Múltiple (2)" });
+  await multipleArticle.waitFor({ timeout: 15_000 });
+  const multiplePendingText = await multipleArticle.innerText();
+  if (!multiplePendingText.includes("223.20")) {
+    throw new Error(`Retorno del múltiple incorrecto: ${multiplePendingText}`);
+  }
+
+  await multipleArticle.getByRole("button", { name: "Liquidar" }).click();
+  await page.getByRole("button", { name: "Todo ganado" }).click();
+  await page.locator("#settle-closing-0").fill("1.80");
+  await page.locator("#settle-closing-1").fill("1.50");
+  await page.getByRole("button", { name: "Confirmar resultado" }).click();
+
+  await multipleArticle.getByText("Ganada", { exact: true }).waitFor({
+    timeout: 15_000,
+  });
+  const multipleSettledText = await multipleArticle.innerText();
+  if (!/\+S\/\s?123[.,]20/.test(multipleSettledText)) {
+    throw new Error(`Beneficio del múltiple incorrecto: ${multipleSettledText}`);
+  }
+
+  await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle" });
+  const afterMultiple = await page.locator("body").innerText();
+  if (!afterMultiple.includes("623.70") && !afterMultiple.includes("623,70")) {
+    throw new Error(`Bankroll tras múltiple incorrecto: ${afterMultiple}`);
+  }
+
+  // ── Bet Builder: cuota manual 3.00 con stake 100 → payout 300.00 ──────
+  await page.goto(`${BASE_URL}/bets/new`, { waitUntil: "networkidle" });
+  await page.getByLabel("Deporte").nth(0).fill("Fútbol");
+  await page.getByLabel("Evento", { exact: true }).nth(0).fill("PSG vs. Marsella");
+  await page.getByRole("switch", { name: "Bet Builder" }).click();
+
+  await page.getByLabel("Mercado").nth(0).fill("Total de goles");
+  await page.getByLabel("Selección").nth(0).fill("Más de 5.5 goles");
+  await page.getByLabel("Mercado").nth(1).fill("Total de córneres");
+  await page.getByLabel("Selección").nth(1).fill("Más de 10.5 córneres");
+  await page.getByLabel("Cuota del builder").fill("3.00");
+  await page.getByLabel("Stake").fill("100");
+
+  await page.getByRole("button", { name: "Registrar apuesta" }).click();
+  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+
+  const builderArticle = page
+    .locator("article")
+    .filter({ hasText: "Builder" })
+    .filter({ hasText: "PSG vs. Marsella" })
+    .filter({ hasText: "Pendiente" });
+  await builderArticle.waitFor({ timeout: 15_000 });
+  const builderPendingText = await builderArticle.innerText();
+  if (!builderPendingText.includes("300.00")) {
+    throw new Error(`Retorno del builder incorrecto: ${builderPendingText}`);
+  }
+
+  await builderArticle.getByRole("button", { name: "Liquidar" }).click();
+  await page.getByRole("button", { name: "Todo ganado" }).click();
+  await page.getByRole("button", { name: "Confirmar resultado" }).click();
+
+  await builderArticle.getByText("Ganada", { exact: true }).waitFor({
+    timeout: 15_000,
+  });
+  const builderSettledText = await builderArticle.innerText();
+  if (!/\+S\/\s?200[.,]00/.test(builderSettledText)) {
+    throw new Error(`Beneficio del builder incorrecto: ${builderSettledText}`);
+  }
+
+  await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle" });
+  const afterBuilder = await page.locator("body").innerText();
+  if (!afterBuilder.includes("823.70") && !afterBuilder.includes("823,70")) {
+    throw new Error(`Bankroll tras builder incorrecto: ${afterBuilder}`);
   }
 
   await page.goto(`${BASE_URL}/settings`, { waitUntil: "networkidle" });

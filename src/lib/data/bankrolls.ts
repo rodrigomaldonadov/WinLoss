@@ -135,7 +135,7 @@ export async function getBankrollHistory(
 
   const sortedDays = Array.from(dailyBankrolls.keys()).sort();
   for (const day of sortedDays) {
-    const { profit, stake } = dailyBankrolls.get(day)!;
+    const { profit } = dailyBankrolls.get(day)!;
     // Para el gráfico mostramos: inicial + profit acumulado (sin descuentar stake pendiente aún)
     runningBankroll = Number(initialBankroll) + profit;
     result.push({ date: day, bankroll: Math.max(0, runningBankroll) });

@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { getBetTypeLabel } from "@/lib/bet-display";
 import { prisma } from "@/lib/prisma";
 
 const CSV_HEADERS = [
   "fecha",
-  "deporte",
-  "evento",
-  "mercado",
-  "seleccion",
+  "tipo",
+  "legs",
+  "selecciones",
   "cuota",
   "stake",
   "moneda",
   "casa",
   "estado",
   "beneficio",
-  "closing_odds",
+  "external_id",
 ];
 
 function escapeCsvValue(value: unknown): string {
@@ -42,25 +42,41 @@ export async function GET() {
     include: {
       bankroll: { select: { currency: true } },
       bookmaker: { select: { name: true } },
+      legs: {
+        orderBy: { position: "asc" },
+        include: {
+          selections: { orderBy: { position: "asc" } },
+        },
+      },
     },
   });
 
   const rows = [CSV_HEADERS.join(",")];
   for (const bet of bets) {
+    const selectionsSummary = bet.legs
+      .map((leg) => {
+        const selections = leg.selections
+          .map(
+            (selection) => `${selection.market} - ${selection.selection}`,
+          )
+          .join(", ");
+        return `${leg.eventName}: ${selections}`;
+      })
+      .join(" | ");
+
     rows.push(
       toCsvRow([
         bet.placedAt.toISOString(),
-        bet.sport,
-        bet.eventName,
-        bet.market,
-        bet.selection,
+        getBetTypeLabel(bet),
+        bet.legs.length,
+        selectionsSummary,
         Number(bet.odds).toFixed(3),
         Number(bet.stake).toFixed(2),
         bet.bankroll?.currency ?? "",
         bet.bookmaker?.name ?? "",
         bet.status,
         bet.profit === null ? "" : bet.profit.toNumber().toFixed(2),
-        bet.closingOdds === null ? "" : bet.closingOdds.toNumber().toFixed(3),
+        bet.externalId ?? "",
       ]),
     );
   }

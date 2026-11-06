@@ -31,6 +31,7 @@ import {
 import { createBet, updateBet, type BetFormState } from "@/lib/actions/bet";
 import { MARKETS, SPORTS } from "@/lib/constants";
 import { totalOdds } from "@/lib/bet-math";
+import { toZonedDateTimeInput } from "@/lib/date";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import type { BankrollSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -510,6 +511,12 @@ export function BetForm({
     defaults?.stake !== undefined ? String(defaults.stake) : "",
   );
   const [isFreeBet, setIsFreeBet] = useState(defaults?.isFreeBet ?? false);
+  const [externalIdValue, setExternalIdValue] = useState(
+    defaults?.externalId ?? "",
+  );
+  const [placedAtValue, setPlacedAtValue] = useState(
+    defaults?.placedAt ?? defaultPlacedAt,
+  );
   const [oddsOverride, setOddsOverride] = useState(
     defaults?.odds !== undefined ? String(defaults.odds) : "",
   );
@@ -589,6 +596,13 @@ export function BetForm({
     setBetMode(legs.length > 1 ? "COMBINED" : "SINGLE");
     setStake(String(data.stake));
     setIsFreeBet(Boolean(data.isFreeBet));
+    if (data.externalId) setExternalIdValue(data.externalId);
+    if (data.placedAt) {
+      const placedAt = new Date(data.placedAt);
+      if (!Number.isNaN(placedAt.getTime())) {
+        setPlacedAtValue(toZonedDateTimeInput(placedAt));
+      }
+    }
     setManualOdds(false);
     setOddsOverride("");
   };
@@ -718,7 +732,8 @@ export function BetForm({
                 id="bet-date"
                 name="placedAt"
                 type="datetime-local"
-                defaultValue={defaults?.placedAt ?? defaultPlacedAt}
+                value={placedAtValue}
+                onChange={(event) => setPlacedAtValue(event.target.value)}
                 required
                 className="h-12"
                 aria-invalid={Boolean(errors?.placedAt)}
@@ -736,7 +751,8 @@ export function BetForm({
                 name="externalId"
                 placeholder="Opcional"
                 maxLength={80}
-                defaultValue={defaults?.externalId ?? ""}
+                value={externalIdValue}
+                onChange={(event) => setExternalIdValue(event.target.value)}
                 className="h-12"
                 aria-invalid={Boolean(errors?.externalId)}
                 aria-describedby={

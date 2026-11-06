@@ -1,102 +1,113 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
+import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-type OCRResult = {
-  success: true;
-  data: {
-    sport: string;
-    market: string;
-    odds: number;
-    stake: number;
-    isFreeBet: boolean;
-  };
+export type OCRTicketSelection = {
+  market: string;
+  selection: string;
+};
+
+export type OCRTicketLeg = {
+  sport: string;
+  eventName: string;
+  eventDate: string | null;
+  isBuilder: boolean;
+  odds: number;
+  selections: OCRTicketSelection[];
+};
+
+export type OCRTicketData = {
+  externalId?: string | null;
+  placedAt?: string | null;
+  stake: number;
+  isFreeBet: boolean;
+  legs: OCRTicketLeg[];
 };
 
 type NewBetOCRButtonProps = {
-  /** Callback opcional que recibe los datos OCR para poblar el formulario */
-  onOCRData?: (data: OCRResult["data"]) => void;
+  onDetected: (data: OCRTicketData) => void;
+  disabled?: boolean;
 };
 
 /**
- * Botón "📷 Escanear Boleto" que abre el selector de archivos nativo,
- * llama al Route Handler /api/ocr/ticket (mock de IA) y, si tiene éxito,
- * guarda los datos en localStorage y ejecuta el callback opcional.
+ * Botón "Escanear boleto": abre cámara/galería, envía la imagen a
+ * /api/ocr/ticket y devuelve los datos detectados al formulario.
  */
-export function NewBetOCRButton({ onOCRData }: NewBetOCRButtonProps = {}) {
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrResult, setOcrResult] = useState<OCRResult | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export function NewBetOCRButton({ onDetected, disabled }: NewBetOCRButtonProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFile = async (file: File | null | undefined) => {
     if (!file) return;
 
-    if (!file.type?.startsWith("image/")) {
-      toast.error("El archivo debe ser una imagen");
+    if (!file.type.startsWith("image/")) {
+      toast.error("El archivo debe ser una imagen.");
       return;
     }
 
-    setOcrLoading(true);
-    setOcrResult(null);
-    // Resetear input para permitir selecciones posteriores
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
+    setLoading(true);
+    try {
+      const body = new FormData();
+      body.append("ticketImage", file);
 
-  const processOCR = async () => {
-    // Si ya tenemos un resultado previo en localStorage, usarlo
-    const stored = localStorage.getItem("winloss_ocr_last_result");
-    const storedData = stored ? JSON.parse(stored) : null;
+      const response = await fetch("/api/ocr/ticket", {
+        method: "POST",
+        body,
+      });
+      const json = (await response.json()) as
+        | { success: true; data: OCRTicketData }
+        | { success: false; error?: string };
 
-    if (storedData && !ocrLoading) {
-      setOcrResult(storedData);
-      if (onOCRData) {
-        onOCRData(storedData.data);
+      if (!response.ok || !json.success) {
+        throw new Error(
+          !json.success && json.error
+            ? json.error
+            : "No pudimos leer el boleto.",
+        );
       }
-      toast.success("Datos OCR cargados del almacenamiento");
-      return;
-    }
 
-    // Si hay un archivo seleccionado, procesarlo
-    // Nota: el input file es gestionado por el parent mediante el ref
-    // Este botón solo dispara el flujo; el input file es externo
-    toast.info("Selecciona una imagen de boleto para escanear");
+      onDetected(json.data);
+      toast.success("Boleto escaneado. Revisa los datos antes de guardar.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No pudimos procesar el boleto. Inténtalo de nuevo.";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        onChange={(event) => void handleFile(event.target.files?.[0])}
+      />
       <Button
+        type="button"
         variant="outline"
-        size="sm"
-        onClick={processOCR}
-        className="h-10 w-24 gap-2"
-        disabled={ocrLoading}
+        className="h-11 w-full gap-2 sm:w-auto"
+        onClick={() => inputRef.current?.click()}
+        disabled={loading || disabled}
       >
-        {ocrLoading ? (
-          <Sparkles className="size-4 animate-spin" aria-hidden />
+        {loading ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden />
         ) : (
-          <svg
-            className="size-4"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden
-          >
-            <path d="M12 2L2 7h20l-8 5-8-5zM2 17h20l-8 5-8-5z" />
-          </svg>
+          <Camera className="size-4" aria-hidden />
         )}
-        <span className="sr-only">{ocrLoading ? "Analizando..." : "📷 Escanear boleto"}</span>
+        {loading ? "Analizando boleto…" : "Escanear boleto"}
       </Button>
-
-      {/* Input file oculto que dispara el selector nativo (ref desde el parent) */}
-      {/* El ref se pasa desde el parent para evitar problemas de hydration */}
-      {/* El input está hidden y es activado por el button */}
-      {/* onChange se maneja desde el parent para setear el file seleccionado */}
-    </div>
+    </>
   );
 }
