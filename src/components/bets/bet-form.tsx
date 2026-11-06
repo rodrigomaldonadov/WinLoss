@@ -1112,16 +1112,27 @@ export function BetForm({
     selections: [emptySelection()],
   });
 
-  const addEventLeg = (event: ApiEvent) => {
-    const leg = buildLegFromEvent(event);
-    if (betMode === "SINGLE" && fields.length === 1 && isEmptyLeg(watchedLegs[0])) {
-      update(0, leg);
+  const addEventsToBet = (events: ApiEvent[]) => {
+    if (events.length === 0) return;
+    const legs = events.map(buildLegFromEvent);
+    const singleEmpty =
+      betMode === "SINGLE" && fields.length === 1 && isEmptyLeg(watchedLegs[0]);
+
+    if (singleEmpty) {
+      update(0, legs[0]!);
+      if (legs.length > 1) {
+        append(legs.slice(1));
+        setBetMode("COMBINED");
+      }
     } else {
-      append(leg);
-      if (betMode === "SINGLE") setBetMode("COMBINED");
+      append(legs);
+      if (betMode === "SINGLE" || legs.length > 1) setBetMode("COMBINED");
     }
+
     setManualOdds(false);
-    toast.success("Evento añadido al boleto");
+    toast.success(
+      `${events.length} partido${events.length === 1 ? "" : "s"} añadido${events.length === 1 ? "" : "s"}`,
+    );
   };
 
   const handleSubmit = () => {
@@ -1198,7 +1209,7 @@ export function BetForm({
             competition={watchedLegs[0]?.competition}
             timeZone={timeZone}
             disabled={pending}
-            onSelect={addEventLeg}
+            onSelectMany={addEventsToBet}
           />
         </section>
 

@@ -4,15 +4,24 @@ import { useMemo, useState } from "react";
 import {
   CalendarDays,
   CalendarSearch,
+  Check,
+  ChevronDown,
   Loader2,
+  Plus,
   RefreshCw,
   Search,
-  Undo2,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Sheet,
   SheetContent,
@@ -23,6 +32,10 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { searchEventsAction } from "@/lib/actions/sports";
+import {
+  getCompetitionsForSport,
+  groupCompetitionsByRegion,
+} from "@/lib/catalogs/competitions";
 import type { ApiEvent } from "@/lib/sports-api/types";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +44,13 @@ type EventSearchSheetProps = {
   competition?: string | null;
   timeZone?: string;
   disabled?: boolean;
-  onSelect: (event: ApiEvent) => void;
+  /** Selección simple (rellena este leg). */
+  onSelect?: (event: ApiEvent) => void;
+  /** Selección múltiple (crea varios legs). */
+  onSelectMany?: (events: ApiEvent[]) => void;
 };
+
+const MAX_COMPETITIONS = 5;
 
 const PROVIDER_LABEL: Record<string, string> = {
   "football-data": "football-data",
@@ -48,6 +66,8 @@ const STATUS_LABEL: Record<ApiEvent["status"], string> = {
   CANCELLED: "Cancelado",
 };
 
+const FAVORITES_KEY = "winloss:competition-usage:v1";
+
 function ymd(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
     2,
@@ -59,15 +79,9 @@ function addDays(date: Date, days: number): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days, 12);
 }
 
-function dayKey(iso: string, timeZone?: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    ...(timeZone ? { timeZone } : {}),
-  }).format(date);
+function parseYmd(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day, 12);
 }
 
 function timeLabel(iso: string, timeZone?: string): string {
@@ -80,19 +94,16 @@ function timeLabel(iso: string, timeZone?: string): string {
   }).format(date);
 }
 
-function dayLabel(key: string, timeZone?: string): string {
-  const today = dayKey(new Date().toISOString(), timeZone);
-  const tomorrow = dayKey(addDays(new Date(), 1).toISOString(), timeZone);
-  if (key === today) return "Hoy";
-  if (key === tomorrow) return "Mañana";
-
-  const [year, month, day] = key.split("-").map(Number);
-  const date = new Date(year, month - 1, day, 12);
+function dayLabel(value: string): string {
+  const today = ymd(new Date());
+  if (value === today) return "Hoy";
+  if (value === ymd(addDays(new Date(), -1))) return "Ayer";
+  if (value === ymd(addDays(new Date(), 1))) return "Mañana";
   return new Intl.DateTimeFormat("es-PE", {
-    weekday: "long",
+    weekday: "short",
     day: "2-digit",
     month: "short",
-  }).format(date);
+  }).format(parseYmd(value));
 }
 
 function matchesQuery(event: ApiEvent, query: string): boolean {
@@ -103,91 +114,184 @@ function matchesQuery(event: ApiEvent, query: string): boolean {
     .includes(normalized);
 }
 
+function readUsage(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? "{}") as Record<
+      string,
+      number
+    >;
+  } catch {
+    return {};
+  }
+}
+
 export function EventSearchSheet({
   sport,
   competition,
   timeZone,
   disabled,
   onSelect,
+  onSelectMany,
 }: EventSearchSheetProps) {
-  const today = new Date();
+  const multiple = Boolean(onSelectMany);
+  const today = ymd(new Date());
   const [open, setOpen] = useState(false);
-  const [from, setFrom] = useState(ymd(addDays(today, -3)));
-  const [to, setTo] = useState(ymd(addDays(today, 3)));
-  const [events, setEvents] = useState<ApiEvent[] | null>(null);
+  const [day, setDay] = useState(today);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => parseYmd(today));
+  const [selectedCompetitions, setSelectedCompetitions] = useState<string[]>(
+    competition ? [competition] : [],
+  );
+  const [competitionPickerOpen, setCompetitionPickerOpen] = useState(false);
+  const [competitionQuery, setCompetitionQuery] = useState("");
+  const [events, setEvents] = useState<ApiEvent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0, current: "" });
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const filtered = useMemo(
-    () => (events ?? []).filter((event) => matchesQuery(event, query)),
+  const competitions = useMemo(() => getCompetitionsForSport(sport), [sport]);
+  const groupedCompetitions = useMemo(
+    () => groupCompetitionsByRegion(competitions),
+    [competitions],
+  );
+  const filteredCompetitions = useMemo(() => {
+    const normalized = competitionQuery.trim().toLowerCase();
+    if (!normalized) return groupedCompetitions;
+    return groupedCompetitions
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) =>
+            item.label.toLowerCase().includes(normalized) ||
+            item.region.toLowerCase().includes(normalized),
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [groupedCompetitions, competitionQuery]);
+
+  const filteredEvents = useMemo(
+    () => events.filter((event) => matchesQuery(event, query)),
     [events, query],
   );
 
-  const groups = useMemo(() => {
+  const eventsByCompetition = useMemo(() => {
     const map = new Map<string, ApiEvent[]>();
-    for (const event of filtered) {
-      const key = dayKey(event.kickoffUtc, timeZone);
-      const list = map.get(key) ?? [];
+    for (const event of filteredEvents) {
+      const list = map.get(event.competition) ?? [];
       list.push(event);
-      map.set(key, list);
+      map.set(event.competition, list);
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [filtered, timeZone]);
+  }, [filteredEvents]);
 
-  const runSearch = async (range?: { from: string; to: string }) => {
+  const selectedEvents = useMemo(
+    () => events.filter((event) => selectedIds.has(event.externalId)),
+    [events, selectedIds],
+  );
+
+  const favorites = useMemo(() => {
+    const usage = readUsage();
+    return [...competitions]
+      .sort((a, b) => (usage[b.label] ?? 0) - (usage[a.label] ?? 0))
+      .filter((item) => (usage[item.label] ?? 0) > 0)
+      .slice(0, MAX_COMPETITIONS)
+      .map((item) => item.label);
+  }, [competitions]);
+
+  const runOne = async (competitionLabel: string, targetDay: string) => {
+    const result = await searchEventsAction({
+      sport,
+      competition: competitionLabel,
+      from: targetDay,
+      to: targetDay,
+    });
+    if (!result.ok) return [] as ApiEvent[];
+    return result.events;
+  };
+
+  const runSearch = async (
+    targetDay = day,
+    list = selectedCompetitions,
+  ) => {
     if (!sport.trim()) {
       setEvents([]);
       setError(null);
       return;
     }
+    if (list.length === 0) {
+      setEvents([]);
+      setError("Elige al menos una competición.");
+      return;
+    }
 
-    const start = range?.from ?? from;
-    const end = range?.to ?? to;
-    setFrom(start);
-    setTo(end);
     setLoading(true);
     setError(null);
-    setQuery("");
+    setSelectedIds(new Set());
+    setEvents([]);
+    setProgress({ done: 0, total: list.length, current: list[0] ?? "" });
 
-    try {
-      const result = await searchEventsAction({
-        sport,
-        competition: competition ?? undefined,
-        from: start,
-        to: end,
-      });
-      if (!result.ok) {
-        setError(result.error);
-        setEvents([]);
-      } else {
-        setEvents(result.events);
+    const collected: ApiEvent[] = [];
+    for (let index = 0; index < list.length; index += 1) {
+      const label = list[index]!;
+      setProgress({ done: index, total: list.length, current: label });
+      try {
+        const batch = await runOne(label, targetDay);
+        collected.push(...batch);
+        setEvents([...collected]);
+      } catch {
+        // continúa con la siguiente competición
       }
-    } finally {
-      setLoading(false);
+      setProgress({ done: index + 1, total: list.length, current: label });
     }
+
+    setLoading(false);
   };
 
-  const applyPreset = (preset: "today" | "around" | "next7") => {
-    const base = new Date();
-    const range =
-      preset === "today"
-        ? { from: ymd(base), to: ymd(base) }
-        : preset === "next7"
-          ? { from: ymd(base), to: ymd(addDays(base, 7)) }
-          : { from: ymd(addDays(base, -3)), to: ymd(addDays(base, 3)) };
-    void runSearch(range);
+  const addCompetition = (label: string) => {
+    if (selectedCompetitions.includes(label)) {
+      setSelectedCompetitions((current) =>
+        current.filter((item) => item !== label),
+      );
+      setCompetitionPickerOpen(false);
+      return;
+    }
+    if (selectedCompetitions.length >= MAX_COMPETITIONS) return;
+    const next = [...selectedCompetitions, label];
+    setSelectedCompetitions(next);
+    setCompetitionPickerOpen(false);
+    void runSearch(day, next);
   };
 
-  const isPresetActive = (preset: "today" | "around" | "next7") => {
-    const base = new Date();
-    const range =
-      preset === "today"
-        ? { from: ymd(base), to: ymd(base) }
-        : preset === "next7"
-          ? { from: ymd(base), to: ymd(addDays(base, 7)) }
-          : { from: ymd(addDays(base, -3)), to: ymd(addDays(base, 3)) };
-    return from === range.from && to === range.to;
+  const changeDay = (next: string) => {
+    setDay(next);
+    setCalendarOpen(false);
+    void runSearch(next, selectedCompetitions);
+  };
+
+  const goToDay = (offset: number) => {
+    changeDay(ymd(addDays(new Date(), offset)));
+  };
+
+  const toggleEvent = (event: ApiEvent) => {
+    if (!multiple) {
+      onSelect?.(event);
+      setOpen(false);
+      return;
+    }
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(event.externalId)) next.delete(event.externalId);
+      else next.add(event.externalId);
+      return next;
+    });
+  };
+
+  const confirmSelection = () => {
+    if (!onSelectMany || selectedEvents.length === 0) return;
+    onSelectMany(selectedEvents);
+    setOpen(false);
   };
 
   const hasSport = Boolean(sport.trim());
@@ -198,10 +302,14 @@ export function EventSearchSheet({
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
-          setEvents(null);
+          setEvents([]);
           setError(null);
           setQuery("");
-          void runSearch();
+          setSelectedIds(new Set());
+          const initial = competition ? [competition] : [];
+          setSelectedCompetitions(initial);
+          setDay(today);
+          if (initial.length > 0) void runSearch(today, initial);
         }
       }}
     >
@@ -210,7 +318,7 @@ export function EventSearchSheet({
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 gap-1.5 text-xs"
+          className="h-10 w-full gap-1.5 text-xs"
           disabled={disabled}
         >
           <CalendarSearch className="size-4" aria-hidden />
@@ -223,182 +331,284 @@ export function EventSearchSheet({
         className="flex max-h-[92dvh] flex-col gap-0 rounded-t-2xl pb-0 sm:mx-auto sm:max-w-lg"
       >
         <SheetHeader className="pb-3 pr-10">
-          <SheetTitle>Buscar evento</SheetTitle>
-          <SheetDescription className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
-              {sport || "Sin deporte"}
-            </span>
-            {competition && (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
-                {competition}
-              </span>
-            )}
-            <span className="text-xs">
-              Elige un partido para vincularlo y poder auto-liquidarlo.
-            </span>
+          <SheetTitle>Buscar eventos</SheetTitle>
+          <SheetDescription>
+            Un día, hasta {MAX_COMPETITIONS} competiciones
+            {multiple ? " y varios partidos a la vez" : ""}.
           </SheetDescription>
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
           {!hasSport ? (
             <div className="rounded-xl border border-dashed bg-muted/30 px-4 py-8 text-center">
-              <CalendarDays
-                className="mx-auto size-8 text-muted-foreground"
-                aria-hidden
-              />
-              <p className="mt-2 text-sm font-medium">
-                Primero elige un deporte
-              </p>
+              <CalendarDays className="mx-auto size-8 text-muted-foreground" aria-hidden />
+              <p className="mt-2 text-sm font-medium">Primero elige un deporte</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Selecciona el deporte y la competición en el formulario para
-                buscar partidos. También puedes ingresar el evento manualmente.
+                Selecciona deporte y competición en el formulario, o ingresa el
+                evento manualmente.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Rangos rápidos */}
-              <div className="flex gap-1.5">
-                {(
-                  [
-                    ["today", "Hoy"],
-                    ["around", "±3 días"],
-                    ["next7", "Próximos 7"],
-                  ] as const
-                ).map(([preset, label]) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => applyPreset(preset)}
-                    disabled={loading}
-                    aria-pressed={isPresetActive(preset)}
-                    className={cn(
-                      "flex h-9 flex-1 items-center justify-center rounded-lg border text-xs font-medium transition-colors disabled:opacity-50",
-                      isPresetActive(preset)
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "bg-background text-muted-foreground hover:bg-muted",
+              {/* Día único */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Día</Label>
+                <div className="flex gap-1.5">
+                  {(
+                    [
+                      [-1, "Ayer"],
+                      [0, "Hoy"],
+                      [1, "Mañana"],
+                    ] as const
+                  ).map(([offset, label]) => {
+                    const value = ymd(addDays(new Date(), offset));
+                    const active = day === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => goToDay(offset)}
+                        className={cn(
+                          "h-9 flex-1 rounded-lg border text-xs font-medium transition-colors",
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "bg-background text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Elegir otro día"
+                        onClick={() => setCalendarMonth(parseYmd(day))}
+                        className="flex h-9 flex-1 items-center justify-center gap-1 rounded-lg border bg-background text-xs font-medium text-muted-foreground hover:bg-muted"
+                      >
+                        <CalendarDays className="size-3.5" aria-hidden />
+                        Otro
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[min(92vw,20rem)] p-2" align="end">
+                      <Calendar
+                        month={calendarMonth}
+                        onMonthChange={setCalendarMonth}
+                        selected={day}
+                        onSelect={(value) => {
+                          changeDay(value);
+                          setCalendarOpen(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {dayLabel(day)} · zona {timeZone ?? "local"}
+                </p>
+              </div>
+
+              {/* Competiciones */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-xs">Competiciones</Label>
+                  <div className="flex gap-1">
+                    {favorites.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCompetitions(favorites);
+                          void runSearch(day, favorites);
+                        }}
+                        className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        Favoritas
+                      </button>
                     )}
-                  >
-                    {label}
-                  </button>
-                ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const top = competitions
+                          .slice(0, MAX_COMPETITIONS)
+                          .map((item) => item.label);
+                        setSelectedCompetitions(top);
+                        void runSearch(day, top);
+                      }}
+                      className="text-[11px] font-medium text-muted-foreground underline-offset-4 hover:underline"
+                    >
+                      Todas (máx. {MAX_COMPETITIONS})
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedCompetitions.map((label) => (
+                    <span
+                      key={label}
+                      className="flex h-8 items-center gap-1 rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
+                    >
+                      <span className="max-w-40 truncate">{label}</span>
+                      <button
+                        type="button"
+                        aria-label={`Quitar ${label}`}
+                        onClick={() => {
+                          const next = selectedCompetitions.filter(
+                            (item) => item !== label,
+                          );
+                          setSelectedCompetitions(next);
+                          void runSearch(day, next);
+                        }}
+                        className="flex size-6 items-center justify-center rounded-full hover:bg-primary/20"
+                      >
+                        <X className="size-3.5" aria-hidden />
+                      </button>
+                    </span>
+                  ))}
+
+                  {selectedCompetitions.length < MAX_COMPETITIONS && (
+                    <Popover
+                      open={competitionPickerOpen}
+                      onOpenChange={(next) => {
+                        setCompetitionPickerOpen(next);
+                        if (!next) setCompetitionQuery("");
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex h-8 items-center gap-1 rounded-full border border-dashed px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                        >
+                          <Plus className="size-3.5" aria-hidden />
+                          Añadir
+                          <ChevronDown className="size-3.5" aria-hidden />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[min(92vw,22rem)] p-0" align="start">
+                        <div className="border-b p-2">
+                          <Input
+                            autoFocus
+                            value={competitionQuery}
+                            onChange={(event) =>
+                              setCompetitionQuery(event.target.value)
+                            }
+                            placeholder="Buscar liga o región"
+                            aria-label="Buscar competición"
+                            className="h-10"
+                          />
+                        </div>
+                        <div className="max-h-64 overflow-y-auto p-1">
+                          {filteredCompetitions.length === 0 ? (
+                            <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                              Sin resultados.
+                            </p>
+                          ) : (
+                            filteredCompetitions.map((group) => (
+                              <div key={group.region} className="mb-1">
+                                <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  {group.region}
+                                </p>
+                                {group.items.map((item) => {
+                                  const active = selectedCompetitions.includes(
+                                    item.label,
+                                  );
+                                  const disabledAdd =
+                                    !active &&
+                                    selectedCompetitions.length >=
+                                      MAX_COMPETITIONS;
+                                  return (
+                                    <button
+                                      key={item.value}
+                                      type="button"
+                                      disabled={disabledAdd}
+                                      onClick={() => addCompetition(item.label)}
+                                      className={cn(
+                                        "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted disabled:opacity-40",
+                                        active && "bg-muted",
+                                      )}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "size-4 shrink-0",
+                                          active ? "opacity-100" : "opacity-0",
+                                        )}
+                                        aria-hidden
+                                      />
+                                      <span className="truncate">
+                                        {item.label}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="event-from" className="text-xs">
-                    Desde
-                  </Label>
-                  <Input
-                    id="event-from"
-                    type="date"
-                    value={from}
-                    onChange={(event) => setFrom(event.target.value)}
-                    className="h-10"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="event-to" className="text-xs">
-                    Hasta
-                  </Label>
-                  <Input
-                    id="event-to"
-                    type="date"
-                    value={to}
-                    onChange={(event) => setTo(event.target.value)}
-                    className="h-10"
-                  />
-                </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  className="h-10 flex-1 gap-2"
+                  onClick={() => void runSearch()}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Search className="size-4" aria-hidden />
+                  )}
+                  {loading ? "Buscando…" : "Buscar"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10"
+                  aria-label="Actualizar resultados"
+                  onClick={() => void runSearch()}
+                  disabled={loading}
+                >
+                  <RefreshCw className="size-4" aria-hidden />
+                </Button>
               </div>
-
-              <Button
-                type="button"
-                className="h-10 w-full gap-2"
-                onClick={() => void runSearch()}
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : (
-                  <Search className="size-4" aria-hidden />
-                )}
-                {loading ? "Buscando…" : "Buscar partidos"}
-              </Button>
 
               {loading && (
-                <div className="space-y-2" aria-hidden>
-                  {[0, 1, 2].map((index) => (
-                    <Skeleton key={index} className="h-16 w-full rounded-lg" />
-                  ))}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground" aria-live="polite">
+                    Buscando {progress.current} ({progress.done + 1}/
+                    {progress.total})…
+                  </p>
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <Skeleton className="h-16 w-full rounded-lg" />
                 </div>
               )}
 
               {!loading && error && (
-                <div
-                  role="alert"
-                  className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm text-destructive"
-                >
-                  <p>{error}</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 h-8 gap-1.5"
-                    onClick={() => void runSearch()}
-                  >
-                    <RefreshCw className="size-3.5" aria-hidden />
-                    Reintentar
-                  </Button>
-                </div>
+                <p role="alert" className="text-xs text-destructive">
+                  {error}
+                </p>
               )}
 
-              {!loading && !error && events !== null && events.length === 0 && (
+              {!loading && !error && events.length === 0 && (
                 <div className="rounded-xl border border-dashed bg-muted/30 px-4 py-8 text-center">
-                  <CalendarDays
-                    className="mx-auto size-8 text-muted-foreground"
-                    aria-hidden
-                  />
+                  <CalendarDays className="mx-auto size-8 text-muted-foreground" aria-hidden />
                   <p className="mt-2 text-sm font-medium">
-                    Sin partidos en estas fechas
+                    Sin partidos para este día
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Prueba a ampliar el rango o cambia de competición. Siempre
-                    puedes ingresar el evento a mano.
+                    Prueba otro día o añade otra competición.
                   </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 h-9"
-                    onClick={() => applyPreset("next7")}
-                  >
-                    Ampliar a 7 días
-                  </Button>
                 </div>
               )}
 
-              {!loading && !error && events !== null && events.length > 0 && (
+              {events.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between gap-2">
-                    <p
-                      className="text-xs font-medium text-muted-foreground"
-                      aria-live="polite"
-                    >
-                      {filtered.length} partido
-                      {filtered.length === 1 ? "" : "s"}
-                      {query ? " filtrados" : ""}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs"
-                      onClick={() => void runSearch()}
-                    >
-                      <RefreshCw className="size-3.5" aria-hidden />
-                      Actualizar
-                    </Button>
-                  </div>
-
                   <div className="relative">
                     <Search
                       className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -407,46 +617,65 @@ export function EventSearchSheet({
                     <Input
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
-                      placeholder="Filtrar por equipo o liga"
+                      placeholder="Filtrar por equipo"
                       aria-label="Filtrar resultados"
                       className="h-10 pl-8"
                     />
                   </div>
 
-                  {filtered.length === 0 ? (
-                    <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-                      Ningún partido coincide con “{query}”.
+                  {selectedEvents.length > 0 && (
+                    <p className="text-xs font-medium text-primary" aria-live="polite">
+                      {selectedEvents.length} partido
+                      {selectedEvents.length === 1 ? "" : "s"} seleccionado
+                      {selectedEvents.length === 1 ? "" : "s"}
                     </p>
-                  ) : (
-                    <div className="space-y-4">
-                      {groups.map(([key, dayEvents]) => (
-                        <section key={key} aria-label={dayLabel(key, timeZone)}>
-                          <h3 className="mb-1.5 text-[11px] font-semibold capitalize tracking-wide text-muted-foreground">
-                            {dayLabel(key, timeZone)}
-                          </h3>
-                          <ul className="space-y-2">
-                            {dayEvents.map((event) => {
-                              const finished = event.status === "FINISHED";
-                              const hasScore =
-                                finished &&
-                                event.scoreHome !== null &&
-                                event.scoreAway !== null;
-                              return (
-                                <li
-                                  key={`${event.provider}:${event.externalId}`}
+                  )}
+
+                  <div className="space-y-4">
+                    {eventsByCompetition.map(([competitionName, list]) => (
+                      <section key={competitionName}>
+                        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {competitionName}
+                        </h3>
+                        <ul className="space-y-2">
+                          {list.map((event) => {
+                            const selected = selectedIds.has(event.externalId);
+                            const finished = event.status === "FINISHED";
+                            const hasScore =
+                              finished &&
+                              event.scoreHome !== null &&
+                              event.scoreAway !== null;
+                            return (
+                              <li key={`${event.provider}:${event.externalId}`}>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleEvent(event)}
+                                  aria-pressed={multiple ? selected : undefined}
+                                  className={cn(
+                                    "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+                                    selected
+                                      ? "border-primary bg-primary/5"
+                                      : "bg-background hover:bg-muted/60",
+                                  )}
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      onSelect(event);
-                                      setOpen(false);
-                                    }}
-                                    className="w-full rounded-lg border bg-background p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <p className="min-w-0 flex-1 text-sm font-medium leading-snug">
+                                  {multiple && (
+                                    <span
+                                      aria-hidden
+                                      className={cn(
+                                        "flex size-6 shrink-0 items-center justify-center rounded-md border",
+                                        selected
+                                          ? "border-primary bg-primary text-primary-foreground"
+                                          : "border-input",
+                                      )}
+                                    >
+                                      {selected && <Check className="size-4" />}
+                                    </span>
+                                  )}
+                                  <span className="min-w-0 flex-1">
+                                    <span className="flex items-start justify-between gap-2">
+                                      <span className="min-w-0 flex-1 text-sm font-medium leading-snug">
                                         {event.home} vs. {event.away}
-                                      </p>
+                                      </span>
                                       <span
                                         className={cn(
                                           "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums",
@@ -465,53 +694,58 @@ export function EventSearchSheet({
                                           ? `Final ${event.scoreHome}-${event.scoreAway}`
                                           : STATUS_LABEL[event.status]}
                                       </span>
-                                    </div>
-                                    <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                                      <span className="truncate">
-                                        {event.competition}
-                                      </span>
-                                      <span aria-hidden>·</span>
+                                    </span>
+                                    <span className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                                       <span className="shrink-0 tabular-nums">
                                         {timeLabel(event.kickoffUtc, timeZone)}
                                       </span>
                                       <span aria-hidden>·</span>
-                                      <span className="shrink-0 text-[10px] text-muted-foreground/70">
+                                      <span className="shrink-0 text-[10px]">
                                         {PROVIDER_LABEL[event.provider] ??
                                           event.provider}
                                       </span>
-                                    </p>
+                                    </span>
                                     {finished && event.autoSettleable === false && (
-                                      <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                                      <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-400">
                                         Sin desglose de 90 minutos: no se
                                         auto-liquidará.
-                                      </p>
+                                      </span>
                                     )}
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </section>
-                      ))}
-                    </div>
-                  )}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </section>
+                    ))}
+                  </div>
                 </>
               )}
             </div>
           )}
         </div>
 
-        {/* CTA fijo: siempre alcanzable en móvil */}
         <div className="shrink-0 border-t bg-popover/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 w-full gap-1.5"
-            onClick={() => setOpen(false)}
-          >
-            <Undo2 className="size-4" aria-hidden />
-            Ingresar manualmente
-          </Button>
+          {multiple && selectedEvents.length > 0 ? (
+            <Button
+              type="button"
+              className="h-12 w-full"
+              onClick={confirmSelection}
+            >
+              Añadir {selectedEvents.length} partido
+              {selectedEvents.length === 1 ? "" : "s"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full"
+              onClick={() => setOpen(false)}
+            >
+              Ingresar manualmente
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>
