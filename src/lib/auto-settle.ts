@@ -6,6 +6,8 @@ export type ResolvableSelection = {
   marketKey: LegMarketKey;
   pick: string | null;
   line: number | null;
+  /** HOME / AWAY / MATCH para mercados con sujeto. */
+  subject?: string | null;
 };
 
 const OUTCOME = {
@@ -144,7 +146,9 @@ export function resolveSelection(
       return resolveAsianHandicap(score, selection.line, pick);
     case "TEAM_TOTAL_GOALS": {
       if (!pick) return null;
-      const [team, side] = pick.split("_");
+      const [prefixedTeam, prefixedSide] = pick.split("_");
+      const team = selection.subject ?? prefixedTeam;
+      const side = selection.subject ? pick : prefixedSide;
       if (
         (team !== "HOME" && team !== "AWAY") ||
         (side !== "OVER" && side !== "UNDER")

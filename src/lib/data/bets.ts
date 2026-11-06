@@ -27,6 +27,7 @@ export type LegSelectionItem = {
   marketKey: LegMarketKey;
   line: number | null;
   pick: string | null;
+  subject: string | null;
 };
 
 export type BetLegItem = {
@@ -126,6 +127,7 @@ type BetRecord = {
       marketKey: LegMarketKey;
       line: { toString(): string } | null;
       pick: string | null;
+      subject: string | null;
     }[];
   }[];
 };
@@ -169,6 +171,7 @@ export function toBetListItem(bet: BetRecord): BetListItem {
       marketKey: selection.marketKey,
       line: selection.line === null ? null : Number(selection.line),
       pick: selection.pick,
+      subject: selection.subject,
     })),
   }));
 

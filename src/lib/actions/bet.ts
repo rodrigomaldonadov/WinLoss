@@ -51,6 +51,7 @@ type RawSelection = {
   marketKey?: unknown;
   line?: unknown;
   pick?: unknown;
+  subject?: unknown;
 };
 
 type RawLeg = {
@@ -78,7 +79,7 @@ function readBetForm(formData: FormData) {
 
   for (const [key, value] of formData.entries()) {
     const selectionMatch =
-      /^legs\.(\d+)\.selections\.(\d+)\.(market|selection|marketKey|line|pick)$/.exec(
+      /^legs\.(\d+)\.selections\.(\d+)\.(market|selection|marketKey|line|pick|subject)$/.exec(
         key,
       );
     if (selectionMatch) {
@@ -129,6 +130,7 @@ function readBetForm(formData: FormData) {
           marketKey: selection.marketKey ?? "CUSTOM",
           line: selection.line,
           pick: selection.pick,
+          subject: selection.subject,
         })),
     }));
 
@@ -374,6 +376,7 @@ export async function createBet(
                 marketKey: selection.marketKey,
                 line: selection.line ?? null,
                 pick: selection.pick ?? null,
+                subject: selection.subject ?? null,
               })),
             },
           })),
@@ -576,6 +579,7 @@ export async function updateBet(
                 marketKey: selection.marketKey,
                 line: selection.line ?? null,
                 pick: selection.pick ?? null,
+                subject: selection.subject ?? null,
               })),
             },
           })),

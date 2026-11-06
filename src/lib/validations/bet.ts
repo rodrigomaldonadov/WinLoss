@@ -73,6 +73,9 @@ export const legMarketKeySchema = z.enum([
   "ODD_EVEN",
   "WIN_TO_NIL",
   "EXACT_TOTAL_GOALS",
+  "TOTAL_CORNERS",
+  "TOTAL_CARDS",
+  "GENERIC_LINE",
 ]);
 
 export const legSelectionSchema = z.object({
@@ -89,6 +92,7 @@ export const legSelectionSchema = z.object({
   marketKey: legMarketKeySchema.default("CUSTOM"),
   line: optionalDecimal("Línea inválida"),
   pick: optionalText(20),
+  subject: optionalText(10),
 });
 
 export const betLegSchema = z

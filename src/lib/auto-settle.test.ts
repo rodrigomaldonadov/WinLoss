@@ -231,12 +231,55 @@ describe("resolveLegStatus", () => {
     ).toBe("WON");
   });
 
+  it("usa subject para goles de un equipo (diseño nuevo)", () => {
+    expect(
+      resolveSelection(
+        {
+          marketKey: "TEAM_TOTAL_GOALS",
+          pick: "OVER",
+          line: 1.5,
+          subject: "AWAY",
+        },
+        score(2, 2),
+      ),
+    ).toBe("WON");
+    expect(
+      resolveSelection(
+        {
+          marketKey: "TEAM_TOTAL_GOALS",
+          pick: "UNDER",
+          line: 2.5,
+          subject: "AWAY",
+        },
+        score(2, 2),
+      ),
+    ).toBe("WON");
+  });
+
+  it("córneres, tarjetas y líneas genéricas quedan manuales", () => {
+    for (const marketKey of [
+      "TOTAL_CORNERS",
+      "TOTAL_CARDS",
+      "GENERIC_LINE",
+    ] as const) {
+      expect(
+        resolveSelection(
+          { marketKey, pick: "OVER", line: 9.5 },
+          score(2, 1),
+        ),
+      ).toBeNull();
+    }
+  });
+
   it("un builder con un mercado manual queda sin resolver", () => {
     expect(
       resolveLegStatus(
         {
           isBuilder: true,
-          selections: [selection, { marketKey: "CUSTOM", pick: null, line: null }],
+          selections: [
+            selection,
+            { marketKey: "CUSTOM", pick: null, line: null },
+          ],
         },
         score(2, 0),
       ),

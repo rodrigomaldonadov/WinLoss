@@ -138,6 +138,7 @@ export async function runAutoSettlement(
             marketKey: selection.marketKey,
             pick: selection.pick,
             line: selection.line === null ? null : Number(selection.line),
+            subject: selection.subject,
           })),
         },
         { home: result.scoreHome, away: result.scoreAway },

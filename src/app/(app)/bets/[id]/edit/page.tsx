@@ -112,6 +112,7 @@ export default async function EditBetPage({ params }: EditBetPageProps) {
               marketKey: selection.marketKey,
               line: selection.line,
               pick: selection.pick,
+              subject: selection.subject,
             })),
           })),
         }}

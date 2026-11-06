@@ -70,6 +70,7 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
               marketKey: selection.marketKey,
               line: selection.line,
               pick: selection.pick,
+              subject: selection.subject,
             })),
           })),
         }
@@ -129,6 +130,7 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
               preferences.timezone,
             )}
             timeZone={preferences.timezone}
+            useLastUsed={!copiedBet}
             defaults={betDefaults}
           />
         </>

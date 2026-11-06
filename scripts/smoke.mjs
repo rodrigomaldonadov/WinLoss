@@ -114,14 +114,14 @@ try {
   await page.getByLabel("Selección manual", { exact: true }).fill("Alianza Lima");
   await page.getByLabel("Cuota del partido").fill("2.00");
   await page.getByLabel("Stake").fill("10.00");
-  await page.getByText("Retorno potencial").waitFor({ timeout: 10_000 });
+  await page.getByText("Retorno", { exact: true }).waitFor({ timeout: 10_000 });
   await page.screenshot({
     path: "artifacts/06-bet-form-mobile.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Registrar apuesta" }).click();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
 
-  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+  await page.waitForURL(/\/bets(?:\?|$)/, { timeout: 30_000 });
   await page.getByRole("heading", { name: "Apuestas" }).waitFor();
   await page.getByText("Alianza Lima vs. Universitario").waitFor({
     timeout: 15_000,
@@ -198,8 +198,8 @@ try {
   }
 
   await page.getByLabel("Stake").fill("20");
-  await page.getByRole("button", { name: "Registrar apuesta" }).click();
-  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await page.waitForURL(/\/bets(?:\?|$)/, { timeout: 30_000 });
   await page.getByText("2 apuestas registradas").waitFor({ timeout: 15_000 });
 
   // Editar apuesta pendiente
@@ -212,7 +212,7 @@ try {
   await page.waitForURL(/\/bets\/.+\/edit/, { timeout: 15_000 });
   await page.getByLabel("Stake").fill("30");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+  await page.waitForURL(/\/bets(?:\?|$)/, { timeout: 30_000 });
 
   const editedPending = await page
     .locator("article")
@@ -251,7 +251,7 @@ try {
   });
   await page.getByLabel("Stake").fill("20");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+  await page.waitForURL(/\/bets(?:\?|$)/, { timeout: 30_000 });
 
   const settledText = await page
     .locator("article")
@@ -304,7 +304,7 @@ try {
   await page.getByLabel("Selección manual", { exact: true }).nth(0).fill("PSG");
   await page.getByLabel("Cuota del partido").nth(0).fill("1.55");
 
-  await page.getByRole("button", { name: "Añadir partido" }).click();
+  await page.getByRole("button", { name: "Añadir", exact: true }).click();
 
   await selectSport(1, "Fútbol");
   await page.getByLabel("Evento", { exact: true }).nth(1).fill("Real Madrid vs. Barcelona");
@@ -318,8 +318,8 @@ try {
   }
 
   await page.getByLabel("Stake").fill("100");
-  await page.getByRole("button", { name: "Registrar apuesta" }).click();
-  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await page.waitForURL(/\/bets(?:\?|$)/, { timeout: 30_000 });
 
   const multipleArticle = page
     .locator("article")
@@ -364,8 +364,8 @@ try {
   await page.getByLabel("Cuota del builder").fill("3.00");
   await page.getByLabel("Stake").fill("100");
 
-  await page.getByRole("button", { name: "Registrar apuesta" }).click();
-  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await page.waitForURL(/\/bets(?:\?|$)/, { timeout: 30_000 });
 
   const builderArticle = page
     .locator("article")

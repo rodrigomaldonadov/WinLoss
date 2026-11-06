@@ -36,7 +36,13 @@ import {
 } from "@/components/bets/leg-catalog-fields";
 import { DateTimeCompact } from "@/components/bets/date-time-field";
 import { EventSearchSheet } from "@/components/bets/event-search-sheet";
+import { LinePicker } from "@/components/bets/line-picker";
 import type { ApiEvent } from "@/lib/sports-api/types";
+import {
+  CARD_LINE_PRESETS,
+  CORNER_LINE_PRESETS,
+  GOAL_LINE_PRESETS,
+} from "@/lib/line-utils";
 import { createBet, updateBet, type BetFormState } from "@/lib/actions/bet";
 import { MARKETS, SPORTS } from "@/lib/constants";
 import { totalOdds } from "@/lib/bet-math";
@@ -71,6 +77,7 @@ export type BetFormLegDefaults = {
     marketKey?: LegMarketKey;
     line?: number | null;
     pick?: string | null;
+    subject?: string | null;
   }[];
 };
 
@@ -80,6 +87,8 @@ type BetFormProps = {
   defaultPlacedAt: string;
   mode?: "create" | "edit";
   timeZone?: string;
+  /** Usar última casa/bankroll/stake y borrador (false al duplicar). */
+  useLastUsed?: boolean;
   defaults?: BetFormDefaults;
 };
 
@@ -110,6 +119,7 @@ type SelectionValues = {
   marketKey: LegMarketKey;
   line: string;
   pick: string;
+  subject: string;
 };
 
 type LegValues = {
@@ -167,6 +177,7 @@ function emptySelection(): SelectionValues {
     marketKey: "CUSTOM",
     line: "",
     pick: "",
+    subject: "",
   };
 }
 
@@ -198,6 +209,7 @@ function toLegValues(leg: BetFormLegDefaults): LegValues {
               ? ""
               : String(selection.line),
           pick: selection.pick ?? "",
+          subject: selection.subject ?? "",
         }))
       : [emptySelection()];
 
@@ -247,6 +259,7 @@ function buildInitialLegs(defaults?: BetFormDefaults): LegValues[] {
             marketKey: "CUSTOM",
             line: "",
             pick: "",
+            subject: "",
           },
         ],
       },
@@ -288,6 +301,9 @@ const MARKET_OPTIONS: { value: LegMarketKey; label: string }[] = [
   { value: "ODD_EVEN", label: "Total par o impar" },
   { value: "WIN_TO_NIL", label: "Gana sin recibir gol" },
   { value: "EXACT_TOTAL_GOALS", label: "Total exacto de goles" },
+  { value: "TOTAL_CORNERS", label: "Córneres (más/menos)" },
+  { value: "TOTAL_CARDS", label: "Tarjetas (más/menos)" },
+  { value: "GENERIC_LINE", label: "Otro mercado con línea" },
   { value: "CUSTOM", label: "Otro mercado (manual)" },
 ];
 
@@ -340,14 +356,76 @@ const MARKET_PICKS: Record<
     { value: "AWAY", label: "Visitante" },
   ],
   EXACT_TOTAL_GOALS: [],
+  TOTAL_CORNERS: [
+    { value: "OVER", label: "Más de" },
+    { value: "UNDER", label: "Menos de" },
+  ],
+  TOTAL_CARDS: [
+    { value: "OVER", label: "Más de" },
+    { value: "UNDER", label: "Menos de" },
+  ],
+  GENERIC_LINE: [
+    { value: "OVER", label: "Más de" },
+    { value: "UNDER", label: "Menos de" },
+  ],
 };
 
-const LINE_MARKETS: LegMarketKey[] = [
+const MARKET_CHIP_ORDER: { value: LegMarketKey; label: string }[] = [
+  { value: "MATCH_RESULT", label: "1X2" },
+  { value: "DOUBLE_CHANCE", label: "Doble oportunidad" },
+  { value: "TOTAL_GOALS", label: "Goles del partido" },
+  { value: "TEAM_TOTAL_GOALS", label: "Goles de un equipo" },
+  { value: "BTTS", label: "Ambos anotan" },
+  { value: "TOTAL_CORNERS", label: "Córneres" },
+  { value: "TOTAL_CARDS", label: "Tarjetas" },
+  { value: "DRAW_NO_BET", label: "DNB" },
+  { value: "ASIAN_HANDICAP", label: "Hándicap" },
+  { value: "ODD_EVEN", label: "Par/Impar" },
+  { value: "WIN_TO_NIL", label: "Gana sin recibir" },
+  { value: "EXACT_TOTAL_GOALS", label: "Total exacto" },
+  { value: "GENERIC_LINE", label: "Otros con línea" },
+  { value: "CUSTOM", label: "Otros" },
+];
+
+const MARKET_USAGE_KEY = "winloss:market-usage:v1";
+
+function readMarketUsage(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(MARKET_USAGE_KEY) ?? "{}") as Record<
+      string,
+      number
+    >;
+  } catch {
+    return {};
+  }
+}
+
+function sortMarketChips(): { value: LegMarketKey; label: string }[] {
+  const usage = readMarketUsage();
+  return [...MARKET_CHIP_ORDER].sort(
+    (a, b) => (usage[b.value] ?? 0) - (usage[a.value] ?? 0),
+  );
+}
+
+const PICKER_LINE_MARKETS: LegMarketKey[] = [
   "TOTAL_GOALS",
   "TEAM_TOTAL_GOALS",
+  "TOTAL_CORNERS",
+  "TOTAL_CARDS",
+  "GENERIC_LINE",
+];
+
+const LINE_MARKETS: LegMarketKey[] = [
+  ...PICKER_LINE_MARKETS,
   "ASIAN_HANDICAP",
   "EXACT_TOTAL_GOALS",
 ];
+
+function linePresets(marketKey: LegMarketKey): readonly number[] {
+  if (marketKey === "TOTAL_CORNERS") return CORNER_LINE_PRESETS;
+  if (marketKey === "TOTAL_CARDS") return CARD_LINE_PRESETS;
+  return GOAL_LINE_PRESETS;
+}
 
 function pickLabel(marketKey: LegMarketKey, pick: string): string {
   if (marketKey === "CUSTOM") return "";
@@ -362,6 +440,7 @@ function buildSelectionLabel(
   marketKey: LegMarketKey,
   pick: string,
   line: string,
+  subject?: string | null,
 ): string {
   if (!pick) return "";
   const label = pickLabel(marketKey, pick);
@@ -370,11 +449,19 @@ function buildSelectionLabel(
     case "TOTAL_GOALS":
       return line ? `${label} ${line}` : `${label} …`;
     case "TEAM_TOTAL_GOALS": {
-      const [team, side] = pick.split("_");
+      const [prefixedTeam, prefixedSide] = pick.split("_");
+      const team = subject ?? prefixedTeam;
+      const side = subject ? pick : prefixedSide;
       const teamLabel = team === "HOME" ? "Local" : "Visitante";
       const sideLabel = side === "OVER" ? "más de" : "menos de";
       return line ? `${teamLabel} ${sideLabel} ${line}` : `${teamLabel} …`;
     }
+    case "TOTAL_CORNERS":
+      return line ? `${label} ${line} córneres` : `${label} …`;
+    case "TOTAL_CARDS":
+      return line ? `${label} ${line} tarjetas` : `${label} …`;
+    case "GENERIC_LINE":
+      return line ? `${label} ${line}` : `${label} …`;
     case "ASIAN_HANDICAP":
       return line ? `${label} (${line})` : `${label} …`;
     case "WIN_TO_NIL":
@@ -445,15 +532,27 @@ function SelectionEditor({
     "CUSTOM";
   const pick = (useWatch({ control, name: path("pick") }) as string) ?? "";
   const line = (useWatch({ control, name: path("line") }) as string) ?? "";
+  const subject = (useWatch({ control, name: path("subject") }) as string) ?? "";
   const isStructured = marketKey !== "CUSTOM";
   const pickOptions = isStructured
     ? MARKET_PICKS[marketKey as Exclude<LegMarketKey, "CUSTOM">]
     : [];
+  const orderedChips = useMemo(() => sortMarketChips(), []);
+  const isPickerLine = PICKER_LINE_MARKETS.includes(marketKey);
 
   const changeMarket = (next: LegMarketKey) => {
     setValue(path("marketKey"), next);
     setValue(path("line"), "");
     setValue(path("pick"), next === "EXACT_TOTAL_GOALS" ? "EXACT" : "");
+    setValue(path("subject"), next === "TEAM_TOTAL_GOALS" ? "HOME" : "");
+    try {
+      const usage = readMarketUsage();
+      usage[next] = (usage[next] ?? 0) + 1;
+      localStorage.setItem(MARKET_USAGE_KEY, JSON.stringify(usage));
+    } catch {
+      // sin storage
+    }
+
     if (next === "CUSTOM") {
       setValue(path("market"), "");
       setValue(path("selection"), "");
@@ -461,18 +560,60 @@ function SelectionEditor({
       setValue(path("market"), MARKET_LABELS[next]);
       setValue(path("selection"), "");
     }
+
+    const defaultLine =
+      next === "TOTAL_CORNERS"
+        ? "9.5"
+        : next === "TOTAL_CARDS"
+          ? "3.5"
+          : next === "ASIAN_HANDICAP"
+            ? "-0.5"
+            : next === "EXACT_TOTAL_GOALS"
+              ? "3"
+              : PICKER_LINE_MARKETS.includes(next)
+                ? "2.5"
+                : "";
+    if (defaultLine) {
+      setValue(path("line"), defaultLine);
+      if (next !== "EXACT_TOTAL_GOALS") {
+        setValue(path("pick"), "OVER");
+      }
+      setValue(
+        path("selection"),
+        buildSelectionLabel(
+          next,
+          next === "EXACT_TOTAL_GOALS" ? "EXACT" : "OVER",
+          defaultLine,
+          next === "TEAM_TOTAL_GOALS" ? "HOME" : null,
+        ),
+      );
+    }
   };
 
   const changePick = (value: string) => {
     setValue(path("pick"), value);
-    setValue(path("selection"), buildSelectionLabel(marketKey, value, line));
+    setValue(
+      path("selection"),
+      buildSelectionLabel(marketKey, value, line, subject || null),
+    );
   };
 
   const changeLine = (value: string) => {
     setValue(path("line"), value);
     if (pick) {
-      setValue(path("selection"), buildSelectionLabel(marketKey, pick, value));
+      setValue(
+        path("selection"),
+        buildSelectionLabel(marketKey, pick, value, subject || null),
+      );
     }
+  };
+
+  const changeSubject = (next: string) => {
+    setValue(path("subject"), next);
+    setValue(
+      path("selection"),
+      buildSelectionLabel(marketKey, pick, line, next),
+    );
   };
 
   const selectionValue =
@@ -504,71 +645,66 @@ function SelectionEditor({
 
       <input type="hidden" {...register(path("marketKey"))} />
       <input type="hidden" {...register(path("pick"))} />
+      <input type="hidden" {...register(path("subject"))} />
 
-      <Select value={marketKey} onValueChange={changeMarket}>
-        <SelectTrigger
-          id={`leg-${legIndex}-sel-${selectionIndex}-market-key`}
-          className="h-10 w-full"
-          aria-label="Tipo de mercado"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {MARKET_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div
+        role="group"
+        aria-label="Mercado"
+        className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+      >
+        {orderedChips.map((chip) => {
+          const active = marketKey === chip.value;
+          return (
+            <button
+              key={chip.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => changeMarket(chip.value)}
+              className={cn(
+                "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "bg-background text-muted-foreground active:bg-muted",
+              )}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
+      </div>
 
       {isStructured ? (
         <>
-          <input type="hidden" {...register(path("market"))} />
+          {marketKey !== "GENERIC_LINE" && (
+            <input type="hidden" {...register(path("market"))} />
+          )}
           <input type="hidden" {...register(path("selection"))} />
 
-          {LINE_MARKETS.includes(marketKey) && (
-            <div className="flex items-end gap-2">
-              <div className="space-y-1">
-                <Label
-                  htmlFor={`leg-${legIndex}-sel-${selectionIndex}-line`}
-                  className="text-[11px] text-muted-foreground"
-                >
-                  {lineConfig(marketKey).label}
-                </Label>
-                <Input
-                  id={`leg-${legIndex}-sel-${selectionIndex}-line`}
-                  type="text"
-                  inputMode="decimal"
-                  placeholder={lineConfig(marketKey).placeholder}
-                  required
-                  value={line}
-                  onChange={(event) => changeLine(event.target.value)}
-                  className="h-10 w-24 tabular-nums"
-                />
-              </div>
-              <p className="pb-2.5 text-xs text-muted-foreground">
-                {lineConfig(marketKey).hint}
-              </p>
-            </div>
+          {marketKey === "GENERIC_LINE" && (
+            <Input
+              aria-label="Mercado con línea"
+              placeholder="Tiros a puerta, saques…"
+              maxLength={80}
+              required
+              className="h-10"
+              {...register(path("market"))}
+            />
           )}
 
-          {pickOptions.length > 0 && (
-            <div
-              className={cn(
-                "grid gap-1.5",
-                pickOptions.length === 3 ? "grid-cols-3" : "grid-cols-2",
-              )}
-            >
-              {pickOptions.map((option) => (
+          {marketKey === "TEAM_TOTAL_GOALS" && (
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { value: "HOME", label: "Goles del local" },
+                { value: "AWAY", label: "Goles del visitante" },
+              ].map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  aria-pressed={pick === option.value}
-                  onClick={() => changePick(option.value)}
+                  aria-pressed={subject === option.value}
+                  onClick={() => changeSubject(option.value)}
                   className={cn(
-                    "flex h-9 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors",
-                    pick === option.value
+                    "flex h-10 items-center justify-center rounded-lg border text-xs font-medium transition-colors",
+                    subject === option.value
                       ? "border-primary bg-primary/10 text-primary"
                       : "bg-background text-muted-foreground active:bg-muted",
                   )}
@@ -578,6 +714,79 @@ function SelectionEditor({
               ))}
             </div>
           )}
+
+          {isPickerLine ? (
+            <LinePicker
+              pick={pick}
+              onPickChange={changePick}
+              line={line}
+              onLineChange={changeLine}
+              presets={linePresets(marketKey)}
+              hint={
+                marketKey === "TOTAL_CORNERS"
+                  ? "Córneres totales al 90′. No se auto-liquida."
+                  : marketKey === "TOTAL_CARDS"
+                    ? "Tarjetas totales al 90′. No se auto-liquida."
+                    : marketKey === "GENERIC_LINE"
+                      ? "Mercado con línea. Se liquida a mano."
+                      : "Goles al 90′. Admite cuartos (2.25, 2.75…)."
+              }
+            />
+          ) : (
+            LINE_MARKETS.includes(marketKey) && (
+              <div className="flex items-end gap-2">
+                <div className="space-y-1">
+                  <Label
+                    htmlFor={`leg-${legIndex}-sel-${selectionIndex}-line`}
+                    className="text-[11px] text-muted-foreground"
+                  >
+                    {lineConfig(marketKey).label}
+                  </Label>
+                  <Input
+                    id={`leg-${legIndex}-sel-${selectionIndex}-line`}
+                    type="text"
+                    inputMode="decimal"
+                    placeholder={lineConfig(marketKey).placeholder}
+                    required
+                    value={line}
+                    onChange={(event) => changeLine(event.target.value)}
+                    className="h-10 w-24 tabular-nums"
+                  />
+                </div>
+                <p className="pb-2.5 text-xs text-muted-foreground">
+                  {lineConfig(marketKey).hint}
+                </p>
+              </div>
+            )
+          )}
+
+          {!isPickerLine &&
+            marketKey !== "EXACT_TOTAL_GOALS" &&
+            pickOptions.length > 0 && (
+              <div
+                className={cn(
+                  "grid gap-1.5",
+                  pickOptions.length === 3 ? "grid-cols-3" : "grid-cols-2",
+                )}
+              >
+                {pickOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={pick === option.value}
+                    onClick={() => changePick(option.value)}
+                    className={cn(
+                      "flex h-10 items-center justify-center rounded-lg border px-2 text-xs font-medium transition-colors",
+                      pick === option.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "bg-background text-muted-foreground active:bg-muted",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
           <p className="text-[11px] text-muted-foreground">
             {selectionValue
@@ -869,6 +1078,7 @@ export function BetForm({
   defaultPlacedAt,
   mode = "create",
   timeZone,
+  useLastUsed = true,
   defaults,
 }: BetFormProps) {
   const isEditing = mode === "edit";
@@ -952,7 +1162,7 @@ export function BetForm({
   // Recupera última casa/bankroll/stake y detecta borrador.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (isEditing) {
+      if (isEditing || !useLastUsed) {
         setDraftChecked(true);
         return;
       }
@@ -1005,6 +1215,7 @@ export function BetForm({
     return () => clearTimeout(timer);
   }, [
     isEditing,
+    useLastUsed,
     defaults?.bankrollId,
     defaults?.bookmakerId,
     defaults?.stake,
@@ -1013,7 +1224,7 @@ export function BetForm({
 
   // Guarda el borrador con debounce mientras se edita (solo creación).
   useEffect(() => {
-    if (isEditing || !draftChecked || draftAvailable) return;
+    if (isEditing || !useLastUsed || !draftChecked || draftAvailable) return;
     const timer = setTimeout(() => {
       try {
         const draft: BetDraft = {
@@ -1036,6 +1247,7 @@ export function BetForm({
     return () => clearTimeout(timer);
   }, [
     isEditing,
+    useLastUsed,
     draftChecked,
     draftAvailable,
     watchedLegs,
@@ -1170,6 +1382,7 @@ export function BetForm({
               marketKey: "CUSTOM" as LegMarketKey,
               line: "",
               pick: "",
+              subject: "",
             }))
           : [emptySelection()],
     }));

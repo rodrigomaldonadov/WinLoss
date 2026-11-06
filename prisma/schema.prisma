@@ -196,6 +196,8 @@ model LegSelection {
   marketKey LegMarketKey @default(CUSTOM)
   line      Decimal?     @db.Decimal(6, 2)
   pick      String?
+  /** Sujeto del mercado: HOME, AWAY o MATCH. */
+  subject   String?
 
   leg BetLeg @relation(fields: [legId], references: [id], onDelete: Cascade)
 
@@ -238,6 +240,9 @@ enum LegMarketKey {
   ODD_EVEN
   WIN_TO_NIL
   EXACT_TOTAL_GOALS
+  TOTAL_CORNERS
+  TOTAL_CARDS
+  GENERIC_LINE
 }
 
 enum AutoSettleMode {
