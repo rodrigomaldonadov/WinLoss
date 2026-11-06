@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { createBet, type BetFormState } from "@/lib/actions/bet";
+import { createBet, updateBet, type BetFormState } from "@/lib/actions/bet";
 import {
   BET_TYPE_LABELS,
   MARKETS,
@@ -33,6 +33,25 @@ type BetFormProps = {
   bankrolls: BankrollSummary[];
   bookmakers: { id: string; name: string }[];
   defaultPlacedAt: string;
+  mode?: "create" | "edit";
+  defaults?: BetFormDefaults;
+};
+
+export type BetFormDefaults = {
+  id?: string;
+  bankrollId?: string;
+  bookmakerId?: string | null;
+  betType?: "SINGLE" | "COMBINED";
+  sport?: string;
+  competition?: string | null;
+  eventName?: string;
+  market?: string;
+  selection?: string;
+  odds?: number;
+  stake?: number;
+  isFreeBet?: boolean;
+  placedAt?: string;
+  notes?: string | null;
 };
 
 function toNumber(value: string): number {
@@ -53,12 +72,24 @@ export function BetForm({
   bankrolls,
   bookmakers,
   defaultPlacedAt,
+  mode = "create",
+  defaults,
 }: BetFormProps) {
-  const [state, formAction, pending] = useActionState(createBet, initialState);
-  const [bankrollId, setBankrollId] = useState(bankrolls[0]?.id ?? "");
-  const [odds, setOdds] = useState("");
-  const [stake, setStake] = useState("");
-  const [isFreeBet, setIsFreeBet] = useState(false);
+  const isEditing = mode === "edit";
+  const [state, formAction, pending] = useActionState(
+    isEditing ? updateBet : createBet,
+    initialState,
+  );
+  const [bankrollId, setBankrollId] = useState(
+    defaults?.bankrollId ?? bankrolls[0]?.id ?? "",
+  );
+  const [odds, setOdds] = useState(
+    defaults?.odds !== undefined ? String(defaults.odds) : "",
+  );
+  const [stake, setStake] = useState(
+    defaults?.stake !== undefined ? String(defaults.stake) : "",
+  );
+  const [isFreeBet, setIsFreeBet] = useState(defaults?.isFreeBet ?? false);
 
   const errors = state.fieldErrors;
   const bankroll =
@@ -85,6 +116,8 @@ export function BetForm({
 
   return (
     <form action={formAction} className="space-y-5">
+      {defaults?.id && <input type="hidden" name="id" value={defaults.id} />}
+
       {state.error && (
         <div
           role="alert"
@@ -139,7 +172,10 @@ export function BetForm({
 
           <div className="space-y-1.5">
             <Label htmlFor="bet-bookmaker">Casa de apuestas</Label>
-            <Select name="bookmakerId" defaultValue="none">
+            <Select
+              name="bookmakerId"
+              defaultValue={defaults?.bookmakerId ?? "none"}
+            >
               <SelectTrigger
                 id="bet-bookmaker"
                 className="h-12 w-full"
@@ -166,7 +202,7 @@ export function BetForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="bet-type">Tipo</Label>
-            <Select name="betType" defaultValue="SINGLE">
+            <Select name="betType" defaultValue={defaults?.betType ?? "SINGLE"}>
               <SelectTrigger
                 id="bet-type"
                 className="h-12 w-full"
@@ -189,7 +225,7 @@ export function BetForm({
               id="bet-date"
               name="placedAt"
               type="datetime-local"
-              defaultValue={defaultPlacedAt}
+              defaultValue={defaults?.placedAt ?? defaultPlacedAt}
               required
               className="h-12"
               aria-invalid={Boolean(errors?.placedAt)}
@@ -218,6 +254,7 @@ export function BetForm({
               name="sport"
               list="bet-sports"
               placeholder="Fútbol"
+              defaultValue={defaults?.sport}
               required
               maxLength={60}
               className="h-12"
@@ -240,6 +277,7 @@ export function BetForm({
               id="bet-competition"
               name="competition"
               placeholder="Liga 1"
+              defaultValue={defaults?.competition ?? ""}
               maxLength={80}
               className="h-12"
             />
@@ -252,6 +290,7 @@ export function BetForm({
             id="bet-event"
             name="eventName"
             placeholder="Alianza Lima vs. Universitario"
+            defaultValue={defaults?.eventName}
             required
             maxLength={120}
             className="h-12"
@@ -269,6 +308,7 @@ export function BetForm({
               name="market"
               list="bet-markets"
               placeholder="Ganador del partido"
+              defaultValue={defaults?.market}
               required
               maxLength={80}
               className="h-12"
@@ -291,6 +331,7 @@ export function BetForm({
               id="bet-selection"
               name="selection"
               placeholder="Alianza Lima"
+              defaultValue={defaults?.selection}
               required
               maxLength={100}
               className="h-12"
@@ -439,6 +480,7 @@ export function BetForm({
             id="bet-notes"
             name="notes"
             placeholder="Tipster, lesiones, condiciones…"
+            defaultValue={defaults?.notes ?? ""}
             maxLength={500}
             rows={3}
           />
@@ -447,7 +489,11 @@ export function BetForm({
 
       <Button type="submit" className="h-12 w-full" disabled={pending}>
         <Sparkles className="size-4" aria-hidden />
-        {pending ? "Registrando…" : "Registrar apuesta"}
+        {pending
+          ? "Guardando…"
+          : isEditing
+            ? "Guardar cambios"
+            : "Registrar apuesta"}
       </Button>
 
       <p className="px-1 text-center text-[11px] text-muted-foreground">

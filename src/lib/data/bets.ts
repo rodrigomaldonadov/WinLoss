@@ -27,6 +27,52 @@ export type BetListItem = {
   bookmaker: { id: string; name: string } | null;
 };
 
+export type BetDetail = BetListItem & {
+  bankrollId: string;
+  bookmakerId: string | null;
+  notes: string | null;
+};
+
+function toBetListItem(bet: {
+  id: string;
+  sport: string;
+  competition: string | null;
+  eventName: string;
+  market: string;
+  selection: string;
+  odds: { toString(): string };
+  stake: { toString(): string };
+  status: BetStatus;
+  betType: BetType;
+  isFreeBet: boolean;
+  placedAt: Date;
+  settledAt: Date | null;
+  payout: { toString(): string } | null;
+  profit: { toString(): string } | null;
+  bankroll: { id: string; name: string; currency: string };
+  bookmaker: { id: string; name: string } | null;
+}): BetListItem {
+  return {
+    id: bet.id,
+    sport: bet.sport,
+    competition: bet.competition,
+    eventName: bet.eventName,
+    market: bet.market,
+    selection: bet.selection,
+    odds: Number(bet.odds),
+    stake: Number(bet.stake),
+    status: bet.status,
+    betType: bet.betType,
+    isFreeBet: bet.isFreeBet,
+    placedAt: bet.placedAt,
+    settledAt: bet.settledAt,
+    payout: bet.payout === null ? null : Number(bet.payout),
+    profit: bet.profit === null ? null : Number(bet.profit),
+    bankroll: bet.bankroll,
+    bookmaker: bet.bookmaker,
+  };
+}
+
 export async function getBetsForUser(
   userId: string,
   filter: BetFilter = "all",
@@ -49,25 +95,29 @@ export async function getBetsForUser(
     },
   });
 
-  return bets.map((bet) => ({
-    id: bet.id,
-    sport: bet.sport,
-    competition: bet.competition,
-    eventName: bet.eventName,
-    market: bet.market,
-    selection: bet.selection,
-    odds: Number(bet.odds),
-    stake: Number(bet.stake),
-    status: bet.status,
-    betType: bet.betType,
-    isFreeBet: bet.isFreeBet,
-    placedAt: bet.placedAt,
-    settledAt: bet.settledAt,
-    payout: bet.payout === null ? null : Number(bet.payout),
-    profit: bet.profit === null ? null : Number(bet.profit),
-    bankroll: bet.bankroll,
-    bookmaker: bet.bookmaker,
-  }));
+  return bets.map(toBetListItem);
+}
+
+export async function getBetForUser(
+  userId: string,
+  id: string,
+): Promise<BetDetail | null> {
+  const bet = await prisma.bet.findFirst({
+    where: { id, userId },
+    include: {
+      bankroll: { select: { id: true, name: true, currency: true } },
+      bookmaker: { select: { id: true, name: true } },
+    },
+  });
+
+  if (!bet) return null;
+
+  return {
+    ...toBetListItem(bet),
+    bankrollId: bet.bankrollId,
+    bookmakerId: bet.bookmakerId,
+    notes: bet.notes,
+  };
 }
 
 export async function getRecentBets(userId: string, take = 5) {

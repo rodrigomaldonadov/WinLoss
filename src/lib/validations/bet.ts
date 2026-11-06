@@ -63,7 +63,7 @@ export const createBetSchema = z.object({
   notes: optionalText(500),
 });
 
-export const updateBetSchema = createBetSchema.partial().extend({
+export const updateBetSchema = createBetSchema.extend({
   id: z.string().min(1),
 });
 

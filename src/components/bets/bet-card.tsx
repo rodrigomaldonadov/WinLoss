@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { BetActionsSheet } from "@/components/bets/bet-actions-sheet";
 import { SettleBetSheet } from "@/components/bets/settle-bet-sheet";
 import { getBetStatusMeta } from "@/lib/bet-status";
 import type { BetListItem } from "@/lib/data/bets";
@@ -79,12 +80,15 @@ export function BetCard({ bet }: BetCardProps) {
         </div>
       </dl>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <p className="min-w-0 truncate text-[11px] text-muted-foreground">
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
           {formatDateTime(bet.placedAt)} · {bet.bankroll.name}
           {bet.bookmaker ? ` · ${bet.bookmaker.name}` : ""}
         </p>
-        {pending && <SettleBetSheet bet={bet} />}
+        <div className="flex shrink-0 items-center gap-1">
+          {pending && <SettleBetSheet bet={bet} />}
+          <BetActionsSheet bet={bet} />
+        </div>
       </div>
     </article>
   );

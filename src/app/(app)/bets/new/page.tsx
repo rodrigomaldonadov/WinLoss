@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Wallet } from "lucide-react";
+import { ArrowLeft, Copy, Wallet } from "lucide-react";
 
 import { auth } from "@/auth";
 import { BetForm } from "@/components/bets/bet-form";
@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getBankrollsForUser } from "@/lib/data/bankrolls";
+import { getBetForUser } from "@/lib/data/bets";
 import { getBookmakerOptions } from "@/lib/data/bookmakers";
 import { toZonedDateTimeInput } from "@/lib/date";
 
@@ -16,16 +17,33 @@ export const metadata: Metadata = {
   title: "Nueva apuesta",
 };
 
-export default async function NewBetPage() {
+type NewBetPageProps = {
+  searchParams: Promise<{ copy?: string | string[] }>;
+};
+
+export default async function NewBetPage({ searchParams }: NewBetPageProps) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [bankrolls, bookmakers] = await Promise.all([
+  const params = await searchParams;
+  const copyId = Array.isArray(params.copy) ? params.copy[0] : params.copy;
+
+  const [bankrolls, bookmakers, copiedBet] = await Promise.all([
     getBankrollsForUser(session.user.id),
     getBookmakerOptions(session.user.id),
+    copyId ? getBetForUser(session.user.id, copyId) : Promise.resolve(null),
   ]);
 
   const activeBankrolls = bankrolls.filter((bankroll) => bankroll.isActive);
+  const copiedBankrollId =
+    copiedBet && activeBankrolls.some((item) => item.id === copiedBet.bankrollId)
+      ? copiedBet.bankrollId
+      : undefined;
+  const copiedBookmakerId =
+    copiedBet &&
+    bookmakers.some((item) => item.id === copiedBet.bookmakerId)
+      ? copiedBet.bookmakerId
+      : undefined;
 
   return (
     <div className="space-y-5">
@@ -37,8 +55,12 @@ export default async function NewBetPage() {
       </Button>
 
       <PageHeader
-        title="Nueva apuesta"
-        description="Registra el pick y controla su liquidación."
+        title={copiedBet ? "Duplicar apuesta" : "Nueva apuesta"}
+        description={
+          copiedBet
+            ? "Revisa el pick y define el nuevo stake."
+            : "Registra el pick y controla su liquidación."
+        }
       />
 
       {activeBankrolls.length === 0 ? (
@@ -53,11 +75,42 @@ export default async function NewBetPage() {
           }
         />
       ) : (
-        <BetForm
-          bankrolls={activeBankrolls}
-          bookmakers={bookmakers}
-          defaultPlacedAt={toZonedDateTimeInput(new Date())}
-        />
+        <>
+          {copiedBet && (
+            <div
+              role="status"
+              className="flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2.5 text-sm text-primary"
+            >
+              <Copy className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <p>
+                Duplicando <strong>{copiedBet.eventName}</strong>. El stake, la
+                fecha y el estado de liquidación no se copian.
+              </p>
+            </div>
+          )}
+
+          <BetForm
+            bankrolls={activeBankrolls}
+            bookmakers={bookmakers}
+            defaultPlacedAt={toZonedDateTimeInput(new Date())}
+            defaults={
+              copiedBet
+                ? {
+                    bankrollId: copiedBankrollId,
+                    bookmakerId: copiedBookmakerId ?? null,
+                    betType: copiedBet.betType,
+                    sport: copiedBet.sport,
+                    competition: copiedBet.competition,
+                    eventName: copiedBet.eventName,
+                    market: copiedBet.market,
+                    selection: copiedBet.selection,
+                    odds: copiedBet.odds,
+                    isFreeBet: false,
+                  }
+                : undefined
+            }
+          />
+        </>
       )}
     </div>
   );

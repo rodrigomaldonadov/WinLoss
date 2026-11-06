@@ -150,6 +150,125 @@ try {
     fullPage: false,
   });
 
+  // Duplicar apuesta: mismo pick, stake vacío
+  await page.goto(`${BASE_URL}/bets`, { waitUntil: "networkidle" });
+  await page
+    .locator("article")
+    .filter({ hasText: "Alianza Lima vs. Universitario" })
+    .getByRole("button", { name: /Opciones de/ })
+    .click();
+  await page.waitForTimeout(400);
+  await page.screenshot({
+    path: "artifacts/11-bet-options-mobile.png",
+    fullPage: false,
+  });
+  await page.getByRole("link", { name: /Duplicar/ }).click();
+  await page.waitForURL(/\/bets\/new\?copy=/, { timeout: 15_000 });
+
+  if (!(await page.getByLabel("Evento").inputValue()).includes("Alianza")) {
+    throw new Error("Duplicar no prellenó el evento");
+  }
+  if ((await page.getByLabel("Stake").inputValue()) !== "") {
+    throw new Error("Duplicar no debe copiar el stake");
+  }
+
+  await page.getByLabel("Stake").fill("20");
+  await page.getByRole("button", { name: "Registrar apuesta" }).click();
+  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+  await page.getByText("2 apuestas registradas").waitFor({ timeout: 15_000 });
+
+  // Editar apuesta pendiente
+  await page
+    .locator("article")
+    .filter({ hasText: "Pendiente" })
+    .getByRole("button", { name: /Opciones de/ })
+    .click();
+  await page.getByRole("link", { name: /Editar/ }).click();
+  await page.waitForURL(/\/bets\/.+\/edit/, { timeout: 15_000 });
+  await page.getByLabel("Stake").fill("30");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+
+  const editedPending = await page
+    .locator("article")
+    .filter({ hasText: "Pendiente" })
+    .innerText();
+  if (!editedPending.includes("30.00")) {
+    throw new Error(`Stake editado no visible: ${editedPending}`);
+  }
+
+  // Eliminar apuesta pendiente
+  await page
+    .locator("article")
+    .filter({ hasText: "Pendiente" })
+    .getByRole("button", { name: /Opciones de/ })
+    .click();
+  await page
+    .getByRole("button", { name: /Eliminar\s+Libera el stake/ })
+    .click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Eliminar", exact: true })
+    .click();
+  await page.getByText("1 apuesta registrada").waitFor({ timeout: 15_000 });
+
+  // Editar una apuesta YA liquidada: debe recalcular payout, profit y ROI
+  await page
+    .locator("article")
+    .filter({ hasText: "Ganada" })
+    .getByRole("button", { name: /Opciones de/ })
+    .click();
+  await page.getByRole("link", { name: /Editar/ }).click();
+  await page.waitForURL(/\/bets\/.+\/edit/, { timeout: 15_000 });
+  await page.screenshot({
+    path: "artifacts/12-edit-bet-mobile.png",
+    fullPage: false,
+  });
+  await page.getByLabel("Stake").fill("20");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await page.waitForURL(`${BASE_URL}/bets`, { timeout: 30_000 });
+
+  const settledText = await page
+    .locator("article")
+    .filter({ hasText: "Ganada" })
+    .innerText();
+  if (!/\+S\/\s?20[.,]00/.test(settledText)) {
+    throw new Error(`Settled no recalculado: ${settledText}`);
+  }
+
+  await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle" });
+  const recalculated = await page.locator("body").innerText();
+  if (
+    !recalculated.includes("520.50") &&
+    !recalculated.includes("520,50")
+  ) {
+    throw new Error(`Bankroll no recalculado al editar: ${recalculated}`);
+  }
+
+  // Eliminar la liquidada devuelve el bankroll a su capital inicial
+  await page.goto(`${BASE_URL}/bets`, { waitUntil: "networkidle" });
+  await page
+    .locator("article")
+    .filter({ hasText: "Ganada" })
+    .getByRole("button", { name: /Opciones de/ })
+    .click();
+  await page
+    .getByRole("button", { name: /Eliminar\s+Libera el stake/ })
+    .click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Eliminar", exact: true })
+    .click();
+  await page
+    .getByText("Todavía no hay apuestas")
+    .waitFor({ timeout: 15_000 });
+
+  await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle" });
+  const restored = await page.locator("body").innerText();
+  if (!restored.includes("500.50") && !restored.includes("500,50")) {
+    throw new Error(`Bankroll no restaurado al borrar: ${restored}`);
+  }
+
   await page.goto(`${BASE_URL}/settings`, { waitUntil: "networkidle" });
   if (!(await page.getByText("Casas de apuestas").isVisible())) {
     throw new Error("Ajustes no enlaza a casas de apuestas");
