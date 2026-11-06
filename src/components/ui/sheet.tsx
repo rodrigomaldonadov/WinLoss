@@ -40,6 +40,7 @@ function SheetContent({ className, children, side = "right", showCloseButton = t
       <SheetPrimitive.Content
         data-slot="sheet-content"
         data-side={side}
+        {...props}
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg transition duration-200 ease-in-out",
           "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0",
