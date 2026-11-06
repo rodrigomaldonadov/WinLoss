@@ -233,6 +233,11 @@ enum LegMarketKey {
   DRAW_NO_BET
   TOTAL_GOALS
   BTTS
+  ASIAN_HANDICAP
+  TEAM_TOTAL_GOALS
+  ODD_EVEN
+  WIN_TO_NIL
+  EXACT_TOTAL_GOALS
 }
 
 enum AutoSettleMode {

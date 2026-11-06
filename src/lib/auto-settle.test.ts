@@ -106,6 +106,92 @@ describe("resolveSelection · CUSTOM", () => {
   });
 });
 
+describe("resolveSelection · ASIAN_HANDICAP", () => {
+  it.each([
+    [2, 1, -0.5, "HOME", "WON"],
+    [1, 1, -0.5, "HOME", "LOST"],
+    [2, 1, -1, "HOME", "VOID"],
+    [1, 1, 1, "HOME", "WON"],
+    [1, 1, 1, "AWAY", "LOST"],
+    [2, 0, 0, "AWAY", "LOST"],
+    [1, 1, -0.25, "HOME", "HALF_LOST"],
+    [2, 1, -0.25, "HOME", "WON"],
+  ] as const)("%i-%i línea %s %s → %s", (h, a, line, pick, expected) => {
+    expect(
+      resolveSelection(
+        { marketKey: "ASIAN_HANDICAP", pick, line },
+        score(h, a),
+      ),
+    ).toBe(expected);
+  });
+});
+
+describe("resolveSelection · TEAM_TOTAL_GOALS", () => {
+  it.each([
+    [2, 1, 1.5, "HOME_OVER", "WON"],
+    [2, 1, 1.5, "HOME_UNDER", "LOST"],
+    [2, 0, 0.5, "AWAY_UNDER", "WON"],
+    [2, 1, 1.5, "AWAY_UNDER", "WON"],
+    [1, 0, 1.25, "HOME_OVER", "HALF_LOST"],
+  ] as const)("%i-%i línea %s %s → %s", (h, a, line, pick, expected) => {
+    expect(
+      resolveSelection(
+        { marketKey: "TEAM_TOTAL_GOALS", pick, line },
+        score(h, a),
+      ),
+    ).toBe(expected);
+  });
+});
+
+describe("resolveSelection · ODD_EVEN", () => {
+  it.each([
+    [2, 1, "ODD", "WON"],
+    [2, 1, "EVEN", "LOST"],
+    [1, 1, "EVEN", "WON"],
+  ] as const)("%i-%i %s → %s", (h, a, pick, expected) => {
+    expect(
+      resolveSelection({ marketKey: "ODD_EVEN", pick, line: null }, score(h, a)),
+    ).toBe(expected);
+  });
+});
+
+describe("resolveSelection · WIN_TO_NIL", () => {
+  it.each([
+    [2, 0, "HOME", "WON"],
+    [2, 1, "HOME", "LOST"],
+    [0, 1, "AWAY", "WON"],
+    [1, 1, "AWAY", "LOST"],
+  ] as const)("%i-%i %s → %s", (h, a, pick, expected) => {
+    expect(
+      resolveSelection({ marketKey: "WIN_TO_NIL", pick, line: null }, score(h, a)),
+    ).toBe(expected);
+  });
+});
+
+describe("resolveSelection · EXACT_TOTAL_GOALS", () => {
+  it.each([
+    [3, 3, "WON"],
+    [3, 2, "LOST"],
+  ] as const)("total %i con línea %s → %s", (total, line, expected) => {
+    const home = Math.min(total, 1);
+    expect(
+      resolveSelection(
+        { marketKey: "EXACT_TOTAL_GOALS", pick: "EXACT", line },
+        score(home, total - home),
+      ),
+    ).toBe(expected);
+  });
+
+  it("sin línea no resuelve", () => {
+    expect(
+      resolveSelection(
+        { marketKey: "EXACT_TOTAL_GOALS", pick: "EXACT", line: null },
+        score(1, 0),
+      ),
+    ).toBeNull();
+  });
+});
+
 describe("combineBuilderResults", () => {
   it("todas WON → WON", () => {
     expect(combineBuilderResults(["WON", "WON"])).toBe("WON");

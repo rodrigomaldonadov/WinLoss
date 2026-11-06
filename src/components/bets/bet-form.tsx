@@ -248,12 +248,17 @@ type SelectionsFieldsProps = {
 };
 
 const MARKET_OPTIONS: { value: LegMarketKey; label: string }[] = [
-  { value: "CUSTOM", label: "Otro mercado (manual)" },
   { value: "MATCH_RESULT", label: "Resultado final (1X2)" },
   { value: "DOUBLE_CHANCE", label: "Doble oportunidad" },
   { value: "DRAW_NO_BET", label: "Empate no válido (DNB)" },
   { value: "TOTAL_GOALS", label: "Total de goles" },
   { value: "BTTS", label: "Ambos equipos marcan" },
+  { value: "ASIAN_HANDICAP", label: "Hándicap asiático" },
+  { value: "TEAM_TOTAL_GOALS", label: "Goles por equipo" },
+  { value: "ODD_EVEN", label: "Total par o impar" },
+  { value: "WIN_TO_NIL", label: "Gana sin recibir gol" },
+  { value: "EXACT_TOTAL_GOALS", label: "Total exacto de goles" },
+  { value: "CUSTOM", label: "Otro mercado (manual)" },
 ];
 
 const MARKET_LABELS: Record<LegMarketKey, string> = Object.fromEntries(
@@ -286,7 +291,33 @@ const MARKET_PICKS: Record<
     { value: "YES", label: "Sí" },
     { value: "NO", label: "No" },
   ],
+  ASIAN_HANDICAP: [
+    { value: "HOME", label: "Local" },
+    { value: "AWAY", label: "Visitante" },
+  ],
+  TEAM_TOTAL_GOALS: [
+    { value: "HOME_OVER", label: "Local +" },
+    { value: "HOME_UNDER", label: "Local −" },
+    { value: "AWAY_OVER", label: "Visitante +" },
+    { value: "AWAY_UNDER", label: "Visitante −" },
+  ],
+  ODD_EVEN: [
+    { value: "ODD", label: "Impar" },
+    { value: "EVEN", label: "Par" },
+  ],
+  WIN_TO_NIL: [
+    { value: "HOME", label: "Local" },
+    { value: "AWAY", label: "Visitante" },
+  ],
+  EXACT_TOTAL_GOALS: [],
 };
+
+const LINE_MARKETS: LegMarketKey[] = [
+  "TOTAL_GOALS",
+  "TEAM_TOTAL_GOALS",
+  "ASIAN_HANDICAP",
+  "EXACT_TOTAL_GOALS",
+];
 
 function pickLabel(marketKey: LegMarketKey, pick: string): string {
   if (marketKey === "CUSTOM") return "";
@@ -304,10 +335,60 @@ function buildSelectionLabel(
 ): string {
   if (!pick) return "";
   const label = pickLabel(marketKey, pick);
-  if (marketKey === "TOTAL_GOALS") {
-    return line ? `${label} ${line}` : `${label} …`;
+
+  switch (marketKey) {
+    case "TOTAL_GOALS":
+      return line ? `${label} ${line}` : `${label} …`;
+    case "TEAM_TOTAL_GOALS": {
+      const [team, side] = pick.split("_");
+      const teamLabel = team === "HOME" ? "Local" : "Visitante";
+      const sideLabel = side === "OVER" ? "más de" : "menos de";
+      return line ? `${teamLabel} ${sideLabel} ${line}` : `${teamLabel} …`;
+    }
+    case "ASIAN_HANDICAP":
+      return line ? `${label} (${line})` : `${label} …`;
+    case "WIN_TO_NIL":
+      return pick === "HOME"
+        ? "Local gana sin recibir"
+        : "Visitante gana sin recibir";
+    case "EXACT_TOTAL_GOALS":
+      return line ? `${line} goles exactos` : "Total exacto …";
+    default:
+      return label;
   }
-  return label;
+}
+
+function lineConfig(marketKey: LegMarketKey): {
+  label: string;
+  hint: string;
+  placeholder: string;
+} {
+  switch (marketKey) {
+    case "ASIAN_HANDICAP":
+      return {
+        label: "Hándicap del local",
+        hint: "Negativo si el local da ventaja (-0.5, -1, -0.25)",
+        placeholder: "-0.5",
+      };
+    case "TEAM_TOTAL_GOALS":
+      return {
+        label: "Línea del equipo",
+        hint: "Goles del equipo al 90'",
+        placeholder: "1.5",
+      };
+    case "EXACT_TOTAL_GOALS":
+      return {
+        label: "Total exacto",
+        hint: "Goles exactos al 90'",
+        placeholder: "3",
+      };
+    default:
+      return {
+        label: "Línea",
+        hint: "Goles totales (90 min)",
+        placeholder: "2.5",
+      };
+  }
 }
 
 type SelectionEditorProps = {
@@ -342,7 +423,7 @@ function SelectionEditor({
   const changeMarket = (next: LegMarketKey) => {
     setValue(path("marketKey"), next);
     setValue(path("line"), "");
-    setValue(path("pick"), "");
+    setValue(path("pick"), next === "EXACT_TOTAL_GOALS" ? "EXACT" : "");
     if (next === "CUSTOM") {
       setValue(path("market"), "");
       setValue(path("selection"), "");
@@ -416,60 +497,64 @@ function SelectionEditor({
           <input type="hidden" {...register(path("market"))} />
           <input type="hidden" {...register(path("selection"))} />
 
-          {marketKey === "TOTAL_GOALS" && (
+          {LINE_MARKETS.includes(marketKey) && (
             <div className="flex items-end gap-2">
               <div className="space-y-1">
                 <Label
                   htmlFor={`leg-${legIndex}-sel-${selectionIndex}-line`}
                   className="text-[11px] text-muted-foreground"
                 >
-                  Línea
+                  {lineConfig(marketKey).label}
                 </Label>
                 <Input
                   id={`leg-${legIndex}-sel-${selectionIndex}-line`}
                   type="text"
                   inputMode="decimal"
-                  placeholder="2.5"
+                  placeholder={lineConfig(marketKey).placeholder}
                   required
                   value={line}
                   onChange={(event) => changeLine(event.target.value)}
-                  className="h-10 w-20 tabular-nums"
+                  className="h-10 w-24 tabular-nums"
                 />
               </div>
               <p className="pb-2.5 text-xs text-muted-foreground">
-                goles totales (90 min)
+                {lineConfig(marketKey).hint}
               </p>
             </div>
           )}
 
-          <div
-            className={cn(
-              "grid gap-1.5",
-              pickOptions.length === 3 ? "grid-cols-3" : "grid-cols-2",
-            )}
-          >
-            {pickOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                aria-pressed={pick === option.value}
-                onClick={() => changePick(option.value)}
-                className={cn(
-                  "flex h-9 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors",
-                  pick === option.value
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "bg-background text-muted-foreground active:bg-muted",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+          {pickOptions.length > 0 && (
+            <div
+              className={cn(
+                "grid gap-1.5",
+                pickOptions.length === 3 ? "grid-cols-3" : "grid-cols-2",
+              )}
+            >
+              {pickOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={pick === option.value}
+                  onClick={() => changePick(option.value)}
+                  className={cn(
+                    "flex h-9 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors",
+                    pick === option.value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "bg-background text-muted-foreground active:bg-muted",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <p className="text-[11px] text-muted-foreground">
             {selectionValue
               ? `Se guardará: ${MARKET_LABELS[marketKey]} · ${selectionValue}`
-              : "Elige una opción para completar la selección."}
+              : marketKey === "EXACT_TOTAL_GOALS"
+                ? "Escribe el total exacto de goles."
+                : "Elige una opción para completar la selección."}
           </p>
         </>
       ) : (

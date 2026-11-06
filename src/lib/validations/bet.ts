@@ -68,6 +68,11 @@ export const legMarketKeySchema = z.enum([
   "DRAW_NO_BET",
   "TOTAL_GOALS",
   "BTTS",
+  "ASIAN_HANDICAP",
+  "TEAM_TOTAL_GOALS",
+  "ODD_EVEN",
+  "WIN_TO_NIL",
+  "EXACT_TOTAL_GOALS",
 ]);
 
 export const legSelectionSchema = z.object({
