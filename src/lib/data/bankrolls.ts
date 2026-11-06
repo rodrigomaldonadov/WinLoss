@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { BetListItem } from "./bets";
+import { toBetListItem } from "./bets";
 
 import { calculateBettingStats } from "@/lib/bet-math";
 import { prisma } from "@/lib/prisma";
@@ -14,25 +14,15 @@ export async function getBankrollsForUser(
     orderBy: [{ isActive: "desc" }, { createdAt: "asc" }],
     include: {
       bets: {
-        select: {
-          id: true,
-          sport: true,
-          competition: true,
-          eventName: true,
-          market: true,
-          selection: true,
-          odds: true,
-          stake: true,
-          status: true,
-          betType: true,
-          isFreeBet: true,
-          placedAt: true,
-          settledAt: true,
-          payout: true,
-          profit: true,
-          closingOdds: true,
-          bankrollId: true,
-          bookmakerId: true,
+        orderBy: [{ placedAt: "desc" }, { createdAt: "desc" }],
+        include: {
+          bookmaker: { select: { id: true, name: true } },
+          legs: {
+            orderBy: { position: "asc" },
+            include: {
+              selections: { orderBy: { position: "asc" } },
+            },
+          },
         },
       },
     },
@@ -41,26 +31,16 @@ export async function getBankrollsForUser(
   return bankrolls.map((bankroll) => {
     const stats = calculateBettingStats(bankroll.bets, bankroll.initialAmount);
 
-    const betListItems = bankroll.bets.map((bet) => ({
-      id: bet.id,
-      sport: bet.sport,
-      competition: bet.competition,
-      eventName: bet.eventName,
-      market: bet.market,
-      selection: bet.selection,
-      odds: Number(bet.odds),
-      stake: Number(bet.stake),
-      status: bet.status,
-      betType: bet.betType,
-      isFreeBet: bet.isFreeBet,
-      placedAt: bet.placedAt,
-      settledAt: bet.settledAt,
-      payout: bet.payout === null ? null : Number(bet.payout),
-      profit: bet.profit === null ? null : Number(bet.profit),
-      closingOdds: bet.closingOdds === null ? null : Number(bet.closingOdds),
-      bankroll: { id: bankroll.id, name: bankroll.name, currency: bankroll.currency },
-      bookmaker: bet.bookmakerId ? { id: bet.bookmakerId, name: "" } : null,
-    }));
+    const betListItems = bankroll.bets.map((bet) =>
+      toBetListItem({
+        ...bet,
+        bankroll: {
+          id: bankroll.id,
+          name: bankroll.name,
+          currency: bankroll.currency,
+        },
+      }),
+    );
 
     return {
       id: bankroll.id,

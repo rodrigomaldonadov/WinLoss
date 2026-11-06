@@ -1,17 +1,23 @@
 "use server";
 
+import { Prisma, type BetStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { calculateBetResult, calculateBettingStats } from "@/lib/bet-math";
+import {
+  calculateBetResult,
+  calculateBettingStats,
+  settleBet as settleBetMath,
+} from "@/lib/bet-math";
 import { formatCurrency } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import {
   createBetSchema,
   settleBetSchema,
   updateBetSchema,
+  type BetLegInput,
 } from "@/lib/validations/bet";
 
 export type BetFormState = {
@@ -29,28 +35,134 @@ export type DeleteBetState = {
   error?: string;
 };
 
-function revalidateBetViews() {
+function revalidateBetViews(betId?: string) {
   revalidatePath("/");
   revalidatePath("/bets");
   revalidatePath("/bets/new");
   revalidatePath("/bankroll");
+  if (betId) revalidatePath(`/bets/${betId}`);
 }
 
+type RawLeg = {
+  sport?: unknown;
+  competition?: unknown;
+  eventName?: unknown;
+  eventDate?: unknown;
+  isBuilder?: unknown;
+  odds?: unknown;
+  selections: Map<number, { market?: unknown; selection?: unknown }>;
+};
+
+/**
+ * Convierte FormData en la estructura anidada que valida Zod.
+ *
+ * Los inputs del formulario usan nombres como `legs.0.sport` y
+ * `legs.0.selections.1.market`, que es lo que genera `useFieldArray`.
+ */
 function readBetForm(formData: FormData) {
+  const rawLegs = new Map<number, RawLeg>();
+
+  for (const [key, value] of formData.entries()) {
+    const selectionMatch = /^legs\.(\d+)\.selections\.(\d+)\.(market|selection)$/.exec(
+      key,
+    );
+    if (selectionMatch) {
+      const legIndex = Number(selectionMatch[1]);
+      const selectionIndex = Number(selectionMatch[2]);
+      const field = selectionMatch[3] as "market" | "selection";
+      const leg: RawLeg =
+        rawLegs.get(legIndex) ?? { selections: new Map() };
+      const selection: { market?: unknown; selection?: unknown } =
+        leg.selections.get(selectionIndex) ?? {};
+      selection[field] = value;
+      leg.selections.set(selectionIndex, selection);
+      rawLegs.set(legIndex, leg);
+      continue;
+    }
+
+    const legMatch = /^legs\.(\d+)\.(sport|competition|eventName|eventDate|isBuilder|odds)$/.exec(
+      key,
+    );
+    if (!legMatch) continue;
+
+    const legIndex = Number(legMatch[1]);
+    const field = legMatch[2] as Exclude<keyof RawLeg, "selections">;
+    const leg: RawLeg = rawLegs.get(legIndex) ?? { selections: new Map() };
+    leg[field] = value;
+    rawLegs.set(legIndex, leg);
+  }
+
+  const legs: unknown[] = [...rawLegs.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, leg]) => ({
+      sport: leg.sport,
+      competition: leg.competition,
+      eventName: leg.eventName,
+      eventDate: leg.eventDate,
+      isBuilder: leg.isBuilder ?? "false",
+      odds: leg.odds,
+      selections: [...leg.selections.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([, selection]) => ({
+          market: selection.market,
+          selection: selection.selection,
+        })),
+    }));
+
+  // Compatibilidad con clientes antiguos que todavía envían campos planos.
+  if (legs.length === 0 && formData.get("sport")) {
+    legs.push({
+      sport: formData.get("sport"),
+      competition: formData.get("competition"),
+      eventName: formData.get("eventName"),
+      eventDate: undefined,
+      isBuilder: "false",
+      odds: formData.get("odds"),
+      selections: [
+        {
+          market: formData.get("market"),
+          selection: formData.get("selection"),
+        },
+      ],
+    });
+  }
+
   return {
     bankrollId: formData.get("bankrollId"),
     bookmakerId: formData.get("bookmakerId"),
-    sport: formData.get("sport"),
-    competition: formData.get("competition"),
-    eventName: formData.get("eventName"),
-    market: formData.get("market"),
-    selection: formData.get("selection"),
+    externalId: formData.get("externalId"),
     odds: formData.get("odds"),
     stake: formData.get("stake"),
-    betType: formData.get("betType") || "SINGLE",
     isFreeBet: formData.get("isFreeBet"),
     placedAt: formData.get("placedAt"),
     notes: formData.get("notes"),
+    legs,
+  };
+}
+
+function readSettlementForm(formData: FormData) {
+  const rawLegs = new Map<number, { id?: unknown; status?: unknown; closingOdds?: unknown }>();
+
+  for (const [key, value] of formData.entries()) {
+    const match = /^legs\.(\d+)\.(id|status|closingOdds)$/.exec(key);
+    if (!match) continue;
+    const index = Number(match[1]);
+    const field = match[2] as "id" | "status" | "closingOdds";
+    const leg = rawLegs.get(index) ?? {};
+    leg[field] = value;
+    rawLegs.set(index, leg);
+  }
+
+  return {
+    id: formData.get("id"),
+    cashoutAmount: formData.get("cashoutAmount"),
+    legs: [...rawLegs.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, leg]) => ({
+        id: leg.id,
+        status: leg.status,
+        closingOdds: leg.closingOdds,
+      })),
   };
 }
 
@@ -146,6 +258,27 @@ async function validateBetReferences(
   return { ok: true, bankrollId: bankroll.id, currency: bankroll.currency };
 }
 
+function legacyColumnsFromLeg(leg: BetLegInput) {
+  return {
+    sport: leg.sport,
+    competition: leg.competition ?? null,
+    eventName: leg.eventName,
+    market: leg.selections[0]?.market ?? "",
+    selection: leg.selections[0]?.selection ?? "",
+  };
+}
+
+function betTypeFromLegCount(count: number): "SINGLE" | "COMBINED" {
+  return count > 1 ? "COMBINED" : "SINGLE";
+}
+
+async function isDuplicateExternalId(error: unknown): Promise<boolean> {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
+
 export async function createBet(
   _prevState: BetFormState,
   formData: FormData,
@@ -162,10 +295,7 @@ export async function createBet(
   }
 
   const data = parsed.data;
-
-  if (data.odds < 1.01) {
-    return { fieldErrors: { odds: ["La cuota debe ser mayor que 1.00."] } };
-  }
+  const firstLeg = data.legs[0];
 
   const references = await validateBetReferences(
     session.user.id,
@@ -180,24 +310,51 @@ export async function createBet(
 
   if (!references.ok) return references.state;
 
-  await prisma.bet.create({
-    data: {
-      userId: session.user.id,
-      bankrollId: references.bankrollId,
-      bookmakerId: data.bookmakerId ?? null,
-      sport: data.sport,
-      competition: data.competition ?? null,
-      eventName: data.eventName,
-      market: data.market,
-      selection: data.selection,
-      odds: data.odds,
-      stake: data.stake,
-      betType: data.betType,
-      isFreeBet: data.isFreeBet,
-      placedAt: data.placedAt,
-      notes: data.notes ?? null,
-    },
-  });
+  try {
+    await prisma.bet.create({
+      data: {
+        userId: session.user.id,
+        bankrollId: references.bankrollId,
+        bookmakerId: data.bookmakerId ?? null,
+        externalId: data.externalId ?? null,
+        ...legacyColumnsFromLeg(firstLeg),
+        odds: data.odds,
+        stake: data.stake,
+        betType: betTypeFromLegCount(data.legs.length),
+        isFreeBet: data.isFreeBet,
+        placedAt: data.placedAt,
+        notes: data.notes ?? null,
+        legs: {
+          create: data.legs.map((leg, index) => ({
+            position: index,
+            sport: leg.sport,
+            competition: leg.competition ?? null,
+            eventName: leg.eventName,
+            eventDate: leg.eventDate ?? null,
+            isBuilder: leg.isBuilder,
+            odds: leg.odds,
+            status: "PENDING" as const,
+            selections: {
+              create: leg.selections.map((selection, selectionIndex) => ({
+                position: selectionIndex,
+                market: selection.market,
+                selection: selection.selection,
+              })),
+            },
+          })),
+        },
+      },
+    });
+  } catch (error) {
+    if (await isDuplicateExternalId(error)) {
+      return {
+        fieldErrors: {
+          externalId: ["Ya tienes un boleto registrado con ese ID."],
+        },
+      };
+    }
+    throw error;
+  }
 
   revalidateBetViews();
   redirect("/bets");
@@ -229,7 +386,11 @@ export async function updateBet(
       id: true,
       status: true,
       payout: true,
-      closingOdds: true,
+      isFreeBet: true,
+      legs: {
+        orderBy: { position: "asc" },
+        select: { status: true, closingOdds: true },
+      },
     },
   });
 
@@ -255,51 +416,98 @@ export async function updateBet(
   if (!references.ok) return references.state;
 
   /*
-   * Si la apuesta ya estaba liquidada conservamos su resultado y recalculamos
-   * payout/profit con la nueva cuota o stake. Para CASHOUT el importe devuelto
-   * es el propio payout guardado, no el beneficio.
+   * Conservamos el resultado por posición al editar un boleto ya liquidado.
+   * Después recalculamos el estado del boleto con las cuotas nuevas.
    */
-  const settlement =
-    existing.status === "PENDING"
-      ? null
-      : calculateBetResult({
-          stake: data.stake,
-          odds: data.odds,
-          status: existing.status,
-          isFreeBet: data.isFreeBet,
-          cashoutAmount:
-            existing.status === "CASHOUT" && existing.payout !== null
-              ? existing.payout.toString()
-              : undefined,
-        });
+  const legsWithStatus = data.legs.map((leg, index) => ({
+    ...leg,
+    status: existing.legs[index]?.status ?? ("PENDING" as const),
+    closingOdds: existing.legs[index]?.closingOdds ?? null,
+  }));
 
-  const updated = await prisma.bet.updateMany({
-    where: { id: existing.id, userId: session.user.id },
-    data: {
-      bankrollId: references.bankrollId,
-      bookmakerId: data.bookmakerId ?? null,
-      sport: data.sport,
-      competition: data.competition ?? null,
-      eventName: data.eventName,
-      market: data.market,
-      selection: data.selection,
-      odds: data.odds,
+  let status = existing.status;
+  let payout: Prisma.Decimal | null = null;
+  let profit: Prisma.Decimal | null = null;
+
+  if (existing.status === "CASHOUT") {
+    const settlement = calculateBetResult({
       stake: data.stake,
-      betType: data.betType,
+      odds: data.odds,
+      status: "CASHOUT",
       isFreeBet: data.isFreeBet,
-      placedAt: data.placedAt,
-      notes: data.notes ?? null,
-      payout: settlement?.payout ?? null,
-      profit: settlement?.profit ?? null,
-      closingOdds: data.closingOdds ?? existing.closingOdds ?? null,
-    },
-  });
-
-  if (updated.count === 0) {
-    return { error: "No pudimos actualizar la apuesta." };
+      cashoutAmount: existing.payout,
+    });
+    payout = settlement.payout;
+    profit = settlement.profit;
+  } else if (existing.status !== "PENDING") {
+    const settlement = settleBetMath(
+      legsWithStatus.map((leg) => ({ odds: leg.odds, status: leg.status })),
+      data.stake,
+      data.isFreeBet,
+    );
+    status = settlement.status;
+    if (settlement.status !== "PENDING") {
+      payout = settlement.payout;
+      profit = settlement.profit;
+    }
   }
 
-  revalidateBetViews();
+  const firstLeg = data.legs[0];
+
+  try {
+    await prisma.bet.update({
+      where: { id: existing.id },
+      data: {
+        bankrollId: references.bankrollId,
+        bookmakerId: data.bookmakerId ?? null,
+        externalId: data.externalId ?? null,
+        ...legacyColumnsFromLeg(firstLeg),
+        odds: data.odds,
+        stake: data.stake,
+        betType: betTypeFromLegCount(data.legs.length),
+        isFreeBet: data.isFreeBet,
+        placedAt: data.placedAt,
+        notes: data.notes ?? null,
+        status,
+        payout,
+        profit,
+        settledAt:
+          status === "PENDING" ? null : new Date(),
+        legs: {
+          deleteMany: {},
+          create: legsWithStatus.map((leg, index) => ({
+            position: index,
+            sport: leg.sport,
+            competition: leg.competition ?? null,
+            eventName: leg.eventName,
+            eventDate: leg.eventDate ?? null,
+            isBuilder: leg.isBuilder,
+            odds: leg.odds,
+            closingOdds: leg.closingOdds,
+            status: leg.status,
+            selections: {
+              create: leg.selections.map((selection, selectionIndex) => ({
+                position: selectionIndex,
+                market: selection.market,
+                selection: selection.selection,
+              })),
+            },
+          })),
+        },
+      },
+    });
+  } catch (error) {
+    if (await isDuplicateExternalId(error)) {
+      return {
+        fieldErrors: {
+          externalId: ["Ya tienes un boleto registrado con ese ID."],
+        },
+      };
+    }
+    throw error;
+  }
+
+  revalidateBetViews(existing.id);
   revalidatePath(`/bets/${existing.id}/edit`);
   redirect("/bets");
 }
@@ -326,7 +534,7 @@ export async function deleteBet(
     return { error: "Apuesta no encontrada." };
   }
 
-  revalidateBetViews();
+  revalidateBetViews(parsedId.data);
   return { ok: true };
 }
 
@@ -339,25 +547,26 @@ export async function settleBet(
     return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
   }
 
-  const parsed = settleBetSchema.safeParse({
-    id: formData.get("id"),
-    status: formData.get("status"),
-    cashoutAmount: formData.get("cashoutAmount"),
-    closingOdds: formData.get("closingOdds"),
-  });
+  const parsed = settleBetSchema.safeParse(readSettlementForm(formData));
 
   if (!parsed.success) {
     return { error: "Revisa el resultado de la apuesta." };
   }
 
+  const data = parsed.data;
+
   const bet = await prisma.bet.findFirst({
-    where: { id: parsed.data.id, userId: session.user.id },
+    where: { id: data.id, userId: session.user.id },
     select: {
       id: true,
       status: true,
       stake: true,
       odds: true,
       isFreeBet: true,
+      legs: {
+        orderBy: { position: "asc" },
+        select: { id: true, odds: true, status: true, closingOdds: true },
+      },
     },
   });
 
@@ -369,29 +578,73 @@ export async function settleBet(
     return { error: "Esta apuesta ya está liquidada." };
   }
 
-  const result = calculateBetResult({
-    stake: bet.stake,
-    odds: bet.odds,
-    status: parsed.data.status,
-    isFreeBet: bet.isFreeBet,
-    cashoutAmount: parsed.data.cashoutAmount,
-  });
-
-  const updated = await prisma.bet.updateMany({
-    where: { id: bet.id, userId: session.user.id },
-    data: {
-      status: parsed.data.status,
-      settledAt: new Date(),
-      payout: result.payout,
-      profit: result.profit,
-      closingOdds: parsed.data.closingOdds ?? null,
-    },
-  });
-
-  if (updated.count === 0) {
-    return { error: "No pudimos liquidar la apuesta." };
+  const legIds = new Set(bet.legs.map((leg) => leg.id));
+  if (data.legs.some((leg) => !legIds.has(leg.id))) {
+    return { error: "El resultado incluye un partido que no pertenece al boleto." };
   }
 
-  revalidateBetViews();
+  const submitted = new Map(data.legs.map((leg) => [leg.id, leg]));
+  const updatedLegs = bet.legs.map((leg) => {
+    const next = submitted.get(leg.id);
+    return {
+      ...leg,
+      status: next?.status ?? leg.status,
+      closingOdds:
+        next?.closingOdds !== undefined ? next.closingOdds : leg.closingOdds,
+    };
+  });
+
+  let status: BetStatus;
+  let payout: Prisma.Decimal;
+  let profit: Prisma.Decimal;
+  let settledAt: Date | null;
+
+  if (data.cashoutAmount !== undefined) {
+    const result = calculateBetResult({
+      stake: bet.stake,
+      odds: bet.odds,
+      status: "CASHOUT",
+      isFreeBet: bet.isFreeBet,
+      cashoutAmount: data.cashoutAmount,
+    });
+    status = "CASHOUT";
+    payout = result.payout;
+    profit = result.profit;
+    settledAt = new Date();
+  } else {
+    const result = settleBetMath(
+      updatedLegs.map((leg) => ({ odds: leg.odds, status: leg.status })),
+      bet.stake,
+      bet.isFreeBet,
+    );
+    status = result.status;
+    payout = result.payout;
+    profit = result.profit;
+    settledAt = result.status === "PENDING" ? null : new Date();
+  }
+
+  await prisma.$transaction(async (tx) => {
+    for (const leg of updatedLegs) {
+      await tx.betLeg.update({
+        where: { id: leg.id },
+        data: {
+          status: leg.status,
+          closingOdds: leg.closingOdds,
+        },
+      });
+    }
+
+    await tx.bet.update({
+      where: { id: bet.id },
+      data: {
+        status,
+        settledAt,
+        payout: status === "PENDING" ? null : payout,
+        profit: status === "PENDING" ? null : profit,
+      },
+    });
+  });
+
+  revalidateBetViews(bet.id);
   return { ok: true };
 }

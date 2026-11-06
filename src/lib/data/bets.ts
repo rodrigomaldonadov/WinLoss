@@ -2,20 +2,41 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import Decimal from "decimal.js";
-import type { BetStatus, BetType } from "@prisma/client";
+import type { BetStatus, BetType, LegStatus } from "@prisma/client";
 
-import { calculateBettingStats, calculateClosingLineValue, roundMoney } from "@/lib/bet-math";
+import {
+  calculateBetClosingLineValue,
+  calculateBettingStats,
+} from "@/lib/bet-math";
 import { prisma } from "@/lib/prisma";
 
 export type BetFilter = "pending" | "settled" | "all";
+export type BetTypeFilter = "single" | "multiple" | "builder";
 
-export type BetListItem = {
+export type LegSelectionItem = {
   id: string;
+  position: number;
+  market: string;
+  selection: string;
+};
+
+export type BetLegItem = {
+  id: string;
+  position: number;
   sport: string;
   competition: string | null;
   eventName: string;
-  market: string;
-  selection: string;
+  eventDate: Date | null;
+  isBuilder: boolean;
+  odds: number;
+  closingOdds: number | null;
+  status: LegStatus;
+  selections: LegSelectionItem[];
+};
+
+export type BetListItem = {
+  id: string;
+  externalId: string | null;
   odds: number;
   stake: number;
   status: BetStatus;
@@ -25,9 +46,16 @@ export type BetListItem = {
   settledAt: Date | null;
   payout: number | null;
   profit: number | null;
-  closingOdds: number | null;
   bankroll: { id: string; name: string; currency: string };
   bookmaker: { id: string; name: string } | null;
+  legs: BetLegItem[];
+  // Campos derivados del primer leg para compatibilidad con la UI existente.
+  sport: string;
+  competition: string | null;
+  eventName: string;
+  market: string;
+  selection: string;
+  closingOdds: number | null;
 };
 
 export type BetDetail = BetListItem & {
@@ -36,8 +64,9 @@ export type BetDetail = BetListItem & {
   notes: string | null;
 };
 
-function toBetListItem(bet: {
+type BetRecord = {
   id: string;
+  externalId: string | null;
   sport: string;
   competition: string | null;
   eventName: string;
@@ -55,14 +84,64 @@ function toBetListItem(bet: {
   closingOdds: { toString(): string } | null;
   bankroll: { id: string; name: string; currency: string };
   bookmaker: { id: string; name: string } | null;
-}): BetListItem {
+  legs: {
+    id: string;
+    position: number;
+    sport: string;
+    competition: string | null;
+    eventName: string;
+    eventDate: Date | null;
+    isBuilder: boolean;
+    odds: { toString(): string };
+    closingOdds: { toString(): string } | null;
+    status: LegStatus;
+    selections: {
+      id: string;
+      position: number;
+      market: string;
+      selection: string;
+    }[];
+  }[];
+};
+
+/** Include reutilizable para hidratar un boleto con sus legs y selecciones. */
+export const BET_RELATIONS_INCLUDE = {
+  bankroll: { select: { id: true, name: true, currency: true } },
+  bookmaker: { select: { id: true, name: true } },
+  legs: {
+    orderBy: { position: "asc" },
+    include: {
+      selections: { orderBy: { position: "asc" } },
+    },
+  },
+} satisfies Prisma.BetInclude;
+
+export function toBetListItem(bet: BetRecord): BetListItem {
+  const legs: BetLegItem[] = bet.legs.map((leg) => ({
+    id: leg.id,
+    position: leg.position,
+    sport: leg.sport,
+    competition: leg.competition,
+    eventName: leg.eventName,
+    eventDate: leg.eventDate,
+    isBuilder: leg.isBuilder,
+    odds: Number(leg.odds),
+    closingOdds: leg.closingOdds === null ? null : Number(leg.closingOdds),
+    status: leg.status,
+    selections: leg.selections.map((selection) => ({
+      id: selection.id,
+      position: selection.position,
+      market: selection.market,
+      selection: selection.selection,
+    })),
+  }));
+
+  const firstLeg = legs[0];
+  const firstSelection = firstLeg?.selections[0];
+
   return {
     id: bet.id,
-    sport: bet.sport,
-    competition: bet.competition,
-    eventName: bet.eventName,
-    market: bet.market,
-    selection: bet.selection,
+    externalId: bet.externalId,
     odds: Number(bet.odds),
     stake: Number(bet.stake),
     status: bet.status,
@@ -72,14 +151,24 @@ function toBetListItem(bet: {
     settledAt: bet.settledAt,
     payout: bet.payout === null ? null : Number(bet.payout),
     profit: bet.profit === null ? null : Number(bet.profit),
-    closingOdds: bet.closingOdds === null ? null : Number(bet.closingOdds),
     bankroll: bet.bankroll,
     bookmaker: bet.bookmaker,
+    legs,
+    sport: firstLeg?.sport ?? bet.sport,
+    competition: firstLeg?.competition ?? bet.competition,
+    eventName: firstLeg?.eventName ?? bet.eventName,
+    market: firstSelection?.market ?? bet.market,
+    selection: firstSelection?.selection ?? bet.selection,
+    closingOdds:
+      firstLeg?.closingOdds ??
+      (bet.closingOdds === null ? null : Number(bet.closingOdds)),
   };
 }
 
 export type BetListQuery = {
   filter?: BetFilter;
+  /** Simple, Múltiple o Bet Builder. */
+  type?: BetTypeFilter;
   /** Resultados por página. */
   take?: number;
   /** Saltos para paginación (skip). */
@@ -92,34 +181,50 @@ export type BetListQuery = {
   sport?: string;
 };
 
-export async function getBetsForUser(
-  userId: string,
-  query: BetListQuery = {},
-): Promise<BetListItem[]> {
-  const { filter = "all", take = 100, skip = 0, from, to, sport } = query;
+function buildBetFilters(query: BetListQuery): Prisma.BetWhereInput {
+  const { filter = "all", type, from, to, sport } = query;
 
   const placedAt: { gte?: Date; lte?: Date } = {};
   if (from) placedAt.gte = from;
   if (to) placedAt.lte = to;
 
+  const and: Prisma.BetWhereInput[] = [];
+
+  if (type === "builder") {
+    and.push({ betType: "SINGLE" }, { legs: { some: { isBuilder: true } } });
+  } else if (type === "single") {
+    and.push({ betType: "SINGLE" }, { legs: { none: { isBuilder: true } } });
+  } else if (type === "multiple") {
+    and.push({ betType: "COMBINED" });
+  }
+
+  if (sport) {
+    and.push({ legs: { some: { sport: { equals: sport } } } });
+  }
+
+  return {
+    ...(filter === "pending"
+      ? { status: "PENDING" }
+      : filter === "settled"
+        ? { status: { not: "PENDING" } }
+        : {}),
+    ...(Object.keys(placedAt).length > 0 ? { placedAt } : {}),
+    ...(and.length > 0 ? { AND: and } : {}),
+  };
+}
+
+export async function getBetsForUser(
+  userId: string,
+  query: BetListQuery = {},
+): Promise<BetListItem[]> {
+  const { take = 100, skip = 0 } = query;
+
   const bets = await prisma.bet.findMany({
-    where: {
-      userId,
-      ...(filter === "pending"
-        ? { status: "PENDING" }
-        : filter === "settled"
-          ? { status: { not: "PENDING" } }
-          : {}),
-      ...(sport ? { sport: { equals: sport } } : {}),
-      ...(Object.keys(placedAt).length > 0 ? { placedAt } : {}),
-    },
+    where: { userId, ...buildBetFilters(query) },
     orderBy: [{ placedAt: "desc" }, { createdAt: "desc" }],
     take,
     skip,
-    include: {
-      bankroll: { select: { id: true, name: true, currency: true } },
-      bookmaker: { select: { id: true, name: true } },
-    },
+    include: BET_RELATIONS_INCLUDE,
   });
 
   return bets.map(toBetListItem);
@@ -129,35 +234,21 @@ export async function countBetsForUser(
   userId: string,
   query: Omit<BetListQuery, "take" | "skip"> = {},
 ): Promise<number> {
-  const { filter = "all", from, to, sport } = query;
-
-  const placedAt: { gte?: Date; lte?: Date } = {};
-  if (from) placedAt.gte = from;
-  if (to) placedAt.lte = to;
-
-  const where: Prisma.BetWhereInput = {
-    userId,
-    ...(filter === "pending"
-      ? { status: "PENDING" }
-      : filter === "settled"
-        ? { status: { not: "PENDING" } }
-        : {}),
-    ...(sport ? { sport: { equals: sport } } : {}),
-    ...(Object.keys(placedAt).length > 0 ? { placedAt } : {}),
-  };
-
-  return prisma.bet.count({ where });
+  return prisma.bet.count({
+    where: { userId, ...buildBetFilters(query) },
+  });
 }
 
 /** Deportes distintos registrados por el usuario (para el filtro avanzado). */
 export async function getBetSports(userId: string): Promise<string[]> {
-  const bets = await prisma.bet.findMany({
-    where: { userId },
+  const legs = await prisma.betLeg.findMany({
+    where: { bet: { userId } },
     select: { sport: true },
+    distinct: ["sport"],
     orderBy: { sport: "asc" },
   });
 
-  return Array.from(new Set(bets.map((bet) => bet.sport))).sort((a, b) =>
+  return Array.from(new Set(legs.map((leg) => leg.sport))).sort((a, b) =>
     a.localeCompare(b),
   );
 }
@@ -169,25 +260,28 @@ export type ClosingLineValueByBookmaker = {
   betsCount: number;
 };
 
-/** Promedio de CLV agrupado por casa de apuestas (o "Sin casa" para apuestas sin casa). */
+/** Promedio de CLV por boleto, agrupado por casa de apuestas. */
 export async function getClosingLineValueByBookmaker(
   userId: string,
 ): Promise<ClosingLineValueByBookmaker[]> {
   const bets = await prisma.bet.findMany({
-    where: { userId, closingOdds: { not: null } },
-    include: { bookmaker: { select: { id: true, name: true } } },
+    where: { userId, legs: { some: { closingOdds: { not: null } } } },
+    include: {
+      bookmaker: { select: { id: true, name: true } },
+      legs: { select: { odds: true, closingOdds: true } },
+    },
   });
 
   const groups = new Map<string, { name: string; values: Decimal[] }>();
 
   for (const bet of bets) {
-    const value = calculateClosingLineValue(bet.odds, bet.closingOdds);
+    const value = calculateBetClosingLineValue(bet.legs);
     if (!value) continue;
 
     const key = bet.bookmakerId ?? "none";
     const group =
       groups.get(key) ?? { name: bet.bookmaker?.name ?? "Sin casa", values: [] };
-    group.values.push(value.percentage);
+    group.values.push(value.value);
     groups.set(key, group);
   }
 
@@ -202,7 +296,9 @@ export async function getClosingLineValueByBookmaker(
       bookmakerName: group.name,
       averageClosingLineValue:
         group.values.length > 0
-          ? roundMoney(sum.div(group.values.length))
+          ? sum
+              .div(group.values.length)
+              .toDecimalPlaces(4, Decimal.ROUND_HALF_UP)
           : null,
       betsCount: group.values.length,
     });
@@ -221,10 +317,7 @@ export async function getBetForUser(
 ): Promise<BetDetail | null> {
   const bet = await prisma.bet.findFirst({
     where: { id, userId },
-    include: {
-      bankroll: { select: { id: true, name: true, currency: true } },
-      bookmaker: { select: { id: true, name: true } },
-    },
+    include: BET_RELATIONS_INCLUDE,
   });
 
   if (!bet) return null;
@@ -244,7 +337,13 @@ export async function getRecentBets(userId: string, take = 5) {
 export async function getBetCounts(userId: string) {
   const bets = await prisma.bet.findMany({
     where: { userId },
-    select: { status: true, stake: true, odds: true, profit: true, isFreeBet: true },
+    select: {
+      status: true,
+      stake: true,
+      odds: true,
+      profit: true,
+      isFreeBet: true,
+    },
   });
 
   const stats = calculateBettingStats(bets);
