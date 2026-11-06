@@ -9,7 +9,7 @@ import {
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-type BetRowProps = {
+export type BetRowProps = {
   bet: BetListItem;
 };
 

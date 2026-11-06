@@ -1,3 +1,5 @@
+import type { BetListItem } from "@/lib/data/bets";
+
 export type ShellUser = {
   name?: string | null;
   email?: string | null;
@@ -19,4 +21,5 @@ export type BankrollSummary = {
   winRate: number;
   roi: number;
   yield: number;
+  bets: BetListItem[];
 };

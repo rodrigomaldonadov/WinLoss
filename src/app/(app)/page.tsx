@@ -15,10 +15,20 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
-import { getBankrollsForUser } from "@/lib/data/bankrolls";
+import {
+  getBankrollsForUser,
+  getBankrollHistory,
+  calculateDrawdown,
+} from "@/lib/data/bankrolls";
 import { getRecentBets } from "@/lib/data/bets";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { BetRowProps } from "@/components/bets/bet-row";
+import { BankrollLineChart } from "@/components/charts/bankroll-line-chart";
+import { SportsPieChart } from "@/components/charts/sports-pie-chart";
 
 export const metadata: Metadata = {
   title: "Resumen",
@@ -30,7 +40,7 @@ export default async function DashboardPage() {
 
   const [bankrolls, recentBets] = await Promise.all([
     getBankrollsForUser(session.user.id),
-    getRecentBets(session.user.id, 5),
+    getRecentBets(session.user.id, 10),
   ]);
 
   const currency = bankrolls[0]?.currency ?? DEFAULT_CURRENCY;
@@ -46,6 +56,16 @@ export default async function DashboardPage() {
   );
 
   const roi = totals.initial > 0 ? totals.profit / totals.initial : 0;
+
+  // ─── DRAWDOWN & ALERT ───────────────────────────────────────────────
+  const drawdown = await calculateDrawdown(session.user.id);
+  const showDrawdownAlert = drawdown.thresholdExceeded;
+
+  // ─── HISTÓRICO PARA EL LINE CHART ──────────────────────────────────
+  const history = await getBankrollHistory(session.user.id, 180);
+
+  // ─── COMPONENTS RESPONSIVE ─────────────────────────────────────────
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   return (
     <div className="space-y-6">
@@ -105,6 +125,17 @@ export default async function DashboardPage() {
         />
       </section>
 
+      {/* ── ALERTA DE DRAWDOWN ──────────────────────────────────────── */}
+      {showDrawdownAlert && (
+        <Alert
+          variant="destructive"
+          title="Cuidado con tu bankroll"
+          description="Tu balance actual {formatCurrency(drawdown.currentBankroll, currency)} ha caído un {((1 - drawdown.drawdown) * 100).toFixed(0)}% respecto a tu saldo inicial {formatCurrency(drawdown.initialBankroll, currency)}. Te recomendamos pausar nuevas apuestas y revisar tu gestión de riesgo."
+          action={<Button variant="outline" className="mt-2" onClick={() => window.location.href = "/settings"}>Ajustes</Button>}
+        />
+      )}
+
+      {/* ── ACTIVIDAD RECENTE ───────────────────────────────────────── */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Actividad reciente</h2>
@@ -138,24 +169,39 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-4 shadow-xs">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold">Evolución del bankroll</h2>
-            <p className="text-xs text-muted-foreground">Últimos 30 días</p>
+      {/* ── GRÁFICOS RESPONSIVE CON TABS ─────────────────────────────── */}
+      <section
+        className={cn(
+          "rounded-xl border bg-card p-4 shadow-xs",
+          "mt-4",
+        )}
+      >
+        <h2 className="text-sm font-semibold">Análisis</h2>
+
+        {/* Tabs: móvil = pestañas separadas; desktop = grid lado a lado */}
+        {isMobile ? (
+          // MÓVIL: Tabs con dos paneles
+          <Tabs defaultValue="evolucion" className="mb-4">
+            <TabsList>
+              <TabsTrigger value="evolucion">Evolución</TabsTrigger>
+              <TabsTrigger value="distribución">Distribución</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="evolucion">
+              <BankrollLineChart bankrolls={history} width={350} height={250} />
+            </TabsContent>
+
+            <TabsContent value="distribución">
+              <SportsPieChart bets={recentBets} width={350} height={250} />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          // ESCRITORIO: grid 2×1 sin Tabs
+          <div className="grid grid-cols-2 gap-4">
+            <BankrollLineChart bankrolls={history} width={600} height={300} />
+            <SportsPieChart bets={recentBets} width={600} height={300} />
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-            Sin datos
-          </span>
-        </div>
-        <div className="mt-4 flex h-36 items-center justify-center rounded-lg border border-dashed bg-muted/20">
-          <div className="flex flex-col items-center gap-1 text-muted-foreground">
-            <TrendingUp className="size-6" strokeWidth={1.7} aria-hidden />
-            <p className="text-xs">
-              La curva aparecerá con tus primeras apuestas
-            </p>
-          </div>
-        </div>
+        )}
       </section>
     </div>
   );
