@@ -37,7 +37,9 @@ import {
 import { DateTimeCompact } from "@/components/bets/date-time-field";
 import { EventSearchSheet } from "@/components/bets/event-search-sheet";
 import { LinePicker } from "@/components/bets/line-picker";
+import { PasteBetSheet } from "@/components/bets/paste-bet-sheet";
 import type { ApiEvent } from "@/lib/sports-api/types";
+import type { ParsedBet } from "@/lib/bet-text-parser";
 import {
   CARD_LINE_PRESETS,
   CORNER_LINE_PRESETS,
@@ -537,8 +539,14 @@ function SelectionEditor({
   const pickOptions = isStructured
     ? MARKET_PICKS[marketKey as Exclude<LegMarketKey, "CUSTOM">]
     : [];
-  const orderedChips = useMemo(() => sortMarketChips(), []);
+  const [orderedChips, setOrderedChips] = useState(MARKET_CHIP_ORDER);
   const isPickerLine = PICKER_LINE_MARKETS.includes(marketKey);
+
+  // El orden por uso se aplica después de montar para no romper la hidratación.
+  useEffect(() => {
+    const timer = setTimeout(() => setOrderedChips(sortMarketChips()), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   const changeMarket = (next: LegMarketKey) => {
     setValue(path("marketKey"), next);
@@ -1450,6 +1458,64 @@ export function BetForm({
     setOddsOverride("");
   };
 
+  const handleParsedBet = (data: ParsedBet) => {
+    if (data.legs.length === 0) return;
+
+    const legs: LegValues[] = data.legs.map((leg) => ({
+      sport: leg.sport || "Fútbol",
+      competition: leg.competition,
+      eventName: leg.eventName,
+      eventDate: leg.eventDate ?? "",
+      isBuilder: leg.isBuilder,
+      odds: leg.odds !== null ? String(leg.odds) : "",
+      externalProvider: "",
+      externalEventId: "",
+      homeTeam: leg.homeTeam,
+      awayTeam: leg.awayTeam,
+      selections:
+        leg.selections.length > 0
+          ? leg.selections.map((selection) => ({
+              market: selection.market,
+              selection: selection.selection,
+              marketKey: selection.marketKey,
+              line: selection.line === null ? "" : String(selection.line),
+              pick: selection.pick ?? "",
+              subject: selection.subject ?? "",
+            }))
+          : [emptySelection()],
+    }));
+
+    reset({ legs });
+    setBetMode(
+      data.betType === "COMBINED" || legs.length > 1 ? "COMBINED" : "SINGLE",
+    );
+    if (data.stake !== null) {
+      setStake(String(data.stake));
+    } else {
+      setStake("");
+    }
+    if (data.totalOdds !== null) {
+      setOddsOverride(String(data.totalOdds));
+      setManualOdds(true);
+    } else {
+      setOddsOverride("");
+      setManualOdds(false);
+    }
+
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // sin storage
+    }
+    setDraftAvailable(null);
+
+    if ("vibrate" in navigator) navigator.vibrate?.(10);
+
+    toast.success(
+      `Boleto importado: ${legs.length} partido${legs.length === 1 ? "" : "s"}. Revisa y guarda.`,
+    );
+  };
+
   return (
     <FormProvider {...methods}>
       <form
@@ -1460,18 +1526,23 @@ export function BetForm({
         {defaults?.id && <input type="hidden" name="id" value={defaults.id} />}
 
         {/* Acciones rápidas */}
-        <section className="grid grid-cols-2 gap-2">
-          <NewBetOCRButton
-            onDetected={handleOcrDetected}
-            disabled={pending}
-          />
-          <EventSearchSheet
-            sport={watchedLegs[0]?.sport || "Fútbol"}
-            competition={watchedLegs[0]?.competition}
-            timeZone={timeZone}
-            disabled={pending}
-            onSelectMany={addEventsToBet}
-          />
+        <section className="space-y-2">
+          {!isEditing && (
+            <PasteBetSheet onParsed={handleParsedBet} disabled={pending} />
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <NewBetOCRButton
+              onDetected={handleOcrDetected}
+              disabled={pending}
+            />
+            <EventSearchSheet
+              sport={watchedLegs[0]?.sport || "Fútbol"}
+              competition={watchedLegs[0]?.competition}
+              timeZone={timeZone}
+              disabled={pending}
+              onSelectMany={addEventsToBet}
+            />
+          </div>
         </section>
 
         {draftAvailable && (

@@ -508,6 +508,49 @@ try {
   await page.getByRole("button", { name: "9.5", exact: true }).click();
   await page.getByText(/Menos de 9.5 córneres/).waitFor({ timeout: 5_000 });
 
+  // ── Importar boleto pegado como texto ───────────────────────────────
+  await page.goto(`${BASE_URL}/bets/new`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Pegar texto del boleto/ }).click();
+  await page.getByLabel("Texto del boleto").fill(`Simple
+S/ 100.00
+Cuota 1.32
+
+Galatasaray vs Barcelona
+Barcelona
+1.32
+Resultado del partido (1X2)
+13/10 • 14:00
+Galatasaray
+1
+Barcelona
+4
+Cuota total
+1.32
+Apuesta total
+PEN 100.00
+Ganancia total
+PEN 132.00`);
+  await page.getByRole("button", { name: "Analizar" }).click();
+  await page
+    .getByText("PEN 100.00", { exact: true })
+    .waitFor({ timeout: 10_000 });
+  await page.getByRole("button", { name: /Rellenar formulario/ }).click();
+  await page
+    .getByText("Boleto importado: 1 partido")
+    .waitFor({ timeout: 10_000 });
+
+  const pastedStake = await page.getByLabel("Stake").inputValue();
+  const pastedEvent = await page
+    .getByLabel("Evento", { exact: true })
+    .inputValue();
+  if (pastedStake !== "100") {
+    throw new Error(`Stake importado incorrecto: ${pastedStake}`);
+  }
+  if (pastedEvent !== "Galatasaray vs Barcelona") {
+    throw new Error(`Evento importado incorrecto: ${pastedEvent}`);
+  }
+  await page.getByText("S/ 132.00").first().waitFor({ timeout: 5_000 });
+
   await page.goto(`${BASE_URL}/settings`, { waitUntil: "networkidle" });
   if (!(await page.getByText("Casas de apuestas").isVisible())) {
     throw new Error("Ajustes no enlaza a casas de apuestas");
