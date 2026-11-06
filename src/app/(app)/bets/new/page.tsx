@@ -4,10 +4,13 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, Wallet } from "lucide-react";
 
 import { auth } from "@/auth";
+import { BetForm } from "@/components/bets/bet-form";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { countUserBankrolls } from "@/lib/data/bankrolls";
+import { getBankrollsForUser } from "@/lib/data/bankrolls";
+import { getBookmakerOptions } from "@/lib/data/bookmakers";
+import { toZonedDateTimeInput } from "@/lib/date";
 
 export const metadata: Metadata = {
   title: "Nueva apuesta",
@@ -17,7 +20,12 @@ export default async function NewBetPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const bankrollCount = await countUserBankrolls(session.user.id);
+  const [bankrolls, bookmakers] = await Promise.all([
+    getBankrollsForUser(session.user.id),
+    getBookmakerOptions(session.user.id),
+  ]);
+
+  const activeBankrolls = bankrolls.filter((bankroll) => bankroll.isActive);
 
   return (
     <div className="space-y-5">
@@ -33,7 +41,7 @@ export default async function NewBetPage() {
         description="Registra el pick y controla su liquidación."
       />
 
-      {bankrollCount === 0 ? (
+      {activeBankrolls.length === 0 ? (
         <EmptyState
           icon={Wallet}
           title="Primero crea tu bankroll"
@@ -45,21 +53,11 @@ export default async function NewBetPage() {
           }
         />
       ) : (
-        <section className="rounded-xl border border-dashed bg-muted/30 p-6 text-center">
-          <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
-            Siguiente paso
-          </span>
-          <h2 className="mt-3 text-base font-semibold">
-            El formulario de alta llega ahora
-          </h2>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-balance text-muted-foreground">
-            Ya tienes bankroll. En la Fase 3 conectamos el formulario completo:
-            evento, mercado, cuota, stake, casa de apuestas y liquidación.
-          </p>
-          <Button asChild variant="outline" className="mt-5">
-            <Link href="/bankroll">Ver mis bankrolls</Link>
-          </Button>
-        </section>
+        <BetForm
+          bankrolls={activeBankrolls}
+          bookmakers={bookmakers}
+          defaultPlacedAt={toZonedDateTimeInput(new Date())}
+        />
       )}
     </div>
   );

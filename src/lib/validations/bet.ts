@@ -22,7 +22,11 @@ export const betTypeSchema = z.enum(["SINGLE", "COMBINED"]);
 
 export const createBetSchema = z.object({
   bankrollId: z.string().min(1, "Selecciona un bankroll"),
-  bookmakerId: z.string().min(1).optional(),
+  bookmakerId: z.preprocess(
+    (value) =>
+      value === "" || value === null || value === "none" ? undefined : value,
+    z.string().min(1).optional(),
+  ),
   sport: z.string().trim().min(1, "Indica el deporte").max(60),
   competition: optionalText(80),
   eventName: z
@@ -51,7 +55,10 @@ export const createBetSchema = z.object({
       .max(1_000_000, "El stake máximo es 1,000,000"),
   ),
   betType: betTypeSchema.default("SINGLE"),
-  isFreeBet: z.coerce.boolean().default(false),
+  isFreeBet: z.preprocess(
+    (value) => value === true || value === "true" || value === "on",
+    z.boolean(),
+  ),
   placedAt: z.coerce.date({ error: "Fecha inválida" }),
   notes: optionalText(500),
 });
@@ -64,7 +71,18 @@ export const settleBetSchema = z
   .object({
     id: z.string().min(1),
     status: betStatusSchema.exclude(["PENDING"]),
-    cashoutAmount: z.coerce.number().positive().optional(),
+    cashoutAmount: z.preprocess(
+      (value) =>
+        value === "" || value === null
+          ? undefined
+          : typeof value === "string"
+            ? value.replace(",", ".")
+            : value,
+      z.coerce
+        .number({ error: "Importe de cashout inválido" })
+        .positive("El importe debe ser mayor que 0")
+        .optional(),
+    ),
   })
   .refine(
     (data) => data.status !== "CASHOUT" || data.cashoutAmount !== undefined,

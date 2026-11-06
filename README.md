@@ -57,7 +57,7 @@ prisma/
   schema.prisma          # User/Auth.js + Bankroll, Bookmaker, Bet
   migrations/            # Migración inicial aplicada
 scripts/
-  smoke.mjs              # E2E: registro → bankroll → edición → borrado → logout
+  smoke.mjs              # E2E: registro → bankroll → casa → apuesta → liquidación → logout
 src/
   app/
     (app)/               # Shell autenticado (dashboard, apuestas, bankroll, ajustes)
@@ -69,12 +69,16 @@ src/
   components/
     auth/                # Formularios de login/registro
     bankroll/            # Tarjeta y sheet de creación/edición
+    bets/                # Formulario, tarjeta y liquidación de apuestas
+    bookmakers/          # CRUD de casas de apuestas
     layout/              # Sidebar desktop + bottom nav móvil + shell
     ui/                  # Componentes shadcn/ui
   lib/
-    actions/             # Server Actions (auth, bankroll)
+    actions/             # Server Actions (auth, bankroll, casas y apuestas)
     data/                # Consultas de lectura (DAL)
     bet-math.ts          # Cálculo de payout, profit, ROI, yield, win rate
+    bet-status.ts        # Etiquetas y colores de estado
+    date.ts              # Fechas para datetime-local por zona horaria
     format.ts            # Formato es-PE / PEN
     prisma.ts            # Singleton de Prisma
     validations/         # Esquemas Zod
@@ -97,7 +101,7 @@ src/
 - [x] Fase 0 — Scaffold, sistema de diseño, modelo de datos y shell de navegación
 - [x] Fase 1 — Auth.js (registro/login con credenciales) + rutas protegidas
 - [x] Fase 2 — CRUD de bankrolls (crear, editar, borrar, métricas por bankroll)
-- [ ] Fase 3 — Alta de apuestas + liquidación
+- [x] Fase 3 — Casas de apuestas, alta de apuestas y liquidación
 - [ ] Fase 4 — Dashboard con métricas y curva de bankroll
 - [ ] Fase 5 — Historial, filtros y edición
 - [ ] Fase 6 — PWA, export CSV y pulido UX

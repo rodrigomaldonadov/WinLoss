@@ -10,12 +10,14 @@ import {
 } from "lucide-react";
 
 import { auth } from "@/auth";
+import { BetRow } from "@/components/bets/bet-row";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { getBankrollsForUser } from "@/lib/data/bankrolls";
+import { getRecentBets } from "@/lib/data/bets";
 import { formatCurrency, formatPercent } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -26,7 +28,10 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const bankrolls = await getBankrollsForUser(session.user.id);
+  const [bankrolls, recentBets] = await Promise.all([
+    getBankrollsForUser(session.user.id),
+    getRecentBets(session.user.id, 5),
+  ]);
 
   const currency = bankrolls[0]?.currency ?? DEFAULT_CURRENCY;
   const totals = bankrolls.reduce(
@@ -111,16 +116,26 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
-        <EmptyState
-          icon={Ticket}
-          title="Tu historial empieza aquí"
-          description="Registra tu primera apuesta y calcularemos automáticamente tu ROI, yield y la evolución del bankroll."
-          action={
-            <Button asChild>
-              <Link href="/bets/new">Registrar primera apuesta</Link>
-            </Button>
-          }
-        />
+        {recentBets.length === 0 ? (
+          <EmptyState
+            icon={Ticket}
+            title="Tu historial empieza aquí"
+            description="Registra tu primera apuesta y calcularemos automáticamente tu ROI, yield y la evolución del bankroll."
+            action={
+              <Button asChild>
+                <Link href="/bets/new">Registrar primera apuesta</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs">
+            {recentBets.map((bet) => (
+              <li key={bet.id}>
+                <BetRow bet={bet} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="rounded-xl border bg-card p-4 shadow-xs">
