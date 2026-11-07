@@ -412,7 +412,25 @@ model ModelEvaluation {
   logLoss         Decimal? @db.Decimal(12, 6)
   baselineBrier   Decimal? @db.Decimal(12, 6)
   baselineLogLoss Decimal? @db.Decimal(12, 6)
+  // Mercado pre-cierre (AvgH/D/A) sobre el subconjunto que lo tiene.
+  preSample       Int?
+  baselinePreBrier   Decimal? @db.Decimal(12, 6)
+  baselinePreLogLoss Decimal? @db.Decimal(12, 6)
+  // Línea base ingenua: frecuencias históricas local/empate/visitante.
+  naiveBrier      Decimal? @db.Decimal(12, 6)
+  naiveLogLoss    Decimal? @db.Decimal(12, 6)
+  // Recalibración walk-forward por temperatura.
+  temperature       Decimal? @db.Decimal(8, 4)
+  calibrationSample Int?
+  calibratedBrier   Decimal? @db.Decimal(12, 6)
+  calibratedLogLoss Decimal? @db.Decimal(12, 6)
+  // Mezcla modelo/mercado validada temporalmente.
+  blendWeight     Decimal? @db.Decimal(6, 4)
+  blendSample     Int?
+  blendBrier      Decimal? @db.Decimal(12, 6)
+  blendLogLoss    Decimal? @db.Decimal(12, 6)
   calibration     Json?
+  validation      Json?
   params          Json?
   createdAt       DateTime @default(now())
 

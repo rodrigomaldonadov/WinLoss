@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "ModelEvaluation" ADD COLUMN     "baselinePreBrier" DECIMAL(12,6),
+ADD COLUMN     "baselinePreLogLoss" DECIMAL(12,6),
+ADD COLUMN     "blendBrier" DECIMAL(12,6),
+ADD COLUMN     "blendLogLoss" DECIMAL(12,6),
+ADD COLUMN     "blendSample" INTEGER,
+ADD COLUMN     "blendWeight" DECIMAL(6,4),
+ADD COLUMN     "calibratedBrier" DECIMAL(12,6),
+ADD COLUMN     "calibratedLogLoss" DECIMAL(12,6),
+ADD COLUMN     "calibrationSample" INTEGER,
+ADD COLUMN     "naiveBrier" DECIMAL(12,6),
+ADD COLUMN     "naiveLogLoss" DECIMAL(12,6),
+ADD COLUMN     "preSample" INTEGER,
+ADD COLUMN     "temperature" DECIMAL(8,4),
+ADD COLUMN     "validation" JSONB;

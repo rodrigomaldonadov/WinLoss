@@ -19,9 +19,13 @@ export type TotalsMarket = {
   overround: number;
 };
 
-export type ClosingMarket = {
+export type MarketSnapshot = {
   oneXtwo: OneXTwoMarket | null;
   totals: TotalsMarket | null;
+};
+
+export type ClosingMarket = MarketSnapshot & {
+  pre: MarketSnapshot;
 };
 
 function validOdds(value: unknown): value is number {
@@ -82,16 +86,24 @@ function record(value: unknown): JsonRecord | null {
     : null;
 }
 
-/** Extrae las cuotas de cierre guardadas en HistoricalMatch.odds. */
-export function closingMarketFromRecord(value: unknown): ClosingMarket {
-  const odds = record(value);
-  const closing = record(odds?.closing);
+function snapshot(value: unknown): MarketSnapshot {
+  const recordValue = record(value);
   return {
     oneXtwo: market1x2(
-      closing?.home,
-      closing?.draw,
-      closing?.away,
+      recordValue?.home,
+      recordValue?.draw,
+      recordValue?.away,
     ),
-    totals: marketTotals(closing?.over25, closing?.under25),
+    totals: marketTotals(recordValue?.over25, recordValue?.under25),
+  };
+}
+
+/** Extrae las cuotas pre-cierre y de cierre guardadas en HistoricalMatch.odds. */
+export function closingMarketFromRecord(value: unknown): ClosingMarket {
+  const odds = record(value);
+  const closing = snapshot(odds?.closing);
+  return {
+    ...closing,
+    pre: snapshot(odds?.pre),
   };
 }

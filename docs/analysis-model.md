@@ -65,30 +65,102 @@ tienen en la fuente):
 | Ligue 1 | 387 | 0,2474 | 0,2343 | +5,6% | 0,6879 | 0,6613 | +4,0% |
 | **Total** | **2.204** | **0,2459** | **0,2379** | **+3,4%** | **0,6848** | **0,6681** | **+2,5%** |
 
-Calibración 1X2 agrupada (probabilidad predicha vs frecuencia observada):
+### Mercado pre-cierre vs cierre
 
-| Bin | N | Predicho | Observado |
-| --- | ---: | ---: | ---: |
-| 0-10% | 6 | 8,6% | 16,7% |
-| 10-20% | 335 | 17,4% | 8,1% |
-| 20-30% | 4.716 | 26,2% | 24,2% |
-| 30-40% | 2.870 | 34,2% | 33,7% |
-| 40-50% | 1.790 | 44,6% | 47,5% |
-| 50-60% | 603 | 53,9% | 64,7% |
-| 60-70% | 123 | 63,4% | 79,7% |
-| 70-80% | 11 | 73,4% | 81,8% |
-| 80-90% | 1 | 80,4% | 0,0% |
+Mismo subconjunto de partidos con `AvgH/D/A` (solo ligas principales; Brasil y
+Argentina no traen pre-cierre en la fuente). El modelo es el mismo en ambas
+comparaciones.
+
+| Liga | N pre | Brier modelo | Brier pre | Brier cierre | Δ modelo-pre | Δ modelo-cierre |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Premier League | 470 | 0,6247 | 0,6102 | 0,6084 | +2,4% | +2,7% |
+| LaLiga | 489 | 0,5907 | 0,5649 | 0,5633 | +4,6% | +4,9% |
+| Serie A | 480 | 0,6069 | 0,5704 | 0,5706 | +6,4% | +6,4% |
+| Bundesliga | 378 | 0,5957 | 0,5711 | 0,5713 | +4,3% | +4,3% |
+| Ligue 1 | 387 | 0,6037 | 0,5782 | 0,5785 | +4,4% | +4,4% |
+| **Total** | **2.204** | **0,6046** | **0,5792** | **0,5785** | **+4,4%** | **+4,5%** |
+
+Pre-cierre y cierre son casi equivalentes en este periodo; el cierre es
+marginalmente mejor en conjunto. La normalización sin margen es la misma.
+
+### Línea base ingenua
+
+Frecuencias históricas local/empate/visitante de cada liga (con suavizado de
+Laplace) evaluadas sobre el mismo holdout:
+
+| Liga | Brier naive | Brier modelo |
+| --- | ---: | ---: |
+| Premier League | 0,6577 | 0,6247 |
+| LaLiga | 0,6341 | 0,5907 |
+| Serie A | 0,6562 | 0,6069 |
+| Bundesliga | 0,6451 | 0,5957 |
+| Ligue 1 | 0,6425 | 0,6037 |
+| Brasileirão Serie A | 0,6282 | 0,6075 |
+| Liga Profesional (ARG) | 0,6598 | 0,6489 |
+| **Total** | **0,6467** | **0,6141** |
+
+El modelo supera a la línea base ingenua en las siete ligas, pero no al mercado.
+Para ligas sin backtest contra mercado se usa esta referencia y se indica
+explícitamente en la UI.
+
+### Recalibración walk-forward
+
+Temperatura ajustada solo con semanas anteriores y evaluada en las siguientes.
+`T > 1` suaviza; `T < 1` agudiza. Solo se aplica si mejora Brier **y** log-loss.
+
+| Liga | N eval | Brier antes | Brier después | LogLoss antes | LogLoss después | T aplicada | ¿Aplica? |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Premier League | 270 | 0,6424 | 0,6470 | 1,0640 | 1,0702 | 1,00 | no |
+| LaLiga | 281 | 0,5941 | 0,5899 | 0,9974 | 0,9902 | 0,64 | sí |
+| Serie A | 272 | 0,5939 | 0,5748 | 0,9962 | 0,9705 | 0,57 | sí |
+| Bundesliga | 172 | 0,6065 | 0,6093 | 1,0135 | 1,0173 | 1,00 | no |
+| Ligue 1 | 180 | 0,6148 | 0,6161 | 1,0240 | 1,0246 | 1,00 | no |
+| Brasileirão Serie A | 371 | 0,6083 | 0,6055 | 1,0159 | 1,0115 | 0,70 | sí |
+| Liga Profesional (ARG) | 500 | 0,6463 | 0,6430 | 1,0692 | 1,0647 | 0,63 | sí |
+| **Total** | **2.046** | **0,6187** | **0,6152** | **1,0306** | **1,0255** | — | — |
+
+La recalibración mejora el conjunto y 4 de 7 ligas. En las otras 3 se deja
+`T = 1` para no empeorar el backtest.
+
+### Mezcla modelo/mercado
+
+Validación temporal 60/40: el peso se ajusta en el primer tramo y se evalúa en
+el siguiente, con rejilla 0,01 minimizando Brier. Si la mezcla no mejora al
+mercado solo, el peso de producción es **0**.
+
+| Liga | N test | Brier mercado | Brier mezcla | Peso aplicado | ¿Mejora? |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Premier League | 108 | 0,6254 | 0,6254 | 0,00 | no |
+| LaLiga | 113 | 0,5374 | 0,5374 | 0,00 | no |
+| Serie A | 109 | 0,5277 | 0,5277 | 0,00 | no |
+| Bundesliga | 69 | 0,6184 | 0,6184 | 0,00 | no |
+| Ligue 1 | 72 | 0,5609 | 0,5609 | 0,00 | no |
+| Brasileirão Serie A | 149 | 0,5661 | 0,5661 | 0,00 | no |
+| Liga Profesional (ARG) | 200 | 0,6181 | 0,6181 | 0,00 | no |
+| **Total** | **820** | **0,5815** | **0,5815** | **0,00** | **no** |
+
+**Ninguna liga mejora al mercado al mezclar.** Por eso el peso del modelo en la
+probabilidad final es 0: se muestra como fuente separada, nunca como mejora del
+mercado. Los pesos y temperaturas quedan versionados en
+`analysis-weights.json` y persistidos en `ModelEvaluation`.
 
 ## Conclusión de esta fase
 
-El mercado de cierre sigue siendo **mejor que el modelo en todas las ligas**.
-Por tanto, en `/analysis`:
+El mercado de cierre sigue siendo **mejor que el modelo en todas las ligas** y
+la mezcla validada no lo mejora. Por tanto, en `/analysis`:
 
-- El mercado es la fuente principal cuando hay cuotas frescas.
-- El modelo es una **fuente secundaria e independiente**, nunca presentada como
-  “la probabilidad correcta” ni por encima del mercado.
-- La confianza del modelo debe ser menor que la del mercado; en ligas con poca
-  muestra o equipos recién ascendidos, directamente baja/insuficiente.
+- El mercado es la fuente principal cuando hay cuotas frescas; la probabilidad
+  final es la del mercado.
+- El modelo es una **fuente secundaria e independiente**, con peso 0 en la
+  probabilidad final. Se muestra aparte, con su backtest y su nota fija.
+- Si no hay mercado, la probabilidad final es la del modelo, con confianza
+  Media/Baja y la nota: “En pruebas, el mercado superó a este modelo en todas
+  las ligas”.
+- Si una liga no tiene backtest contra mercado, se usa la línea base ingenua
+  como referencia y se dice explícitamente.
+- La comunidad y el historial propio nunca se mezclan en la probabilidad final;
+  se muestran como fuentes separadas y la comunidad exige ≥5 usuarios distintos
+  con opt-in anónimo.
 - Si el mercado y el modelo discrepan mucho, se muestra la discrepancia, no se
   inventa un consenso.
 
@@ -109,7 +181,8 @@ Por tanto, en `/analysis`:
 npm run analysis:backtest
 ```
 
-Parámetros opcionales:
+Genera `analysis-weights.json` y actualiza `ModelEvaluation` con métricas de
+cierre, pre-cierre, calibración y mezcla. Parámetros opcionales:
 
 ```bash
 ANALYSIS_HALF_LIFE=365 ANALYSIS_RIDGE=70 npm run analysis:backtest

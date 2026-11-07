@@ -36,13 +36,16 @@ describe("mercados de cierre", () => {
 
   it("lee el JSON guardado y tolera campos ausentes", () => {
     const market = closingMarketFromRecord({
+      pre: { home: 1.8, draw: 3.5, away: 4.2 },
       closing: { home: 2, draw: 4, away: 4, over25: 2, under25: 2 },
     });
     expect(market.oneXtwo?.home).toBeCloseTo(0.5, 10);
     expect(market.totals?.over25).toBeCloseTo(0.5, 10);
+    expect(market.pre.oneXtwo?.home).toBeGreaterThan(market.oneXtwo!.home);
 
     const empty = closingMarketFromRecord(null);
     expect(empty.oneXtwo).toBeNull();
     expect(empty.totals).toBeNull();
+    expect(empty.pre.oneXtwo).toBeNull();
   });
 });
