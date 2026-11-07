@@ -560,10 +560,13 @@ PEN 132.00`);
   });
   if (
     !(await page
-      .getByText("Probabilidad estimada combinando la cuota")
+      .getByText("El mercado es la referencia principal")
       .isVisible())
   ) {
-    throw new Error("La página de consenso no muestra el aviso de privacidad");
+    throw new Error("La página de consenso no muestra el aviso de fuentes");
+  }
+  if (!(await page.getByText("Precisión del modelo").isVisible())) {
+    throw new Error("La página de consenso no muestra la precisión del modelo");
   }
 
   // ── Deudas: alta USD, pago parcial, pago total y anulación ─────────

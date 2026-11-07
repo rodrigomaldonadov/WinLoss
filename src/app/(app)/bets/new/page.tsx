@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Copy, Wallet } from "lucide-react";
+import { ArrowLeft, Copy, Sparkles, Wallet } from "lucide-react";
 
 import { auth } from "@/auth";
 import { BetForm } from "@/components/bets/bet-form";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { buildAnalysisPrefill } from "@/lib/analysis/prefill";
 import { getBankrollsForUser } from "@/lib/data/bankrolls";
 import { getBetForUser } from "@/lib/data/bets";
 import { getBookmakerOptions } from "@/lib/data/bookmakers";
@@ -19,15 +20,39 @@ export const metadata: Metadata = {
 };
 
 type NewBetPageProps = {
-  searchParams: Promise<{ copy?: string | string[] }>;
+  searchParams: Promise<{
+    copy?: string | string[];
+    evento?: string | string[];
+    competicion?: string | string[];
+    fecha?: string | string[];
+    deporte?: string | string[];
+    origen?: string | string[];
+    analisis?: string | string[];
+  }>;
 };
+
+function firstParam(value?: string | string[]): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export default async function NewBetPage({ searchParams }: NewBetPageProps) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
   const params = await searchParams;
-  const copyId = Array.isArray(params.copy) ? params.copy[0] : params.copy;
+  const copyId = firstParam(params.copy);
+  const prefill = buildAnalysisPrefill({
+    evento: firstParam(params.evento),
+    competicion: firstParam(params.competicion),
+    fecha: firstParam(params.fecha),
+    deporte: firstParam(params.deporte),
+  });
+  const prefillOrigin = firstParam(params.origen)?.trim() || "Consenso";
+  const analysisId = firstParam(params.analisis);
+  const analysisHref =
+    analysisId && /^[a-z0-9]+$/i.test(analysisId)
+      ? `/analysis/${analysisId}`
+      : null;
 
   const [bankrolls, bookmakers, copiedBet, preferences] = await Promise.all([
     getBankrollsForUser(session.user.id),
@@ -47,35 +72,34 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
       ? copiedBet.bookmakerId
       : undefined;
 
-  const betDefaults =
-    copiedBet
-      ? {
-          bankrollId: copiedBankrollId,
-          bookmakerId: copiedBookmakerId ?? null,
-          betType: copiedBet.betType,
-          odds: copiedBet.odds,
-          isFreeBet: false,
-          oddsBoostPct: copiedBet.oddsBoostPct,
-          legs: copiedBet.legs.map((leg) => ({
-            sport: leg.sport,
-            competition: leg.competition,
-            eventName: leg.eventName,
-            eventDate: leg.eventDate
-              ? leg.eventDate.toISOString().slice(0, 10)
-              : null,
-            isBuilder: leg.isBuilder,
-            odds: leg.odds,
-            selections: leg.selections.map((selection) => ({
-              market: selection.market,
-              selection: selection.selection,
-              marketKey: selection.marketKey,
-              line: selection.line,
-              pick: selection.pick,
-              subject: selection.subject,
-            })),
+  const betDefaults = copiedBet
+    ? {
+        bankrollId: copiedBankrollId,
+        bookmakerId: copiedBookmakerId ?? null,
+        betType: copiedBet.betType,
+        odds: copiedBet.odds,
+        isFreeBet: false,
+        oddsBoostPct: copiedBet.oddsBoostPct,
+        legs: copiedBet.legs.map((leg) => ({
+          sport: leg.sport,
+          competition: leg.competition,
+          eventName: leg.eventName,
+          eventDate: leg.eventDate
+            ? leg.eventDate.toISOString().slice(0, 10)
+            : null,
+          isBuilder: leg.isBuilder,
+          odds: leg.odds,
+          selections: leg.selections.map((selection) => ({
+            market: selection.market,
+            selection: selection.selection,
+            marketKey: selection.marketKey,
+            line: selection.line,
+            pick: selection.pick,
+            subject: selection.subject,
           })),
-        }
-      : undefined;
+        })),
+      }
+    : (prefill ?? undefined);
 
   return (
     <div className="space-y-5">
@@ -93,7 +117,9 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
         description={
           copiedBet
             ? "Revisa el pick y define el nuevo stake."
-            : "Registra el pick y controla su liquidación."
+            : prefill
+              ? "Revisa el partido precargado y define mercado, selección y stake."
+              : "Registra el pick y controla su liquidación."
         }
       />
 
@@ -123,6 +149,33 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
             </div>
           )}
 
+          {!copiedBet && prefill && (
+            <div
+              role="status"
+              className="flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2.5 text-sm text-primary"
+            >
+              <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <p>
+                Precargado desde <strong>{prefillOrigin}</strong>:{" "}
+                <strong>{prefill.eventName}</strong>
+                {prefill.competition ? ` (${prefill.competition})` : ""}. La
+                cuota, el mercado y la selección los defines tú.
+                {analysisHref && (
+                  <>
+                    {" "}
+                    <Link
+                      href={analysisHref}
+                      className="font-medium underline underline-offset-4"
+                    >
+                      Ver análisis
+                    </Link>
+                    .
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
           <BetForm
             bankrolls={activeBankrolls}
             bookmakers={bookmakers}
@@ -131,7 +184,7 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
               preferences.timezone,
             )}
             timeZone={preferences.timezone}
-            useLastUsed={!copiedBet}
+            useLastUsed={!copiedBet && !prefill}
             defaults={betDefaults}
           />
         </>

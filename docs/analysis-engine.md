@@ -99,9 +99,27 @@ No se crean alias automáticamente.
 
 - `GET /api/analysis?dias=7`: feed autenticado con comunidad y privado al vuelo.
 - `GET /api/analysis/model`: números del panel “Precisión del modelo”.
+- `/analysis`: tablero mobile-first con filtros de 3, 7 y 14 días y selección
+  múltiple de competiciones. Cada partido aparece como:
+  - **Mercado**: titular “Probabilidad del mercado (sin margen)” y comparador
+    de cuotas justas (`1 / probabilidad`) cuando hay cuota.
+  - **Modelo sin cuotas**: titular “Estimación del modelo (sin cuotas)”,
+    confianza baja y el aviso fijo de que el mercado superó al modelo.
+  - **Sin datos**: sección aparte “Sin análisis disponible”, sin
+    probabilidades y con enlace para registrar la apuesta.
+- `/analysis/[id]`: detalle con Probabilidades, Fuentes, Forma reciente y H2H,
+  Tu historial y Calidad de datos. No calcula valor esperado ni recomienda
+  apostar.
+- `GET /api/analysis/model` alimenta el panel de precisión con N, periodo y
+  baselines de cierre, pre-cierre e ingenua. La UI usa la misma función de la
+  capa de datos para evitar un salto HTTP interno.
+- `/bets/new?evento=...&competicion=...&fecha=...&deporte=...&origen=Consenso&analisis=...`
+  precarga solo el evento y la fecha. La cuota, el mercado y la selección los
+  define el usuario; la página muestra un aviso “Precargado desde Consenso”.
 
-La capa de datos está en `src/lib/data/analysis.ts`. La UI se implementa en la
-Fase 5.
+La capa de datos está en `src/lib/data/analysis.ts`; las vistas y helpers puros
+en `src/lib/analysis/view.ts` y `src/components/analysis/`.
+
 
 ## Limitaciones
 
