@@ -12,6 +12,7 @@ import { ModelVersionsPanel } from "@/components/settings/model-versions-panel";
 import { ThemePreference } from "@/components/settings/theme-preference";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions/auth";
+import { canManageModelVersions } from "@/lib/analysis/model-version";
 import { getBookmakersForUser } from "@/lib/data/bookmakers";
 import { prisma } from "@/lib/prisma";
 import {
@@ -46,6 +47,11 @@ export default async function SettingsPage() {
   if (!user) redirect("/login");
 
   const bookmakers = await getBookmakersForUser(session.user.id);
+  const adminEmail = process.env.ANALYSIS_ADMIN_EMAIL?.trim() ?? "";
+  const canPromote = canManageModelVersions({
+    userEmail: session.user.email,
+    adminEmail,
+  });
 
   const rows = [
     {
@@ -120,7 +126,10 @@ export default async function SettingsPage() {
         <AutoSettlePreference mode={user.autoSettleMode} />
       </section>
 
-      <ModelVersionsPanel />
+      <ModelVersionsPanel
+        canPromote={canPromote}
+        adminConfigured={Boolean(adminEmail)}
+      />
 
       <section className="space-y-3 rounded-xl border bg-card p-4 shadow-xs">
         <div>

@@ -103,16 +103,34 @@ export async function runResultsJob({
     for (const alias of team.aliases) byAlias.set(alias.normalized, team);
   }
 
-  function resolveTeam(raw: string): { teamId: string | null; name: string } {
+  function resolveTeamName(raw: string): string | null {
     const key = normalizeTeamName(raw);
-    const canonical =
+    return (
       aliases.teams[key] ??
       byNormalized.get(key)?.canonicalName ??
       byAlias.get(key)?.canonicalName ??
-      null;
+      null
+    );
+  }
+
+  async function resolveTeam(
+    raw: string,
+  ): Promise<{ teamId: string | null; name: string }> {
+    const canonical = resolveTeamName(raw);
     if (!canonical) return { teamId: null, name: raw };
-    const team = byNormalized.get(normalizeTeamName(canonical));
-    return { teamId: team?.id ?? null, name: canonical };
+    const normalized = normalizeTeamName(canonical);
+    let team = byNormalized.get(normalized);
+    if (!team) {
+      const created = await prisma.team.upsert({
+        where: { normalizedName: normalized },
+        create: { canonicalName: canonical, normalizedName: normalized },
+        update: { canonicalName: canonical },
+        select: { id: true, canonicalName: true, normalizedName: true },
+      });
+      team = { ...created, aliases: [] };
+      byNormalized.set(normalized, team);
+    }
+    return { teamId: team.id, name: canonical };
   }
 
   const fetched: ApiResult[] = [];
@@ -191,8 +209,8 @@ export async function runResultsJob({
       errors.push("resultados: límite de tiempo antes de guardar");
       break;
     }
-    const home = resolveTeam(result.home);
-    const away = resolveTeam(result.away);
+    const home = await resolveTeam(result.home);
+    const away = await resolveTeam(result.away);
     if (!home.teamId || !away.teamId) {
       if (!home.teamId) unresolved.add(result.home);
       if (!away.teamId) unresolved.add(result.away);

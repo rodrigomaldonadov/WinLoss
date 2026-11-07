@@ -11,6 +11,7 @@ export type ModelVersionView = {
   id: string;
   name: string;
   state: "CHAMPION" | "CHALLENGER" | "RETIRED";
+  quick: boolean;
   params: unknown;
   metrics: unknown;
   notes: string | null;
@@ -24,22 +25,28 @@ export type ModelVersionView = {
 async function promotionDecisionFor(
   versionId: string,
 ): Promise<PromotionDecision> {
-  const rows = await prisma.analysisSnapshot.findMany({
-    where: {
-      challengerVersionId: versionId,
-      evaluatedAt: { not: null },
-      modelBrier: { not: null },
-      challengerBrier: { not: null },
-      modelLogLoss: { not: null },
-      challengerLogLoss: { not: null },
-    },
-    select: {
-      modelBrier: true,
-      challengerBrier: true,
-      modelLogLoss: true,
-      challengerLogLoss: true,
-    },
-  });
+  const [version, rows] = await Promise.all([
+    prisma.modelVersion.findUnique({
+      where: { id: versionId },
+      select: { quick: true },
+    }),
+    prisma.analysisSnapshot.findMany({
+      where: {
+        challengerVersionId: versionId,
+        evaluatedAt: { not: null },
+        modelBrier: { not: null },
+        challengerBrier: { not: null },
+        modelLogLoss: { not: null },
+        challengerLogLoss: { not: null },
+      },
+      select: {
+        modelBrier: true,
+        challengerBrier: true,
+        modelLogLoss: true,
+        challengerLogLoss: true,
+      },
+    }),
+  ]);
 
   return evaluatePromotion(
     {
@@ -49,6 +56,7 @@ async function promotionDecisionFor(
       challengerLogLoss: rows.map((row) => Number(row.challengerLogLoss)),
     },
     defaultPromotionConfig(),
+    { quick: version?.quick ?? false },
   );
 }
 

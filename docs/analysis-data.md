@@ -97,6 +97,11 @@ npm run analysis:aliases
 Un partido próximo con un equipo sin alias aparece como “sin datos
 suficientes”; no se inventa una predicción.
 
+Alias explícitos añadidos para resultados de API: `sarmiento` →
+`Sarmiento Junin`, `atletico grau` → `Atlético Grau` y `cusco` → `Cusco FC`.
+Los resultados de esos equipos ya se guardan como `HistoricalMatch` (oficiales
+o provisionales de API).
+
 Para cruzar los nombres del histórico con los próximos partidos de TheSportsDB
 y football-data.org:
 

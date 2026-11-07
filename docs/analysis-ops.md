@@ -52,16 +52,19 @@ Crea las *Scheduled Tasks* (o *Cron Jobs*) en el servicio:
 | Tarea | Expresión | Comando |
 | --- | --- | --- |
 | Liquidación | `*/20 * * * *` | `curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/settle` |
-| Análisis | `0 */6 * * *` | `curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/analysis-refresh` |
-| Extra fixtures | `0 18 * * 5` | igual que Análisis |
-| Extra fixtures | `0 18 * * 2` | igual que Análisis |
-| Tuning mensual | `0 4 1 * *` | `docker exec winloss npm run analysis:tune` |
+| Análisis | `0 */6 * * *` | `npm run analysis:refresh` |
+| Extra fixtures | `0 18 * * 5` | `npm run analysis:refresh` |
+| Extra fixtures | `0 18 * * 2` | `npm run analysis:refresh` |
+| Tuning mensual | `0 4 1 * *` | `env -u ANALYSIS_TUNE_QUICK npm run analysis:tune` |
 
-La corrida cada 6 horas ya cubre el día; las ejecuciones extra de viernes y
-martes por la tarde sirven para procesar los fixtures recién publicados sin
-esperar a la siguiente ventana. El día 1 de cada mes se genera un retador; no se
-activa solo. Ajusta la hora a la zona del servidor (`TZ=Europe/London` o
-`TZ=America/Lima`, por ejemplo).
+En Dokploy la tarea corre dentro del servicio (sin `docker exec`). En un cron
+del VPS usa `docker exec <contenedor> ...`, como se muestra más abajo.
+
+**Método recomendado:** ejecutar `npm run analysis:refresh` **dentro del
+contenedor** con el programador de Dokploy o con `docker exec` desde el cron del
+VPS. Evita el límite de tiempo del proxy porque el refresh tarda ~150 s. El
+endpoint HTTP sigue disponible para pruebas manuales y para el estado, pero no
+es el método recomendado para la programación.
 
 ### Cron de un VPS
 
@@ -78,10 +81,10 @@ Crontab:
 
 ```cron
 */20 * * * * . /etc/winloss/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/settle >/dev/null
-0 */6 * * * . /etc/winloss/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/analysis-refresh >/dev/null
-0 18 * * 5 . /etc/winloss/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/analysis-refresh >/dev/null
-0 18 * * 2 . /etc/winloss/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/analysis-refresh >/dev/null
-0 4 1 * * docker exec winloss npm run analysis:tune >> /var/log/winloss-tune.log 2>&1
+0 */6 * * * docker exec winloss npm run analysis:refresh >> /var/log/winloss-analysis.log 2>&1
+0 18 * * 5 docker exec winloss npm run analysis:refresh >> /var/log/winloss-analysis.log 2>&1
+0 18 * * 2 docker exec winloss npm run analysis:refresh >> /var/log/winloss-analysis.log 2>&1
+0 4 1 * * docker exec winloss env -u ANALYSIS_TUNE_QUICK npm run analysis:tune >> /var/log/winloss-tune.log 2>&1
 ```
 
 No pongas el secreto en la URL ni en logs. El endpoint también acepta
@@ -183,15 +186,15 @@ usa los mismos módulos desde `src/lib/analysis/jobs/`.
 El `sync` tarda unos **76 s** y `results` otros **76 s** por el throttle entre
 competiciones; el refresh completo ronda los **150 s**. Decisiones:
 
+- **Método recomendado:** ejecutar `npm run analysis:refresh` dentro del
+  contenedor con el programador de Dokploy o `docker exec` desde el cron del VPS.
+  No pasa por el proxy y usa el mismo lock y `AnalysisRefreshRun`.
 - El endpoint `GET /api/cron/analysis-refresh` es **síncrono**: responde cuando
   termina y devuelve el resumen. No se responde 202 en segundo plano porque el
   trabajo posterior a la respuesta no está garantizado en todos los despliegues
   de Next.js; el lock y `AnalysisRefreshRun` siguen siendo la fuente de verdad.
-- Si tu proxy corta a los 30–60 s, **no aumentes el timeout a ciegas**: ejecuta
-  el job dentro del contenedor con `npm run analysis:refresh`, que no pasa por
-  el proxy.
-- Si prefieres usar HTTP, configura el timeout de lectura del proxy en al menos
-  **300 s** (recomendado 900 s) para `/api/cron/analysis-refresh`.
+- Si por alguna razón usas HTTP, configura el timeout de lectura del proxy en al
+  menos **300 s** (recomendado 900 s) para `/api/cron/analysis-refresh`.
 - El lock evita que una ejecución HTTP y una ejecución de contenedor se solapen.
 
 Ejemplo de cron del VPS usando el contenedor para el análisis:
@@ -360,5 +363,7 @@ recálculo no llegó a guardar.
 - Aviso si el mercado está desactualizado (>4 días) y se está ocultando.
 
 El detalle `/analysis/[id]` incluye el mismo estado dentro de **Calidad de
-datos**. La promoción/rollback del modelo se hace en `/settings`. El peso
-modelo/mercado sigue en 0 salvo mejora sostenida y aprobación manual.
+datos**. La promoción/rollback del modelo se hace en `/settings`. Sin
+`ANALYSIS_ADMIN_EMAIL` definido, esos botones quedan deshabilitados (denegar por
+defecto); solo el email configurado puede aprobar. El peso modelo/mercado sigue
+en 0 salvo mejora sostenida y aprobación manual.

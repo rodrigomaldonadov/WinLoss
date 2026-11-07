@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
 import {
+  canManageModelVersions,
   promotionPlan,
   rollbackPlan,
 } from "@/lib/analysis/model-version";
@@ -14,9 +15,10 @@ import { prisma } from "@/lib/prisma";
 async function authorized(): Promise<boolean> {
   const session = await auth();
   if (!session?.user) return false;
-  const adminEmail = process.env.ANALYSIS_ADMIN_EMAIL?.trim();
-  if (adminEmail && session.user.email !== adminEmail) return false;
-  return true;
+  return canManageModelVersions({
+    userEmail: session.user.email,
+    adminEmail: process.env.ANALYSIS_ADMIN_EMAIL,
+  });
 }
 
 function versionId(formData: FormData): string | null {
@@ -43,7 +45,9 @@ export async function promoteModelVersionAction(formData: FormData) {
   if (!id) return;
 
   const challenger = await prisma.modelVersion.findUnique({ where: { id } });
-  if (!challenger || challenger.state !== "CHALLENGER") return;
+  if (!challenger || challenger.state !== "CHALLENGER" || challenger.quick) {
+    return;
+  }
 
   const decision = await getPromotionDecisionForVersion(id);
   if (!decision.eligible) return;

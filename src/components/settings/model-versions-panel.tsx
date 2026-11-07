@@ -93,7 +93,13 @@ function VersionMetrics({ metrics }: { metrics: unknown }) {
   );
 }
 
-export async function ModelVersionsPanel() {
+export async function ModelVersionsPanel({
+  canPromote,
+  adminConfigured,
+}: {
+  canPromote: boolean;
+  adminConfigured: boolean;
+}) {
   const { champion, challengers, retired } = await getModelVersionsOverview();
 
   return (
@@ -107,6 +113,14 @@ export async function ModelVersionsPanel() {
           cambio es automático.
         </p>
       </div>
+
+      {!canPromote && (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] leading-snug text-amber-900 dark:text-amber-200">
+          {adminConfigured
+            ? "Promoción y rollback deshabilitados para tu cuenta. Solo el email configurado en ANALYSIS_ADMIN_EMAIL puede aprobar versiones."
+            : "Promoción y rollback deshabilitados. Define ANALYSIS_ADMIN_EMAIL en el servidor y entra con ese email para poder aprobar versiones."}
+        </p>
+      )}
 
       <div className="rounded-lg border bg-background p-3">
         <div className="flex items-start justify-between gap-2">
@@ -147,7 +161,12 @@ export async function ModelVersionsPanel() {
                   En sombra desde {formatDate(challenger.createdAt)}
                 </p>
               </div>
-              <Badge variant="outline">Retador</Badge>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <Badge variant="outline">Retador</Badge>
+                {challenger.quick && (
+                  <Badge variant="destructive">Quick · no promovible</Badge>
+                )}
+              </div>
             </div>
 
             <VersionMetrics metrics={challenger.metrics} />
@@ -170,19 +189,27 @@ export async function ModelVersionsPanel() {
               </p>
             </div>
 
-            <form action={promoteModelVersionAction} className="mt-2">
-              <input type="hidden" name="versionId" value={challenger.id} />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!challenger.promotion?.eligible}
-                className="w-full sm:w-auto"
-              >
-                {challenger.promotion?.eligible
-                  ? "Promover a campeón"
-                  : "Aún no cumple la regla"}
-              </Button>
-            </form>
+            {canPromote ? (
+              <form action={promoteModelVersionAction} className="mt-2">
+                <input type="hidden" name="versionId" value={challenger.id} />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={challenger.quick || !challenger.promotion?.eligible}
+                  className="w-full sm:w-auto"
+                >
+                  {challenger.quick
+                    ? "Quick: no promovible"
+                    : challenger.promotion?.eligible
+                      ? "Promover a campeón"
+                      : "Aún no cumple la regla"}
+                </Button>
+              </form>
+            ) : (
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                Promoción deshabilitada. Configura ANALYSIS_ADMIN_EMAIL.
+              </p>
+            )}
           </div>
         ))
       )}
@@ -205,12 +232,14 @@ export async function ModelVersionsPanel() {
                     Brier {metric(version.metrics, "brier")?.toFixed(4) ?? "—"}
                   </p>
                 </div>
-                <form action={rollbackModelVersionAction}>
-                  <input type="hidden" name="versionId" value={version.id} />
-                  <Button type="submit" size="sm" variant="outline">
-                    Volver a esta versión
-                  </Button>
-                </form>
+                {canPromote && (
+                  <form action={rollbackModelVersionAction}>
+                    <input type="hidden" name="versionId" value={version.id} />
+                    <Button type="submit" size="sm" variant="outline">
+                      Volver a esta versión
+                    </Button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>

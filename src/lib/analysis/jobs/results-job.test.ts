@@ -34,6 +34,15 @@ function basePrisma(overrides: {
         { id: "arsenal", canonicalName: "Arsenal", normalizedName: "arsenal", aliases: [] },
         { id: "chelsea", canonicalName: "Chelsea", normalizedName: "chelsea", aliases: [] },
       ],
+      upsert: async ({
+        where,
+      }: {
+        where: { normalizedName: string };
+      }) => ({
+        id: where.normalizedName.replace(/\s+/g, "-"),
+        canonicalName: where.normalizedName,
+        normalizedName: where.normalizedName,
+      }),
     },
     historicalMatch: {
       findUnique: overrides.findUnique ?? (async () => null),
@@ -131,6 +140,63 @@ describe("runResultsJob", () => {
       if (previous === undefined) delete process.env.FOOTBALL_DATA_API_KEY;
       else process.env.FOOTBALL_DATA_API_KEY = previous;
     }
+  });
+
+  it("crea el Team cuando el alias explícito existe", async () => {
+    let created: Record<string, unknown> | null = null;
+    const prisma = {
+      team: {
+        findMany: async () => [],
+        upsert: async ({
+          where,
+        }: {
+          where: { normalizedName: string };
+        }) => ({
+          id: where.normalizedName,
+          canonicalName: where.normalizedName,
+          normalizedName: where.normalizedName,
+        }),
+      },
+      historicalMatch: {
+        findUnique: async () => null,
+        findFirst: async () => null,
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          created = data;
+          return {};
+        },
+        update: async () => ({}),
+      },
+    } as unknown as PrismaClient;
+
+    const summary = await runResultsJob({
+      prisma,
+      now,
+      aliasesPath: "team-aliases.json",
+      throttle: { tsdb: 0, footballData: 0 },
+      sleep: async () => {},
+      fetchTsdb: async (competition) =>
+        competition === "Liga 1"
+          ? [
+              {
+                ...result(competition),
+                competitionCode: "PER1",
+                home: "Atlético Grau",
+                away: "Cusco",
+              },
+            ]
+          : [],
+      fetchFootballData: async () => [],
+      logger: () => {},
+    });
+
+    expect(summary.created).toBe(1);
+    expect(summary.unresolved).toEqual([]);
+    expect(created).toMatchObject({
+      homeTeamId: "atletico grau",
+      awayTeamId: "cusco",
+      source: API_RESULT_SOURCE,
+      provisional: true,
+    });
   });
 
   it("no guarda equipos sin alias", async () => {

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluatePromotion, promotionPlan, rollbackPlan, type PromotionConfig } from "./model-version";
+import {
+  canManageModelVersions,
+  evaluatePromotion,
+  promotionPlan,
+  rollbackPlan,
+  type PromotionConfig,
+} from "./model-version";
 
 const config: PromotionConfig = {
   minSample: 300,
@@ -67,5 +73,35 @@ describe("evaluatePromotion", () => {
       promoteId: "old",
       previousVersionId: "current",
     });
+  });
+
+  it("deniega promoción si no hay admin configurado o no coincide", () => {
+    expect(
+      canManageModelVersions({ userEmail: "user@test.com", adminEmail: null }),
+    ).toBe(false);
+    expect(
+      canManageModelVersions({
+        userEmail: "user@test.com",
+        adminEmail: "admin@test.com",
+      }),
+    ).toBe(false);
+    expect(
+      canManageModelVersions({
+        userEmail: "Admin@Test.com",
+        adminEmail: "admin@test.com",
+      }),
+    ).toBe(true);
+  });
+
+  it("nunca permite promover una versión quick", () => {
+    const decision = evaluatePromotion(
+      arrays(350, 0.65, 0.6),
+      config,
+      { quick: true },
+    );
+    expect(decision.eligible).toBe(false);
+    expect(
+      decision.reasons.some((reason) => reason.includes("tuning rápido")),
+    ).toBe(true);
   });
 });

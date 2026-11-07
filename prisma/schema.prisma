@@ -672,6 +672,7 @@ model ModelVersion {
 
   name   String
   state  ModelVersionState @default(CHALLENGER)
+  quick  Boolean           @default(false)
   params Json
   metrics Json?
   notes  String?

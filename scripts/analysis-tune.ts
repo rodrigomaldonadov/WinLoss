@@ -339,6 +339,7 @@ async function main() {
       data: {
         name: `challenger-${now.toISOString().slice(0, 10)}-${now.getUTCHours()}${now.getUTCMinutes()}`,
         state: "CHALLENGER",
+        quick,
         params: best.params,
         metrics: {
           ...best.metrics,

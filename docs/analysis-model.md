@@ -240,6 +240,48 @@ El peso modelo/mercado se reestima con la misma regla en cada tuning; sigue en
 0 salvo mejora significativa sostenida. Las variantes con tiros/córneres son
 opcionales y no se activan sin pasar por el mismo proceso.
 
+### Tuning rápido y tuning completo
+
+`ANALYSIS_TUNE_QUICK=1` existe solo para smoke tests. La versión se guarda con
+`ModelVersion.quick=true`, muestra el badge **Quick · no promovible** en
+`/settings` y **nunca** puede promoverse, aunque las métricas parezcan buenas.
+
+Tuning completo (mensual):
+
+```bash
+# Asegúrate de NO tener ANALYSIS_TUNE_QUICK=1
+docker exec -it <contenedor> env -u ANALYSIS_TUNE_QUICK npm run analysis:tune
+```
+
+- Rejilla por defecto: decaimiento 180/365/730, ridge 40/70/120, ventaja de
+  local `fit|league`, temperatura 0.7/1.0.
+- Validación walk-forward con 2 folds por liga.
+- Presupuesto por defecto `ANALYSIS_TUNE_BUDGET_MS=900000` (15 min). El proceso
+  puede tardar **10–15 minutos**; si el presupuesto se agota, usa el mejor
+  candidato encontrado y lo reporta.
+- Crea un `CHALLENGER` con `quick=false` y retira el retador anterior (no lo
+  borra).
+- No modifica el campeón, `analysis-weights.json` ni el peso 0.
+
+Para reemplazar el retador quick actual:
+
+1. Ejecuta el tuning completo sin `ANALYSIS_TUNE_QUICK`.
+2. El comando pasa el quick a `RETIRED` y crea un retador nuevo con otro `id`.
+3. Ejecuta `npm run analysis:refresh` o espera la siguiente corrida para que
+   `analysis:generate` llene las predicciones en sombra del retador nuevo.
+4. Los snapshots del campeón y del retador anterior **no se borran**. Los
+   snapshots guardan `challengerVersionId`; los del quick quedan como auditoría
+   y no se usan para la promoción del retador nuevo.
+5. La promoción del retador nuevo sigue siendo manual y requiere
+   `ANALYSIS_ADMIN_EMAIL`.
+
+### Permisos de promoción
+
+Sin `ANALYSIS_ADMIN_EMAIL` definido, **promoción y rollback están
+deshabilitados** (denegar por defecto). `/settings` muestra el aviso y no ofrece
+botones activos. Si se define, solo ese email puede aprobar; el resto de
+usuarios puede ver las métricas pero no cambiar de versión.
+
 ## Conclusión de esta fase
 
 El mercado de cierre sigue siendo **mejor que el modelo en todas las ligas** y

@@ -6,6 +6,18 @@ export type PromotionConfig = {
   bootstrapIterations: number;
 };
 
+export function canManageModelVersions({
+  userEmail,
+  adminEmail,
+}: {
+  userEmail?: string | null;
+  adminEmail?: string | null;
+}): boolean {
+  const admin = adminEmail?.trim().toLowerCase();
+  const user = userEmail?.trim().toLowerCase();
+  return Boolean(admin && user && admin === user);
+}
+
 export type PromotionDecision = {
   eligible: boolean;
   sample: number;
@@ -78,6 +90,7 @@ export function evaluatePromotion(
     challengerLogLoss: readonly number[];
   },
   config: PromotionConfig = defaultPromotionConfig(),
+  { quick = false }: { quick?: boolean } = {},
 ): PromotionDecision {
   const sample = Math.min(
     championBrier.length,
@@ -86,6 +99,10 @@ export function evaluatePromotion(
     challengerLogLoss.length,
   );
   const reasons: string[] = [];
+
+  if (quick) {
+    reasons.push("Versión generada con tuning rápido: no es promovible.");
+  }
 
   if (sample < config.minSample) {
     reasons.push(
