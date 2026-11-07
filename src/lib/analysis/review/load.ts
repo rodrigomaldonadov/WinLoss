@@ -589,6 +589,17 @@ async function getMatchReviewInternal({
     community,
     privateLegs,
     modelMarkets,
+    marketPre: marketPre
+      ? { home: marketPre.home, draw: marketPre.draw, away: marketPre.away }
+      : null,
+    marketClose: marketClose
+      ? {
+          home: marketClose.home,
+          draw: marketClose.draw,
+          away: marketClose.away,
+        }
+      : null,
+    final1x2: finalOneXtwo,
     ratingsVersion,
     ratingsAsOf,
     cacheHit,

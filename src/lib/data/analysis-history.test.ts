@@ -6,7 +6,11 @@ import {
   type HistoryFilterState,
 } from "@/lib/analysis/history";
 
-import { getAnalysisHistory, searchAnalysisTeams } from "./analysis-history";
+import {
+  getAnalysisHistory,
+  getHistoryMatchHeader,
+  searchAnalysisTeams,
+} from "./analysis-history";
 
 const LIMA = "America/Lima";
 
@@ -83,15 +87,24 @@ function makeClient({
       const take = args?.take ?? rows.length;
       return rows.slice(skip, skip + take);
     }),
+    findUnique: vi.fn(
+      async (args?: { where?: { id?: string } }) =>
+        rows.find((row) => row.id === args?.where?.id) ?? null,
+    ),
   };
   const analysisSnapshot = {
     findMany: vi.fn(
       async (args: {
         where: {
-          matchKey?: { in: string[] };
+          matchKey?: string | { in: string[] };
           externalEventId?: { in: string[] };
         };
       }) => {
+        if (typeof args.where.matchKey === "string") {
+          return snapshots.filter(
+            (snapshot) => snapshot.matchKey === args.where.matchKey,
+          );
+        }
         if (args.where.externalEventId) {
           const ids = new Set(args.where.externalEventId.in);
           return snapshots
@@ -102,7 +115,11 @@ function makeClient({
             )
             .map((snapshot) => ({ matchKey: snapshot.matchKey }));
         }
-        const keys = new Set(args.where.matchKey?.in ?? []);
+        const keys = new Set(
+          typeof args.where.matchKey === "object"
+            ? args.where.matchKey.in
+            : [],
+        );
         return snapshots.filter((snapshot) => keys.has(snapshot.matchKey));
       },
     ),
@@ -111,7 +128,10 @@ function makeClient({
     findMany: vi.fn(async () => legs),
   };
   const team = {
-    findMany: vi.fn(async (_args?: { where: unknown }) => teams),
+    findMany: vi.fn(async (args?: { where: unknown }) => {
+      void args;
+      return teams;
+    }),
   };
 
   return {
@@ -408,6 +428,47 @@ describe("searchAnalysisTeams", () => {
 
     expect(await searchAnalysisTeams("a", { client })).toEqual([]);
     expect(team.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("getHistoryMatchHeader", () => {
+  it("devuelve el partido y si hay captura anterior al inicio", async () => {
+    const { client } = makeClient({
+      rows: [arsenalChelsea],
+      snapshots: [savedSnapshot],
+    });
+
+    const header = await getHistoryMatchHeader("m1", client);
+
+    expect(header).toMatchObject({
+      id: "m1",
+      homeName: "Arsenal",
+      awayName: "Chelsea",
+      homeGoals: 2,
+      awayGoals: 1,
+      provisional: false,
+      hasSnapshot: true,
+    });
+  });
+
+  it("ignora capturas posteriores al inicio", async () => {
+    const { client } = makeClient({
+      rows: [arsenalChelsea],
+      snapshots: [
+        {
+          ...savedSnapshot,
+          snapshotAt: new Date("2026-11-07T13:00:00.000Z"),
+        },
+      ],
+    });
+
+    const header = await getHistoryMatchHeader("m1", client);
+    expect(header?.hasSnapshot).toBe(false);
+  });
+
+  it("devuelve null si el partido no existe", async () => {
+    const { client } = makeClient({ rows: [arsenalChelsea] });
+    expect(await getHistoryMatchHeader("no-existe", client)).toBeNull();
   });
 });
 

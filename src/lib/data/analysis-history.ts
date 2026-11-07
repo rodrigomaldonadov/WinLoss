@@ -489,3 +489,70 @@ export async function searchAnalysisTeams(
   return (await resolveTeams(client, trimmed)).slice(0, limit);
 }
 
+const HEADER_SELECT = {
+  id: true,
+  competition: true,
+  competitionCode: true,
+  playedAt: true,
+  homeGoals: true,
+  awayGoals: true,
+  provisional: true,
+  source: true,
+  homeTeam: { select: { canonicalName: true } },
+  awayTeam: { select: { canonicalName: true } },
+} satisfies Prisma.HistoricalMatchSelect;
+
+export type HistoryMatchHeader = {
+  id: string;
+  competition: string;
+  competitionCode: string | null;
+  playedAt: Date;
+  homeName: string;
+  awayName: string;
+  homeGoals: number;
+  awayGoals: number;
+  provisional: boolean;
+  hasSnapshot: boolean;
+};
+
+/** Cabecera del detalle: partido + si existe captura previa. */
+export async function getHistoryMatchHeader(
+  matchId: string,
+  client: PrismaClient = prisma,
+): Promise<HistoryMatchHeader | null> {
+  const row = await client.historicalMatch.findUnique({
+    where: { id: matchId },
+    select: HEADER_SELECT,
+  });
+  if (!row) return null;
+
+  const homeName = row.homeTeam.canonicalName;
+  const awayName = row.awayTeam.canonicalName;
+  const matchKey = historyMatchKey({
+    homeName,
+    awayName,
+    playedAt: row.playedAt,
+  });
+
+  const snapshots = await client.analysisSnapshot.findMany({
+    where: { matchKey },
+    select: { snapshotAt: true, kickoff: true },
+  });
+  const hasSnapshot = snapshots.some(
+    (snapshot) => snapshot.snapshotAt.getTime() < snapshot.kickoff.getTime(),
+  );
+
+  return {
+    id: row.id,
+    competition: row.competition,
+    competitionCode: row.competitionCode,
+    playedAt: row.playedAt,
+    homeName,
+    awayName,
+    homeGoals: row.homeGoals,
+    awayGoals: row.awayGoals,
+    provisional: row.provisional || row.source === "api",
+    hasSnapshot,
+  };
+}
+

@@ -85,6 +85,10 @@ export type ReviewResult = {
   community: ReviewCommunity | null;
   privateLegs: ReviewPrivateLeg[];
   modelMarkets: ReviewModelMarkets | null;
+  /** Probabilidades 1X2 del mercado, para capturas sin mercados del modelo. */
+  marketPre: { home: number; draw: number; away: number } | null;
+  marketClose: { home: number; draw: number; away: number } | null;
+  final1x2: { home: number; draw: number; away: number } | null;
   ratingsVersion: string | null;
   ratingsAsOf: string | null;
   cacheHit: boolean;
