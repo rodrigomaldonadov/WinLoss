@@ -489,11 +489,22 @@ export async function runGenerateJob({
         orderBy: { asOf: "desc" },
         select: { asOf: true, params: true },
       });
+      const latestParams = latest ? jsonObject(latest.params) : {};
+      const adjustedAt =
+        typeof latestParams.adjustedAt === "string"
+          ? new Date(latestParams.adjustedAt)
+          : latest?.asOf;
       const newResults = await prisma.historicalMatch.count({
         where: {
           competitionCode: code,
-          ...(latest?.asOf
-            ? { playedAt: { gt: latest.asOf, lte: now } }
+          playedAt: { lte: now },
+          ...(adjustedAt
+            ? {
+                OR: [
+                  { importedAt: { gt: adjustedAt } },
+                  { updatedAt: { gt: adjustedAt } },
+                ],
+              }
             : {}),
         },
       });
