@@ -57,28 +57,28 @@ export function ProbabilityGrid({
         const value = probabilities[outcome.key];
         const href = hrefForOutcome?.(outcome.key);
         const cellClass = cn(
-          "block rounded-lg border text-center",
+          "block rounded-md border text-center transition-colors",
           compact ? "px-1 py-1" : "px-2 py-2",
           value === best
             ? "border-primary/40 bg-primary/5"
             : "border-border bg-muted/30",
           href &&
-            "pointer-events-auto relative z-20 transition-colors hover:bg-muted/60",
+            "pointer-events-auto relative z-20 hover:bg-muted/60",
         );
         const content = (
           <>
             <p
               className={cn(
                 "font-medium uppercase tracking-wide text-muted-foreground",
-                compact ? "text-[9px]" : "text-[10px]",
+                compact ? "text-[8.5px] leading-tight" : "text-[10px]",
               )}
             >
               {outcome.short} · {outcome.label}
             </p>
             <p
               className={cn(
-                "mt-0.5 font-semibold tabular-nums",
-                compact ? "text-sm" : "text-lg",
+                "font-semibold tabular-nums",
+                compact ? "mt-0.5 text-xs leading-tight" : "mt-0.5 text-lg",
               )}
             >
               {probabilityLabel(value)}
@@ -242,16 +242,16 @@ export function CardMarketChips({ item }: { item: AnalysisFeedItem }) {
   if (chips.length === 0) return null;
 
   return (
-    <div className="mt-1.5 flex gap-1.5">
+    <div className="mt-1 flex gap-1">
       {chips.slice(0, 3).map((chip) => (
         <Link
           key={chip.key}
           href={chip.href}
           aria-label={`Precargar ${chip.label} en una nueva apuesta`}
-          className="pointer-events-auto relative z-20 flex h-11 flex-1 items-center justify-between gap-1 rounded-lg border bg-background px-2 text-[10px] font-medium transition-colors hover:bg-muted/60"
+          className="pointer-events-auto relative z-20 flex h-7 flex-1 items-center justify-between gap-1 rounded-md border bg-background px-1.5 text-[9.5px] font-medium transition-colors hover:bg-muted/60"
         >
           <span className="text-muted-foreground">{chip.label}</span>
-          <span className="tabular-nums">{probabilityLabel(chip.value)}</span>
+          <span className="tabular-nums font-semibold">{probabilityLabel(chip.value)}</span>
         </Link>
       ))}
     </div>
@@ -283,19 +283,25 @@ export function ProbabilityHeadline({
     : `${marketNote}.`;
 
   return (
-    <div className="mt-1.5">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-medium leading-snug text-muted-foreground">
+    <div className={compact ? "mt-1" : "mt-1.5"}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-[10px] font-medium leading-tight text-muted-foreground">
           {headlineTitle(final.source)}
         </p>
-        <Badge variant={isMarket ? "secondary" : "outline"}>
+        <Badge
+          variant={isMarket ? "secondary" : "outline"}
+          className={cn(
+            compact &&
+              "h-4 shrink-0 px-1.5 py-0 text-[9px] font-medium leading-none",
+          )}
+        >
           {confidenceBadge(displayConfidence)}
         </Badge>
       </div>
 
       <ProbabilityGrid
         probabilities={probabilities}
-        className="mt-1.5"
+        className={compact ? "mt-1 gap-1" : "mt-1.5"}
         compact={compact}
         hrefForOutcome={(outcome) =>
           analysisBetHref(item, matchResultPick(outcome))

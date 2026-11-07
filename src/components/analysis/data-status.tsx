@@ -1,9 +1,20 @@
+"use client";
+
 import {
   Clock3,
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import type { AnalysisDataStatus } from "@/lib/data/analysis-status";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -79,54 +90,117 @@ export function DataStatusNotice({
     ? `${formatDateTime(batch.capturedAt, timeZone)} (${formatAgeDays(batch.ageDays)})`
     : "sin lote";
 
+  const shortTitle = stale
+    ? `Mercado desactualizado (cuotas ${batch ? formatAgeDays(batch.ageDays) : ">4d"})`
+    : noRecentBatch
+      ? "Sin lote de cuotas reciente (>7d)"
+      : `Actualización ${status.lastRun ? runStatusLabel(status.lastRun.status).toLowerCase() : "con incidencias"}`;
+
+  const detailTitle = stale
+    ? "Fuente de mercado desactualizada"
+    : noRecentBatch
+      ? "Sin lote de cuotas reciente"
+      : "Actualización automática con incidencias";
+
   return (
-    <div
-      role="status"
-      className={cn(
-        "flex items-start gap-2 rounded-xl border px-3 py-2.5 text-[11px] leading-snug",
-        stale
-          ? "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
-          : "border-border bg-muted/30 text-muted-foreground",
-      )}
-    >
-      {stale || runProblem ? (
-        <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-      ) : (
-        <Clock3 className="mt-0.5 size-4 shrink-0" aria-hidden />
-      )}
-      <div className="space-y-0.5">
-        <p className="font-medium text-foreground">
-          {stale
-            ? "Fuente de mercado desactualizada"
-            : noRecentBatch
-              ? "Sin lote de cuotas reciente"
-              : "Actualización automática con incidencias"}
-        </p>
-        {stale && (
-          <p>
-            Las cuotas se capturaron{" "}
-            {batch ? formatAgeDays(batch.ageDays) : "hace más de 4 días"}. La
-            fuente Mercado se oculta hasta que llegue un lote nuevo.
-          </p>
+    <Sheet>
+      <div
+        role="status"
+        className={cn(
+          "flex h-9 items-center justify-between gap-2 rounded-lg border px-2.5 text-xs",
+          stale || runProblem
+            ? "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
+            : "border-border bg-muted/40 text-muted-foreground",
         )}
-        {!stale && noRecentBatch && (
+      >
+        <div className="flex min-w-0 items-center gap-1.5 truncate">
+          {stale || runProblem ? (
+            <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
+          ) : (
+            <Clock3 className="size-3.5 shrink-0" aria-hidden />
+          )}
+          <span className="truncate font-medium">{shortTitle}</span>
+        </div>
+
+        <div className="sr-only">
+          <p>{detailTitle}</p>
+          {stale && (
+            <p>
+              Las cuotas se capturaron{" "}
+              {batch ? formatAgeDays(batch.ageDays) : "hace más de 4 días"}. La
+              fuente Mercado se oculta hasta que llegue un lote nuevo.
+            </p>
+          )}
+          {!stale && noRecentBatch && (
+            <p>
+              No ha llegado un lote de cuotas en más de 7 días. La fuente Mercado
+              no se renueva hasta que llegue un CSV nuevo.
+            </p>
+          )}
+          {runProblem && status.lastRun && (
+            <p>
+              Última corrida: {runStatusLabel(status.lastRun.status)}{" "}
+              {status.lastRun.error ? `(${status.lastRun.error})` : ""}
+              {stepSummary(status) ? ` · ${stepSummary(status)}` : ""}.
+            </p>
+          )}
           <p>
-            No ha llegado un lote de cuotas en más de 7 días. La fuente Mercado
-            no se renueva hasta que llegue un CSV nuevo.
+            Último import {importLabel} · cuotas {batchLabel}.
           </p>
-        )}
-        {runProblem && status.lastRun && (
-          <p>
-            Última corrida: {runStatusLabel(status.lastRun.status)}{" "}
-            {status.lastRun.error ? `(${status.lastRun.error})` : ""}
-            {stepSummary(status) ? ` · ${stepSummary(status)}` : ""}.
-          </p>
-        )}
-        <p>
-          Último import {importLabel} · cuotas {batchLabel}.
-        </p>
+        </div>
+
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 shrink-0 px-2 text-xs font-semibold underline-offset-4 hover:underline"
+          >
+            Ver
+          </Button>
+        </SheetTrigger>
       </div>
-    </div>
+
+      <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{detailTitle}</SheetTitle>
+          <SheetDescription>
+            {stale
+              ? "Las cuotas se capturaron hace más de 4 días y la fuente se oculta hasta nuevo lote."
+              : noRecentBatch
+                ? "No ha llegado un lote de cuotas en más de 7 días."
+                : "La última sincronización o cálculo tuvo avisos o errores."}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-2.5 px-4 pb-8 text-xs leading-relaxed text-muted-foreground">
+          {stale && (
+            <p>
+              Las cuotas se capturaron{" "}
+              {batch ? formatAgeDays(batch.ageDays) : "hace más de 4 días"}. La
+              fuente Mercado se oculta hasta que llegue un lote nuevo.
+            </p>
+          )}
+          {!stale && noRecentBatch && (
+            <p>
+              No ha llegado un lote de cuotas en más de 7 días. La fuente Mercado
+              no se renueva hasta que llegue un CSV nuevo.
+            </p>
+          )}
+          {runProblem && status.lastRun && (
+            <p>
+              Última corrida: {runStatusLabel(status.lastRun.status)}{" "}
+              {status.lastRun.error ? `(${status.lastRun.error})` : ""}
+              {stepSummary(status) ? ` · ${stepSummary(status)}` : ""}.
+            </p>
+          )}
+          <p>
+            Último import {importLabel} · cuotas {batchLabel}.
+          </p>
+
+          <DataStatusDetails status={status} timeZone={timeZone} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

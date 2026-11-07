@@ -87,7 +87,7 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <PageHeader
         className="pb-0"
         title="Consenso"
@@ -106,7 +106,7 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
 
       <AnalysisTabs active="upcoming" />
 
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-[10px] leading-tight text-muted-foreground">
         Probabilidades estimadas; no son una recomendación.
       </p>
 
@@ -135,7 +135,7 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
       ) : (
         <>
           {analyzed.length > 0 && (
-            <div className="grid gap-2">
+            <div className="grid gap-1.5">
               {analyzed.map((item) => (
                 <AnalysisCard
                   key={item.id}
@@ -147,14 +147,14 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
           )}
 
           {unavailable.length > 0 && (
-            <section aria-labelledby="sin-analisis" className="space-y-2">
+            <section aria-labelledby="sin-analisis" className="space-y-1.5">
               <h2
                 id="sin-analisis"
                 className="text-xs font-semibold text-muted-foreground"
               >
                 Sin análisis disponible
               </h2>
-              <div className="grid gap-2">
+              <div className="grid gap-1.5">
                 {unavailable.map((item) => (
                   <NoAnalysisCard
                     key={item.id}
