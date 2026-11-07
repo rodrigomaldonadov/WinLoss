@@ -242,13 +242,13 @@ export function CardMarketChips({ item }: { item: AnalysisFeedItem }) {
   if (chips.length === 0) return null;
 
   return (
-    <div className="mt-1 flex gap-1">
+    <div className="mt-0.5 flex gap-1">
       {chips.slice(0, 3).map((chip) => (
         <Link
           key={chip.key}
           href={chip.href}
           aria-label={`Precargar ${chip.label} en una nueva apuesta`}
-          className="pointer-events-auto relative z-20 flex h-7 flex-1 items-center justify-between gap-1 rounded-md border bg-background px-1.5 text-[9.5px] font-medium transition-colors hover:bg-muted/60"
+          className="pointer-events-auto relative z-20 flex h-7 flex-1 items-center justify-between gap-0.5 rounded border bg-background px-1 text-[9px] font-medium transition-colors hover:bg-muted/60"
         >
           <span className="text-muted-foreground">{chip.label}</span>
           <span className="tabular-nums font-semibold">{probabilityLabel(chip.value)}</span>
@@ -283,16 +283,16 @@ export function ProbabilityHeadline({
     : `${marketNote}.`;
 
   return (
-    <div className={compact ? "mt-1" : "mt-1.5"}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-[10px] font-medium leading-tight text-muted-foreground">
+    <div className={compact ? "mt-0.5" : "mt-1.5"}>
+      <div className="flex items-center justify-between gap-1.5">
+        <p className="truncate text-[9px] font-medium leading-tight text-muted-foreground">
           {headlineTitle(final.source)}
         </p>
         <Badge
           variant={isMarket ? "secondary" : "outline"}
           className={cn(
             compact &&
-              "h-4 shrink-0 px-1.5 py-0 text-[9px] font-medium leading-none",
+              "h-3.5 shrink-0 px-1 py-0 text-[8px] font-medium leading-none",
           )}
         >
           {confidenceBadge(displayConfidence)}
@@ -301,7 +301,7 @@ export function ProbabilityHeadline({
 
       <ProbabilityGrid
         probabilities={probabilities}
-        className={compact ? "mt-1 gap-1" : "mt-1.5"}
+        className={compact ? "mt-0.5 gap-1" : "mt-1.5"}
         compact={compact}
         hrefForOutcome={(outcome) =>
           analysisBetHref(item, matchResultPick(outcome))

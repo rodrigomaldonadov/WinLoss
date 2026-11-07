@@ -14,7 +14,7 @@ export function AnalysisTabs({ active }: { active: AnalysisTabKey }) {
   return (
     <nav
       aria-label="Secciones de análisis"
-      className="grid grid-cols-3 gap-1 rounded-xl bg-muted/50 p-1"
+      className="grid grid-cols-3 gap-0.5 rounded-lg bg-muted/50 p-0.5"
     >
       {TABS.map((tab) => {
         const isActive = tab.key === active;
@@ -24,7 +24,7 @@ export function AnalysisTabs({ active }: { active: AnalysisTabKey }) {
             href={tab.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex h-11 items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "flex h-9 items-center justify-center rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isActive
                 ? "bg-background text-foreground shadow-xs"
                 : "text-muted-foreground active:bg-background/60",

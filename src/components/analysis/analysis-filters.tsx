@@ -35,7 +35,7 @@ export function AnalysisFilters({
   competitions: CompetitionFilterOption[];
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       {ANALYSIS_DAY_OPTIONS.map((option) => {
         const active = option === days;
         return (
@@ -44,7 +44,7 @@ export function AnalysisFilters({
             href={analysisHref({ days: option, competitions: selected })}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-11 shrink-0 items-center justify-center rounded-full border px-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "flex h-8 shrink-0 items-center justify-center rounded-full border px-2 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active
                 ? "border-primary bg-primary/10 text-primary"
                 : "bg-background text-muted-foreground active:bg-muted",
@@ -60,13 +60,13 @@ export function AnalysisFilters({
           <Button
             variant="outline"
             size="sm"
-            className="ml-auto h-11 gap-1.5 px-3"
+            className="ml-auto h-8 gap-1 px-2 text-[10px]"
             aria-label="Abrir filtros"
           >
-            <Filter className="size-4" aria-hidden />
+            <Filter className="size-3.5" aria-hidden />
             Filtros
             {selected.length > 0 && (
-              <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+              <span className="rounded-full bg-primary/10 px-1 text-[9px] font-semibold text-primary">
                 {selected.length}
               </span>
             )}

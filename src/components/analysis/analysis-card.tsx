@@ -27,7 +27,7 @@ function CardShell({
   children: ReactNode;
 }) {
   return (
-    <article className="group relative flex flex-col rounded-lg border bg-card p-2 shadow-xs transition-colors hover:bg-muted/30 h-[210px]">
+    <article className="group relative flex flex-col rounded-lg border bg-card p-2 shadow-xs transition-colors hover:bg-muted/30 h-[196px]">
       <Link
         href={`/analysis/${item.id}`}
         aria-label={`Ver detalle de ${item.homeName} vs ${item.awayName}`}

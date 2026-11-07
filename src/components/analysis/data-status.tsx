@@ -107,17 +107,17 @@ export function DataStatusNotice({
       <div
         role="status"
         className={cn(
-          "flex h-9 items-center justify-between gap-2 rounded-lg border px-2.5 text-xs",
+          "flex h-8 items-center justify-between gap-2 rounded-md border px-2 text-[10px]",
           stale || runProblem
             ? "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
             : "border-border bg-muted/40 text-muted-foreground",
         )}
       >
-        <div className="flex min-w-0 items-center gap-1.5 truncate">
+        <div className="flex min-w-0 items-center gap-1 truncate">
           {stale || runProblem ? (
-            <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
+            <TriangleAlert className="size-3 shrink-0" aria-hidden />
           ) : (
-            <Clock3 className="size-3.5 shrink-0" aria-hidden />
+            <Clock3 className="size-3 shrink-0" aria-hidden />
           )}
           <span className="truncate font-medium">{shortTitle}</span>
         </div>
@@ -153,7 +153,7 @@ export function DataStatusNotice({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 shrink-0 px-2 text-xs font-semibold underline-offset-4 hover:underline"
+            className="h-5 shrink-0 px-1.5 text-[10px] font-semibold underline-offset-2 hover:underline"
           >
             Ver
           </Button>

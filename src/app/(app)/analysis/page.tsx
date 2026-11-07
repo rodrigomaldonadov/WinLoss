@@ -87,17 +87,17 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
   );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <PageHeader
-        className="pb-0"
+        className="pb-0 [&>div]:space-y-0 [&_h1]:text-xl md:[&_h1]:text-2xl [&_p]:text-xs"
         title="Consenso"
         description={`Próximos ${days} días.`}
         action={
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <AnalysisHelpButton />
-            <Button asChild size="icon" aria-label="Registrar apuesta">
+            <Button asChild size="icon" className="size-8" aria-label="Registrar apuesta">
               <Link href="/bets/new">
-                <Plus className="size-5" aria-hidden />
+                <Plus className="size-4" aria-hidden />
               </Link>
             </Button>
           </div>
@@ -105,10 +105,6 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
       />
 
       <AnalysisTabs active="upcoming" />
-
-      <p className="text-[10px] leading-tight text-muted-foreground">
-        Probabilidades estimadas; no son una recomendación.
-      </p>
 
       <AnalysisFilters
         days={days}
@@ -147,10 +143,10 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
           )}
 
           {unavailable.length > 0 && (
-            <section aria-labelledby="sin-analisis" className="space-y-1.5">
+            <section aria-labelledby="sin-analisis" className="space-y-1">
               <h2
                 id="sin-analisis"
-                className="text-xs font-semibold text-muted-foreground"
+                className="text-[10px] font-semibold text-muted-foreground"
               >
                 Sin análisis disponible
               </h2>
@@ -167,10 +163,6 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
           )}
         </>
       )}
-
-      <p className="pb-2 text-[10px] text-muted-foreground">
-        La comunidad solo se agrega con 5 usuarios distintos o más.
-      </p>
     </div>
   );
 }
