@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -145,20 +146,36 @@ export function NewDebtSheet({
 
       <SheetContent
         side="bottom"
-        className="flex max-h-[92dvh] flex-col gap-0 rounded-t-2xl pb-0 sm:mx-auto sm:max-w-lg"
+        showCloseButton={false}
+        className="flex h-[100dvh] max-h-[100dvh] flex-col gap-0 rounded-none pb-0 sm:mx-auto sm:h-auto sm:max-h-[92dvh] sm:max-w-xl sm:rounded-t-2xl"
       >
-        <SheetHeader className="pb-3 pr-10">
-          <SheetTitle>Nueva deuda</SheetTitle>
-          <SheetDescription>
-            Registra el préstamo, su moneda y si entra al bankroll.
-          </SheetDescription>
+        <SheetHeader className="px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:pb-3 sm:pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-0.5">
+              <SheetTitle>Nueva deuda</SheetTitle>
+              <SheetDescription className="text-xs leading-snug sm:text-sm">
+                Registra el préstamo, su moneda y si entra al bankroll.
+              </SheetDescription>
+            </div>
+            <SheetClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Cerrar"
+                className="-mr-1 -mt-1 shrink-0"
+              >
+                <X className="size-5" aria-hidden />
+              </Button>
+            </SheetClose>
+          </div>
         </SheetHeader>
 
         <form
           action={formAction}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-4 sm:space-y-4">
             {state.error && (
               <p
                 role="alert"
@@ -200,7 +217,7 @@ export function NewDebtSheet({
                       aria-pressed={active}
                       onClick={() => selectCurrency(code)}
                       className={cn(
-                        "flex h-11 items-center justify-center gap-1 rounded-md text-sm font-medium transition-colors",
+                        "flex h-11 min-w-0 items-center justify-center gap-1 rounded-md px-1 text-[13px] font-medium transition-colors sm:text-sm",
                         active
                           ? "bg-background text-foreground shadow-xs"
                           : "text-muted-foreground active:bg-background/60",
@@ -230,7 +247,7 @@ export function NewDebtSheet({
                   aria-invalid={Boolean(state.fieldErrors?.principal)}
                 />
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5 min-[360px]:grid-cols-4">
                 {quickAmounts.map((value) => (
                   <button
                     key={value}
@@ -403,7 +420,7 @@ export function NewDebtSheet({
             </details>
           </div>
 
-          <div className="shrink-0 border-t bg-popover/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+          <div className="shrink-0 border-t bg-popover/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
             <Button
               type="submit"
               className="h-12 w-full gap-2"
