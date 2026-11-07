@@ -28,6 +28,12 @@ type NewBetPageProps = {
     deporte?: string | string[];
     origen?: string | string[];
     analisis?: string | string[];
+    mercadoKey?: string | string[];
+    mercado?: string | string[];
+    seleccion?: string | string[];
+    pick?: string | string[];
+    linea?: string | string[];
+    subject?: string | string[];
   }>;
 };
 
@@ -46,6 +52,12 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
     competicion: firstParam(params.competicion),
     fecha: firstParam(params.fecha),
     deporte: firstParam(params.deporte),
+    mercadoKey: firstParam(params.mercadoKey),
+    mercado: firstParam(params.mercado),
+    seleccion: firstParam(params.seleccion),
+    pick: firstParam(params.pick),
+    linea: firstParam(params.linea),
+    subject: firstParam(params.subject),
   });
   const prefillOrigin = firstParam(params.origen)?.trim() || "Consenso";
   const analysisId = firstParam(params.analisis);
@@ -53,6 +65,12 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
     analysisId && /^[a-z0-9]+$/i.test(analysisId)
       ? `/analysis/${analysisId}`
       : null;
+  const prefillSelection = prefill?.legs?.[0]?.selections?.[0];
+  const hasMarketPrefill = Boolean(
+    prefillSelection &&
+      (prefillSelection.marketKey !== "CUSTOM" ||
+        prefillSelection.market.trim().length > 0),
+  );
 
   const [bankrolls, bookmakers, copiedBet, preferences] = await Promise.all([
     getBankrollsForUser(session.user.id),
@@ -158,8 +176,10 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
               <p>
                 Precargado desde <strong>{prefillOrigin}</strong>:{" "}
                 <strong>{prefill.eventName}</strong>
-                {prefill.competition ? ` (${prefill.competition})` : ""}. La
-                cuota, el mercado y la selección los defines tú.
+                {prefill.competition ? ` (${prefill.competition})` : ""}.{" "}
+                {hasMarketPrefill
+                  ? "Mercado y selección precargados; la cuota la defines tú."
+                  : "La cuota, el mercado y la selección los defines tú."}
                 {analysisHref && (
                   <>
                     {" "}

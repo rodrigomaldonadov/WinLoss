@@ -257,6 +257,101 @@ function walkForwardCalibration(
   };
 }
 
+type GlobalCalibrationValidation = {
+  sample: number;
+  before: MetricSummary;
+  afterGlobal: MetricSummary;
+  afterPerLeague: MetricSummary;
+  candidateTemperature: number;
+  improvedVsBefore: boolean;
+  improvedVsPerLeague: boolean;
+};
+
+/**
+ * Walk-forward con una sola temperatura para todas las ligas. Se compara
+ * contra la calibración por liga sobre exactamente las mismas filas evaluadas.
+ */
+function walkForwardGlobalCalibration(
+  evaluations: readonly Evaluation[],
+): GlobalCalibrationValidation {
+  const rows = evaluations.flatMap(
+    (evaluation) => evaluation.calibrationValidation.evaluated,
+  );
+  const sorted = [...rows].sort(
+    (a, b) => a.record.playedAt.getTime() - b.record.playedAt.getTime(),
+  );
+  const weeks = new Map<string, typeof sorted>();
+  for (const item of sorted) {
+    const list = weeks.get(item.record.week) ?? [];
+    list.push(item);
+    weeks.set(item.record.week, list);
+  }
+
+  const prior: ProbabilityRow[] = [];
+  const evaluated: { item: (typeof sorted)[number]; calibrated: number[] }[] =
+    [];
+
+  for (const key of [...weeks.keys()].sort()) {
+    const current = weeks.get(key) ?? [];
+    if (prior.length >= CALIBRATION_MIN_PRIOR) {
+      const fit = fitTemperature(prior);
+      for (const item of current) {
+        evaluated.push({
+          item,
+          calibrated: applyTemperature(item.record.model, fit.temperature),
+        });
+      }
+    }
+    prior.push(
+      ...current.map((item) => ({
+        probabilities: item.record.model,
+        outcome: item.record.outcome,
+      })),
+    );
+  }
+
+  const before = summarize(
+    evaluated.map((item) => ({
+      probabilities: item.item.record.model,
+      outcome: item.item.record.outcome,
+    })),
+  );
+  const afterGlobal = summarize(
+    evaluated.map((item) => ({
+      probabilities: item.calibrated,
+      outcome: item.item.record.outcome,
+    })),
+  );
+  const afterPerLeague = summarize(
+    evaluated.map((item) => ({
+      probabilities: item.item.calibrated,
+      outcome: item.item.record.outcome,
+    })),
+  );
+  const finalFit = fitTemperature(
+    sorted.map((item) => ({
+      probabilities: item.record.model,
+      outcome: item.record.outcome,
+    })),
+  );
+
+  return {
+    sample: evaluated.length,
+    before,
+    afterGlobal,
+    afterPerLeague,
+    candidateTemperature: finalFit.temperature,
+    improvedVsBefore:
+      evaluated.length >= CALIBRATION_MIN_EVALUATED &&
+      afterGlobal.brier < before.brier &&
+      afterGlobal.logLoss < before.logLoss,
+    improvedVsPerLeague:
+      evaluated.length >= CALIBRATION_MIN_EVALUATED &&
+      afterGlobal.brier < afterPerLeague.brier &&
+      afterGlobal.logLoss < afterPerLeague.logLoss,
+  };
+}
+
 function temporalBlend(
   calibrationValidation: CalibrationValidation,
 ): BlendValidation {
@@ -733,6 +828,7 @@ async function main() {
       })),
     ),
   );
+  const globalCalibration = walkForwardGlobalCalibration(evaluations);
 
   const totalBlendTuneRows = evaluations.flatMap(
     (evaluation) => evaluation.blendValidation.tuneRows,
@@ -853,6 +949,27 @@ async function main() {
   );
 
   console.log("");
+  console.log("Temperatura global vs una por liga · 1X2");
+  console.log(
+    `N=${globalCalibration.sample} · T global candidata=${globalCalibration.candidateTemperature.toFixed(2)}`,
+  );
+  console.log(
+    `Antes        Brier ${globalCalibration.before.brier.toFixed(4)} · LL ${globalCalibration.before.logLoss.toFixed(4)}`,
+  );
+  console.log(
+    `Global       Brier ${globalCalibration.afterGlobal.brier.toFixed(4)} · LL ${globalCalibration.afterGlobal.logLoss.toFixed(4)}`,
+  );
+  console.log(
+    `Por liga     Brier ${globalCalibration.afterPerLeague.brier.toFixed(4)} · LL ${globalCalibration.afterPerLeague.logLoss.toFixed(4)}`,
+  );
+  console.log(
+    `¿Global mejora al modelo sin calibrar? ${globalCalibration.improvedVsBefore ? "sí" : "no"}`,
+  );
+  console.log(
+    `¿Global mejora a la calibración por liga? ${globalCalibration.improvedVsPerLeague ? "sí" : "no"}`,
+  );
+
+  console.log("");
   console.log("Mezcla modelo/mercado · validación temporal 60/40 · 1X2");
   console.log(
     `${pad("Liga", 26)} ${pad("Ntest", 6)} ${pad("Mercado", 9)} ${pad("Mezcla", 9)} ${pad("Peso", 6)} ${pad("Δ", 9)} ${pad("¿Aplica?", 8)}`,
@@ -929,6 +1046,15 @@ async function main() {
       blendTestMarketBrier: totalBlendMarket.brier,
       blendTestBrier: totalBlend.brier,
       blendImproved: globalBlendImproved,
+    },
+    globalCalibration: {
+      temperature: globalCalibration.candidateTemperature,
+      sample: globalCalibration.sample,
+      before: globalCalibration.before,
+      afterGlobal: globalCalibration.afterGlobal,
+      afterPerLeague: globalCalibration.afterPerLeague,
+      improvedVsBefore: globalCalibration.improvedVsBefore,
+      improvedVsPerLeague: globalCalibration.improvedVsPerLeague,
     },
     competitions: Object.fromEntries(
       evaluations.map((evaluation) => [

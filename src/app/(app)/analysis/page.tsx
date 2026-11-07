@@ -6,6 +6,7 @@ import { BarChart3, Info, Plus } from "lucide-react";
 import { auth } from "@/auth";
 import { AnalysisCard, NoAnalysisCard } from "@/components/analysis/analysis-card";
 import { AnalysisFilters } from "@/components/analysis/analysis-filters";
+import { DataStatusNotice } from "@/components/analysis/data-status";
 import { ModelAccuracyPanel } from "@/components/analysis/model-accuracy-panel";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -18,6 +19,7 @@ import {
   type AnalysisDays,
 } from "@/lib/analysis/view";
 import { getAnalysisFeed, getModelAccuracy } from "@/lib/data/analysis";
+import { getAnalysisDataStatus } from "@/lib/data/analysis-status";
 import { getUserPreferences } from "@/lib/data/user";
 
 export const metadata: Metadata = {
@@ -63,9 +65,10 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
   const days = parseDays(params.dias);
   const selected = parseCompetitions(params.competicion);
 
-  const [items, preferences] = await Promise.all([
+  const [items, preferences, dataStatus] = await Promise.all([
     getAnalysisFeed(session.user.id, { days }),
     getUserPreferences(session.user.id),
+    getAnalysisDataStatus(),
   ]);
   const accuracy = getModelAccuracy();
 
@@ -134,10 +137,51 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
         </p>
       </div>
 
+      <details className="rounded-xl border bg-card px-3 py-2 text-xs">
+        <summary className="cursor-pointer font-medium">
+          Cómo leer esta pantalla
+        </summary>
+        <ul className="mt-2 list-inside list-disc space-y-1 text-[11px] leading-snug text-muted-foreground">
+          <li>
+            <strong className="text-foreground">Mercado:</strong> promedio de
+            cierre sin margen. Es la fuente principal cuando las cuotas están
+            frescas.
+          </li>
+          <li>
+            <strong className="text-foreground">Modelo:</strong> estimación
+            estadística de la liga. Se muestra como comparación; en pruebas el
+            mercado tuvo mejor Brier.
+          </li>
+          <li>
+            <strong className="text-foreground">Comunidad:</strong> agregado
+            anónimo de picks, solo con 5 usuarios distintos o más.
+          </li>
+          <li>
+            <strong className="text-foreground">Confianza:</strong> alta cuando
+            hay cuotas de mercado frescas; baja cuando solo hay modelo o la
+            muestra es corta; sin datos cuando no hay base suficiente.
+          </li>
+          <li>
+            Tocar un mercado precarga esa selección en{" "}
+            <strong className="text-foreground">Nueva apuesta</strong>, sin
+            cuota. Tocar el partido precarga solo evento, competición y fecha.
+          </li>
+          <li>
+            La cuota justa es 1 / probabilidad. El comparador no es una
+            recomendación ni predice el retorno.
+          </li>
+        </ul>
+      </details>
+
       <AnalysisFilters
         days={days}
         selected={selected}
         competitions={competitions}
+      />
+
+      <DataStatusNotice
+        status={dataStatus}
+        timeZone={preferences.timezone}
       />
 
       <ModelAccuracyPanel accuracy={accuracy} />

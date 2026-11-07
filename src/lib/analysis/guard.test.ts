@@ -49,4 +49,21 @@ describe("guardas de /analysis", () => {
       expect(source, file).not.toMatch(/sports-api\/fake|fakeProvider/);
     }
   });
+
+  it("el job de import no hace red", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/lib/analysis/jobs/import-job.ts"),
+      "utf8",
+    );
+    expect(source).not.toMatch(/\bfetch\s*\(/);
+  });
+
+  it("excluye data-football de Git y de la imagen Docker", () => {
+    expect(readFileSync(join(process.cwd(), ".gitignore"), "utf8")).toContain(
+      "/data-football/",
+    );
+    expect(
+      readFileSync(join(process.cwd(), ".dockerignore"), "utf8"),
+    ).toContain("data-football");
+  });
 });

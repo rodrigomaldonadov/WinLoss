@@ -550,3 +550,38 @@ enum AutoSettleMode {
   SUGGEST
   AUTO
 }
+
+model AnalysisImportFile {
+  path        String   @id
+  kind        String
+  size        Int
+  mtime       DateTime
+  hash        String
+  processedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([kind, processedAt])
+}
+
+model AnalysisRefreshLock {
+  key       String   @id
+  lockedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model AnalysisRefreshRun {
+  id         String   @id @default(cuid())
+  trigger    String   @default("cron")
+  status     String
+  startedAt  DateTime
+  finishedAt DateTime?
+  durationMs Int?
+  steps      Json?
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([startedAt])
+}

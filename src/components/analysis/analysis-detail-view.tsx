@@ -14,6 +14,7 @@ import {
   ProbabilityHeadline,
   TotalsLine,
 } from "@/components/analysis/probability-panel";
+import { DataStatusDetails } from "@/components/analysis/data-status";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import {
   type AnalysisPrivateLeg,
   type AnalysisTeamForm,
 } from "@/lib/analysis/view";
+import type { AnalysisDataStatus } from "@/lib/data/analysis-status";
 import { formatDate, formatDateTime, formatOdds } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -253,9 +255,11 @@ function brierLabel(value: number | null | undefined): string {
 export function AnalysisDetailView({
   detail,
   timeZone,
+  dataStatus,
 }: {
   detail: AnalysisDetail;
   timeZone?: string;
+  dataStatus: AnalysisDataStatus;
 }) {
   const sources = Object.values(detail.sources).filter(
     (source) => source.key !== "private",
@@ -491,6 +495,8 @@ export function AnalysisDetailView({
               Las cifras salen del backtest versionado. No se generan
               probabilidades nuevas en la interfaz.
             </p>
+
+            <DataStatusDetails status={dataStatus} timeZone={timeZone} />
           </CardContent>
         </Card>
       </section>
@@ -498,7 +504,7 @@ export function AnalysisDetailView({
       <p className="flex items-start gap-1.5 pb-2 text-[10px] leading-snug text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         Las probabilidades son estimaciones estadísticas y no garantizan el
-        resultado. Este detalle no recomienda apostar ni calcula valor esperado.
+        resultado. Este detalle no recomienda apostar ni predice el retorno.
       </p>
     </div>
   );

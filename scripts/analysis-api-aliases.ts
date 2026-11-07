@@ -17,7 +17,7 @@ import {
   sleep,
   TARGETS,
   type ApiFixture,
-} from "./lib/analysis-api";
+} from "../src/lib/analysis/api";
 import {
   isTeamAliasesFile,
   normalizeTeamName,

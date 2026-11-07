@@ -19,14 +19,22 @@ vi.mock("next/link", async () => {
 
 import { AnalysisCard, NoAnalysisCard } from "@/components/analysis/analysis-card";
 import { AnalysisDetailView } from "@/components/analysis/analysis-detail-view";
+import { DataStatusNotice, formatAgeDays } from "@/components/analysis/data-status";
 import { ModelAccuracyPanel } from "@/components/analysis/model-accuracy-panel";
-import { analysisBetHref } from "@/lib/analysis/view";
+import { BookmakerOddsComparator, comparisonText } from "@/components/analysis/odds-comparator";
+import {
+  analysisBetHref,
+  bttsPick,
+  matchResultPick,
+  totalGoalsPick,
+} from "@/lib/analysis/view";
 import {
   accuracyFixture,
   buildDetail,
   buildMarketItem,
   buildModelItem,
   buildNoDataItem,
+  dataStatusFixture,
 } from "@/test/fixtures/analysis";
 
 describe("tarjetas de /analysis", () => {
@@ -41,6 +49,36 @@ describe("tarjetas de /analysis", () => {
     expect(html).toContain("+11%");
     expect(html).toContain("Registrar apuesta");
     expect(html).toContain("analisis=analysis-market");
+    expect(html).toContain("mercadoKey=MATCH_RESULT");
+    expect(html).toContain("mercadoKey=TOTAL_GOALS");
+    expect(html).toContain("mercadoKey=BTTS");
+  });
+
+  it("precarga mercado, línea y selección desde los chips", () => {
+    const item = buildMarketItem();
+    const match = new URL(
+      analysisBetHref(item, matchResultPick("away")),
+      "https://winloss.test",
+    );
+    expect(match.searchParams.get("mercadoKey")).toBe("MATCH_RESULT");
+    expect(match.searchParams.get("mercado")).toBe("Resultado final (1X2)");
+    expect(match.searchParams.get("seleccion")).toBe("Visitante");
+    expect(match.searchParams.get("pick")).toBe("AWAY");
+
+    const goals = new URL(
+      analysisBetHref(item, totalGoalsPick("OVER", 2.5)),
+      "https://winloss.test",
+    );
+    expect(goals.searchParams.get("mercadoKey")).toBe("TOTAL_GOALS");
+    expect(goals.searchParams.get("linea")).toBe("2.5");
+    expect(goals.searchParams.get("seleccion")).toBe("Más de 2.5");
+
+    const btts = new URL(
+      analysisBetHref(item, bttsPick("YES")),
+      "https://winloss.test",
+    );
+    expect(btts.searchParams.get("mercadoKey")).toBe("BTTS");
+    expect(btts.searchParams.get("seleccion")).toBe("Sí");
   });
 
   it("muestra el modelo sin cuotas, confianza baja y el aviso fijo", () => {
@@ -101,7 +139,10 @@ describe("tarjetas de /analysis", () => {
 describe("detalle de /analysis", () => {
   it("incluye probabilidades, fuentes, forma, historial y calidad", () => {
     const html = renderToStaticMarkup(
-      <AnalysisDetailView detail={buildDetail()} />,
+      <AnalysisDetailView
+        detail={buildDetail()}
+        dataStatus={dataStatusFixture}
+      />,
     );
 
     expect(html).toContain("Probabilidades");
@@ -113,6 +154,65 @@ describe("detalle de /analysis", () => {
     expect(html).toContain("Cuotas capturadas");
     expect(html).toContain("Arsenal");
     expect(html).toContain("Chelsea");
+  });
+});
+
+describe("comparador con cuota de la casa", () => {
+  it("compara la cuota del usuario con la cuota justa y usa texto neutro", () => {
+    expect(comparisonText("2,10", 2).text).toBe(
+      "5% mejor que la cuota justa del mercado.",
+    );
+    expect(comparisonText("1,90", 2).text).toBe(
+      "5% peor que la cuota justa del mercado.",
+    );
+    expect(comparisonText("2", 2).text).toBe(
+      "Tu cuota coincide con la cuota justa del mercado.",
+    );
+    expect(comparisonText("", 2).text).toBe(
+      "Escribe una cuota mayor que 1 para comparar.",
+    );
+  });
+
+  it("renderiza el campo de cuota sin lenguaje de recomendación", () => {
+    const item = buildMarketItem();
+    const html = renderToStaticMarkup(
+      <BookmakerOddsComparator
+        market={item.sources.market.probabilities!}
+        model={item.sources.model.probabilities}
+      />,
+    );
+
+    expect(html).toContain("Comparador de cuotas justas");
+    expect(html).toContain("Cuota de tu casa");
+    expect(html).toContain("Cuota justa del mercado");
+    expect(html).toContain("Solo comparación");
+    expect(html).not.toMatch(/valor|ventaja|oportunidad/i);
+  });
+});
+
+describe("estado de los datos", () => {
+  it("avisa cuando la fuente de mercado está desactualizada", () => {
+    const stale = {
+      ...dataStatusFixture,
+      fixtureBatch: {
+        ...dataStatusFixture.fixtureBatch!,
+        capturedAt: "2026-10-30T10:05:00.000Z",
+        ageDays: 8,
+        stale: true,
+      },
+      marketStale: true,
+    };
+    const html = renderToStaticMarkup(<DataStatusNotice status={stale} />);
+
+    expect(html).toContain("Fuente de mercado desactualizada");
+    expect(html).toContain("La fuente Mercado se oculta");
+    expect(html).toContain("hace 8 días");
+  });
+
+  it("usa edades legibles", () => {
+    expect(formatAgeDays(0)).toBe("hoy");
+    expect(formatAgeDays(1)).toBe("hace 1 día");
+    expect(formatAgeDays(8)).toBe("hace 8 días");
   });
 });
 

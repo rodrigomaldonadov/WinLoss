@@ -1,23 +1,37 @@
 # Motor de análisis
 
-## Flujo manual
+## Flujo automático
+
+El punto de entrada es:
+
+```http
+GET /api/cron/analysis-refresh
+Authorization: Bearer <CRON_SECRET>
+```
+
+Ejecuta en orden:
+
+1. Import incremental de archivos nuevos o modificados en `data-football/`.
+2. Sync de próximos partidos desde TheSportsDB / football-data.org.
+3. Recálculo de `MatchAnalysis` con ratings guardados; el reajuste de ratings
+   corre como máximo una vez cada 7 días.
+
+Cada paso se aísla: si uno falla, los demás continúan. Hay lock persistente,
+límite de tiempo y un resumen por corrida en `AnalysisRefreshRun`. Los detalles
+de despliegue y programación están en
+[`docs/analysis-ops.md`](./analysis-ops.md).
+
+Comandos manuales equivalentes (solo para diagnóstico):
 
 ```bash
-# 1. Históricos desde CSV locales (solo servidor)
 npm run analysis:import
-
-# 2. Próximos partidos desde TheSportsDB / football-data.org
 npm run analysis:sync
-
-# 3. Ratings, análisis persistidos y comunidad
 npm run analysis:generate
-
-# 4. Backtest, calibración y pesos
 npm run analysis:backtest
 ```
 
-No hay cron ni scraping. `analysis:sync` y `analysis:generate` se ejecutan a
-mano después de actualizar los datos.
+No hay scraping ni descarga automática de football-data.co.uk. La copia de CSV
+es manual; el resto es automático.
 
 ## Fuentes y reglas
 
@@ -97,6 +111,9 @@ No se crean alias automáticamente.
 
 ## Acceso desde la app
 
+- `GET /api/cron/analysis-refresh`: job único import → sync → recálculo,
+  protegido con `CRON_SECRET`.
+- `GET /api/cron/settle`: auto-liquidación, cada 15–30 minutos.
 - `GET /api/analysis?dias=7`: feed autenticado con comunidad y privado al vuelo.
 - `GET /api/analysis/model`: números del panel “Precisión del modelo”.
 - `/analysis`: tablero mobile-first con filtros de 3, 7 y 14 días y selección
@@ -107,18 +124,26 @@ No se crean alias automáticamente.
     confianza baja y el aviso fijo de que el mercado superó al modelo.
   - **Sin datos**: sección aparte “Sin análisis disponible”, sin
     probabilidades y con enlace para registrar la apuesta.
+- Un indicador muestra el último import, la antigüedad del lote de cuotas y el
+  resultado de la última corrida. Si las cuotas superan 4 días, avisa de que la
+  fuente Mercado está desactualizada y se oculta.
+- El comparador permite escribir la cuota de la casa del usuario y la compara
+  con la cuota justa del mercado. El texto es neutro (“X% mejor/peor que la
+  cuota justa del mercado”) y no es una recomendación.
+- Tocar 1, X, 2, Más/Menos 2.5 o ambos marcan precarga mercado, línea y
+  selección en `/bets/new`, nunca la cuota. Tocar el partido precarga solo
+  evento, competición y fecha.
 - `/analysis/[id]`: detalle con Probabilidades, Fuentes, Forma reciente y H2H,
-  Tu historial y Calidad de datos. No calcula valor esperado ni recomienda
-  apostar.
+  Tu historial y Calidad de datos. No es una recomendación.
 - `GET /api/analysis/model` alimenta el panel de precisión con N, periodo y
   baselines de cierre, pre-cierre e ingenua. La UI usa la misma función de la
   capa de datos para evitar un salto HTTP interno.
-- `/bets/new?evento=...&competicion=...&fecha=...&deporte=...&origen=Consenso&analisis=...`
-  precarga solo el evento y la fecha. La cuota, el mercado y la selección los
-  define el usuario; la página muestra un aviso “Precargado desde Consenso”.
+- `/bets/new?...` muestra un aviso “Precargado desde Consenso”.
 
-La capa de datos está en `src/lib/data/analysis.ts`; las vistas y helpers puros
-en `src/lib/analysis/view.ts` y `src/components/analysis/`.
+La capa de datos está en `src/lib/data/analysis.ts` y
+`src/lib/data/analysis-status.ts`; los jobs en `src/lib/analysis/jobs/`; las
+vistas y helpers puros en `src/lib/analysis/view.ts` y
+`src/components/analysis/`.
 
 
 ## Limitaciones

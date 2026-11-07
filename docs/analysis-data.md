@@ -7,27 +7,37 @@ Los CSV se leen **solo desde el servidor** en `./data-football` (configurable co
 commitea, no se sirve al cliente, no se incluye en la imagen y no se
 redistribuye.
 
-En Dokploy/VPS debe montarse como **volumen persistente**. El comando de
-importación se ejecuta allí, nunca desde una petición de usuario.
+En Dokploy/VPS debe montarse como **volumen persistente**. La app solo lee los
+CSV; la copia de archivos es la única tarea manual.
 
-## Actualización manual
+## Actualización automática
 
-1. Descarga los CSV desde football-data.co.uk **manualmente**.
+1. Descarga los CSV desde football-data.co.uk **manualmente** (su licencia
+   prohíbe la descarga automática).
 2. Copia los archivos de resultados conservando la estructura:
    - `england/25-26/E0.csv`, `spain/25-26/SP1.csv`, etc.
    - `argentina/ARG.csv`, `brazil/BRA.csv`, etc.
 3. Copia el archivo semanal de próximos partidos en `data-football/fixtures/`.
-4. Ejecuta:
+4. La siguiente corrida de `/api/cron/analysis-refresh` (cada 6 horas, con
+   extras los viernes y martes por la tarde) detecta los cambios y ejecuta
+   import → sync → recálculo.
+
+El import es incremental: guarda tamaño, `mtime` y hash SHA-256 por archivo en
+`AnalysisImportFile`. Si nada cambió, termina en milisegundos; si un archivo
+cambió, procesa solo ese. Los históricos se agregan con `skipDuplicates` (las
+filas ya existentes no se sobrescriben) y los lotes de fixtures se reemplazan al
+llegar uno nuevo. Para forzar un reproceso completo:
 
 ```bash
-npm run analysis:import
+npm run analysis:import -- --force
 ```
 
-Frecuencia recomendada: **lunes y jueves**, después de actualizar los archivos.
-En la web de origen las cuotas de fin de semana suelen llegar los viernes y las
-de entre semana los martes.
+No hay scraping ni `fetch` a football-data.co.uk en runtime, CI ni en el job.
+La sincronización de próximos partidos usa únicamente las APIs deportivas
+configuradas.
 
-No hay cron, scraping ni `fetch` a football-data.co.uk en runtime ni en CI.
+La programación, el volumen, las variables de entorno y la solución de
+problemas están en [`docs/analysis-ops.md`](./analysis-ops.md).
 
 ## Ligas y temporadas
 

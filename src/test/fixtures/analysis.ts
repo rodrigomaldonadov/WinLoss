@@ -5,6 +5,7 @@ import type {
   AnalysisTeamForm,
 } from "@/lib/analysis/view";
 import type { ModelAccuracy } from "@/lib/data/analysis";
+import type { AnalysisDataStatus } from "@/lib/data/analysis-status";
 
 const reference = {
   hasMarketBacktest: true,
@@ -76,6 +77,7 @@ export function buildMarketItem(
         confidence: "MEDIUM",
         probabilities: model,
         totals: { over25: 0.5, under25: 0.5 },
+        btts: 0.52,
         sample: 400,
         note: MODEL_MARKET_CAVEAT,
       },
@@ -287,8 +289,7 @@ const competitionEntry = {
   hasMarketBacktest: true,
 };
 
-export const accuracyFixture: ModelAccuracy = {
-  generatedFrom: "2025-07-24T00:00:00.000Z",
+export const accuracyFixture: ModelAccuracy = {  generatedFrom: "2025-07-24T00:00:00.000Z",
   model: "poisson-dc-v1",
   caveat: MODEL_MARKET_CAVEAT,
   holdout: {
@@ -330,4 +331,31 @@ export const accuracyFixture: ModelAccuracy = {
       naiveBrier: 0.6281,
     },
   ],
+};
+
+export const dataStatusFixture: AnalysisDataStatus = {
+  now: "2026-11-07T12:00:00.000Z",
+  lastHistoricalImportAt: "2026-11-07T10:00:00.000Z",
+  lastFixtureImportAt: "2026-11-07T10:05:00.000Z",
+  fixtureBatch: {
+    sourceFile: "data-football/fixtures/fixtures.csv",
+    capturedAt: "2026-11-07T10:05:00.000Z",
+    rowCount: 154,
+    ageDays: 0,
+    stale: false,
+  },
+  lastRun: {
+    status: "SUCCESS",
+    startedAt: "2026-11-07T11:00:00.000Z",
+    finishedAt: "2026-11-07T11:01:00.000Z",
+    durationMs: 60000,
+    error: null,
+    steps: [
+      { name: "import", status: "success", durationMs: 1000 },
+      { name: "sync", status: "success", durationMs: 59000 },
+      { name: "generate", status: "success", durationMs: 0 },
+    ],
+  },
+  marketMissing: false,
+  marketStale: false,
 };

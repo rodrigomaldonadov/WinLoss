@@ -1,13 +1,12 @@
 /**
- * Cliente mínimo de próximos partidos para los comandos de análisis.
- *
- * No se usa en runtime de la app: los scripts lo ejecutan manualmente. Evita
- * importar `server-only` para poder correr con tsx fuera de Next.
+ * Cliente mínimo de próximos partidos para los comandos de análisis y el job
+ * automático. Solo consulta APIs deportivas; nunca descarga CSV de
+ * football-data.co.uk.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 
-import { getCompetitionProviderKeys } from "../../src/lib/catalogs/competitions";
+import { getCompetitionProviderKeys } from "../catalogs/competitions";
 
 export const DAY_MS = 86_400_000;
 export const WINDOW_DAYS = 21;

@@ -175,12 +175,59 @@ export function analysisHref({
   return query ? `/analysis?${query}` : "/analysis";
 }
 
+export type AnalysisMarketPick = {
+  marketKey: "MATCH_RESULT" | "TOTAL_GOALS" | "BTTS";
+  market: string;
+  selection: string;
+  pick: string;
+  line: number | null;
+  subject?: string | null;
+};
+
+export function matchResultPick(outcome: OutcomeKey): AnalysisMarketPick {
+  const map = {
+    home: { pick: "HOME", selection: "Local" },
+    draw: { pick: "DRAW", selection: "Empate" },
+    away: { pick: "AWAY", selection: "Visitante" },
+  } as const;
+  return {
+    marketKey: "MATCH_RESULT",
+    market: "Resultado final (1X2)",
+    ...map[outcome],
+    line: null,
+  };
+}
+
+export function totalGoalsPick(
+  side: "OVER" | "UNDER",
+  line = 2.5,
+): AnalysisMarketPick {
+  return {
+    marketKey: "TOTAL_GOALS",
+    market: "Total de goles",
+    selection: `${side === "OVER" ? "Más de" : "Menos de"} ${line}`,
+    pick: side,
+    line,
+  };
+}
+
+export function bttsPick(side: "YES" | "NO"): AnalysisMarketPick {
+  return {
+    marketKey: "BTTS",
+    market: "Ambos equipos marcan",
+    selection: side === "YES" ? "Sí" : "No",
+    pick: side,
+    line: null,
+  };
+}
+
 /** Enlace de precarga a /bets/new. Solo incluye datos visibles del partido. */
 export function analysisBetHref(
   item: Pick<
     AnalysisFeedItem,
     "id" | "homeName" | "awayName" | "competition" | "kickoff"
   >,
+  pick?: AnalysisMarketPick,
 ): string {
   const params = new URLSearchParams({
     evento: `${item.homeName} vs ${item.awayName}`,
@@ -190,5 +237,13 @@ export function analysisBetHref(
     origen: "Consenso",
     analisis: item.id,
   });
+  if (pick) {
+    params.set("mercadoKey", pick.marketKey);
+    params.set("mercado", pick.market);
+    params.set("seleccion", pick.selection);
+    params.set("pick", pick.pick);
+    if (pick.line !== null) params.set("linea", String(pick.line));
+    if (pick.subject) params.set("subject", pick.subject);
+  }
   return `/bets/new?${params.toString()}`;
 }

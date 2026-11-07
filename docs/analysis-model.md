@@ -19,7 +19,9 @@ disponible” y, si existe, la cuota de mercado.
 
 Cada semana se reajusta con todos los partidos anteriores a esa semana, usando
 el ajuste previo como arranque en caliente. Un partido nunca usa datos de la
-misma semana ni posteriores.
+misma semana ni posteriores. El job automático reutiliza los ratings guardados
+hasta que cumplen 7 días; los análisis se recalculan cada 6 horas con esos
+ratings, sin reajustar el modelo en cada corrida.
 
 ## Mercado de referencia
 
@@ -122,6 +124,22 @@ Temperatura ajustada solo con semanas anteriores y evaluada en las siguientes.
 La recalibración mejora el conjunto y 4 de 7 ligas. En las otras 3 se deja
 `T = 1` para no empeorar el backtest.
 
+### Temperatura global vs una por liga
+
+También se evaluó una sola temperatura walk-forward para todas las ligas, con
+las mismas filas evaluadas:
+
+| Calibración | N | Brier | LogLoss | T |
+| --- | ---: | ---: | ---: | ---: |
+| Sin calibrar | 1.823 | 0,6160 | 1,0267 | — |
+| Global | 1.823 | 0,6128 | 1,0221 | 0,73 |
+| Por liga | 1.823 | **0,6118** | **1,0205** | — |
+
+La temperatura global **mejora al modelo sin calibrar**, pero **empeora
+ligeramente frente a una temperatura por liga**. Por eso se mantiene la
+calibración por liga. El resultado queda versionado en
+`analysis-weights.json.globalCalibration`.
+
 ### Mezcla modelo/mercado
 
 Validación temporal 60/40: el peso se ajusta en el primer tramo y se evalúa en
@@ -131,13 +149,13 @@ mercado solo, el peso de producción es **0**.
 | Liga | N test | Brier mercado | Brier mezcla | Peso aplicado | ¿Mejora? |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Premier League | 108 | 0,6254 | 0,6254 | 0,00 | no |
-| LaLiga | 113 | 0,5374 | 0,5374 | 0,00 | no |
+| LaLiga | 113 | 0,5355 | 0,5355 | 0,00 | no |
 | Serie A | 109 | 0,5277 | 0,5277 | 0,00 | no |
-| Bundesliga | 69 | 0,6184 | 0,6184 | 0,00 | no |
+| Bundesliga | 69 | 0,6230 | 0,6230 | 0,00 | no |
 | Ligue 1 | 72 | 0,5609 | 0,5609 | 0,00 | no |
 | Brasileirão Serie A | 149 | 0,5661 | 0,5661 | 0,00 | no |
 | Liga Profesional (ARG) | 200 | 0,6181 | 0,6181 | 0,00 | no |
-| **Total** | **820** | **0,5815** | **0,5815** | **0,00** | **no** |
+| **Total** | **820** | **0,5816** | **0,5816** | **0,00** | **no** |
 
 **Ninguna liga mejora al mercado al mezclar.** Por eso el peso del modelo en la
 probabilidad final es 0: se muestra como fuente separada, nunca como mejora del
@@ -164,6 +182,17 @@ la mezcla validada no lo mejora. Por tanto, en `/analysis`:
 - Si el mercado y el modelo discrepan mucho, se muestra la discrepancia, no se
   inventa un consenso.
 
+## Uso en la app
+
+`/analysis` muestra 1X2, Over/Under 2.5 y ambos marcan del modelo. La cuota que
+escribe el usuario se compara con la cuota justa del mercado
+(`1 / probabilidad sin margen`); el texto es una comparación neutra, no una
+recomendación. Tocar un mercado de la tarjeta o del detalle precarga mercado,
+línea y selección en `/bets/new`, nunca la cuota.
+
+La operación automática (import → sync → recálculo, lock, estado y cron) está en
+[`docs/analysis-ops.md`](./analysis-ops.md).
+
 ## Limitaciones conocidas
 
 - Equipos recién ascendidos arrancan en la media de la liga: el modelo no conoce
@@ -171,7 +200,9 @@ la mezcla validada no lo mejora. Por tanto, en `/analysis`:
 - No usa lesiones, alineaciones, descanso, viajes, xG ni estadísticas de partido.
 - Las ligas anuales (Brasil, Argentina) tienen dinámicas distintas; Argentina es
   la que peor calibra y debe llevar confianza más baja.
-- El modelo no se reajusta intra-semana: usa el corte del lunes.
+- El modelo no se reajusta intra-semana: el reajuste de ratings corre como
+  máximo una vez por semana. Los análisis se recalculan más seguido usando los
+  ratings guardados.
 - La corrección Dixon-Coles es un parche para marcadores bajos, no un modelo
   bivariado completo.
 

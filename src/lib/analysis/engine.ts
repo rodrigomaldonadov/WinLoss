@@ -13,7 +13,7 @@ export type AnalysisFinalSource = "market" | "model" | "blend" | "none";
 
 export type Triple = { home: number; draw: number; away: number };
 export type Totals = { over25: number; under25: number };
-export type ModelProbabilities = Triple & Totals;
+export type ModelProbabilities = Triple & Totals & { btts?: number };
 
 export type FixtureInput = {
   id: string;
@@ -63,6 +63,7 @@ export type SourceView = {
   confidence: AnalysisConfidence;
   probabilities: Triple | null;
   totals: Totals | null;
+  btts?: number | null;
   sample: number | null;
   note: string | null;
 };
@@ -225,6 +226,7 @@ export function buildAnalysis(input: EngineInput): AnalysisResult {
         : "INSUFFICIENT",
       probabilities: calibratedModelProbability,
       totals: modelTotals,
+      btts: modelEligible ? (model.probabilities?.btts ?? null) : null,
       sample: model.sample,
       note: modelNote,
     },
