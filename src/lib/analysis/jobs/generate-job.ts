@@ -68,17 +68,50 @@ export type GenerateJobSummary = {
   unresolved: string[];
   ratingsRefreshed: string[];
   ratingsReused: string[];
+  ratingsBudgetExceeded: boolean;
   errors: string[];
   durationMs: number;
 };
 
-/** Regla semanal compartida por el job y los tests. */
-export function shouldRefreshRatings(
-  latestAsOf: Date | null,
-  now: Date,
-  maxAgeMs: number,
-): boolean {
-  return !latestAsOf || now.getTime() - latestAsOf.getTime() >= maxAgeMs;
+/** Regla de reajuste: nocturno por umbral, con respaldo semanal. */
+export type RatingRefreshDecision = {
+  refresh: boolean;
+  reason:
+    | "no-ratings"
+    | "weekly-fallback"
+    | "new-results"
+    | "same-day"
+    | "below-threshold";
+  newResults: number;
+};
+
+export function shouldRefreshRatings({
+  latestAsOf,
+  now,
+  newResults,
+  minNewResults,
+  maxAgeMs,
+}: {
+  latestAsOf: Date | null;
+  now: Date;
+  newResults: number;
+  minNewResults: number;
+  maxAgeMs: number;
+}): RatingRefreshDecision {
+  if (!latestAsOf) {
+    return { refresh: true, reason: "no-ratings", newResults };
+  }
+  if (now.getTime() - latestAsOf.getTime() >= maxAgeMs) {
+    return { refresh: true, reason: "weekly-fallback", newResults };
+  }
+  const today = dayStart(now);
+  if (latestAsOf.getTime() >= today.getTime()) {
+    return { refresh: false, reason: "same-day", newResults };
+  }
+  if (newResults >= minNewResults) {
+    return { refresh: true, reason: "new-results", newResults };
+  }
+  return { refresh: false, reason: "below-threshold", newResults };
 }
 
 function dayStart(date: Date): Date {
@@ -118,6 +151,10 @@ export async function runGenerateJob({
   deadline = Number.POSITIVE_INFINITY,
   windowDays = Number(process.env.ANALYSIS_WINDOW_DAYS ?? "14"),
   ratingMaxAgeDays = Number(process.env.ANALYSIS_RATING_MAX_AGE_DAYS ?? "7"),
+  ratingMinNewResults = Number(
+    process.env.ANALYSIS_RATING_MIN_NEW_RESULTS ?? "5",
+  ),
+  ratingBudgetMs = Number(process.env.ANALYSIS_RATINGS_BUDGET_MS ?? "90000"),
   logger = () => {},
 }: {
   prisma: PrismaClient;
@@ -126,6 +163,8 @@ export async function runGenerateJob({
   deadline?: number;
   windowDays?: number;
   ratingMaxAgeDays?: number;
+  ratingMinNewResults?: number;
+  ratingBudgetMs?: number;
   logger?: Logger;
 }): Promise<GenerateJobSummary> {
   const startedAt = Date.now();
@@ -142,6 +181,7 @@ export async function runGenerateJob({
     unresolved: [],
     ratingsRefreshed: [],
     ratingsReused: [],
+    ratingsBudgetExceeded: false,
     errors: [],
     durationMs: Date.now() - startedAt,
     ...overrides,
@@ -308,11 +348,16 @@ export async function runGenerateJob({
   }
 
   const ratingMaxAgeMs = Math.max(1, ratingMaxAgeDays) * DAY_MS;
+  const ratingDeadline = Math.min(
+    deadline,
+    Date.now() + Math.max(1, ratingBudgetMs),
+  );
   const ratingsByCode = new Map<string, Ratings>();
   const ratingsRefreshed: string[] = [];
   const ratingsReused: string[] = [];
   const errors: string[] = [];
   let timedOut = false;
+  let ratingsBudgetExceeded = false;
 
   async function loadStoredRatings(code: string): Promise<Ratings | null> {
     const rows = await prisma.teamRating.findMany({
@@ -374,6 +419,13 @@ export async function runGenerateJob({
       timedOut = true;
       break;
     }
+    if (Date.now() >= ratingDeadline) {
+      ratingsBudgetExceeded = true;
+      logger(
+        "[ratings] presupuesto de tiempo agotado; se usan los ratings guardados",
+      );
+      break;
+    }
     const matches = historicalByCode.get(code) ?? [];
     if (matches.length < 80) continue;
 
@@ -383,13 +435,23 @@ export async function runGenerateJob({
         orderBy: { asOf: "desc" },
         select: { asOf: true },
       });
-      const refresh = shouldRefreshRatings(
-        latest?.asOf ?? null,
+      const newResults = await prisma.historicalMatch.count({
+        where: {
+          competitionCode: code,
+          ...(latest?.asOf
+            ? { playedAt: { gt: latest.asOf, lte: now } }
+            : {}),
+        },
+      });
+      const decision = shouldRefreshRatings({
+        latestAsOf: latest?.asOf ?? null,
         now,
-        ratingMaxAgeMs,
-      );
+        newResults,
+        minNewResults: Math.max(1, ratingMinNewResults),
+        maxAgeMs: ratingMaxAgeMs,
+      });
 
-      if (refresh) {
+      if (decision.refresh) {
         const modelMatches: ModelMatch[] = matches.map((match) => ({
           homeTeamId: match.homeTeamId,
           awayTeamId: match.awayTeamId,
@@ -404,6 +466,18 @@ export async function runGenerateJob({
         });
         ratingsByCode.set(code, ratings);
         ratingsRefreshed.push(code);
+
+        const ratingParams = {
+          model: ANALYSIS_MODEL_NAME,
+          rho: ratings.rho,
+          halfLifeDays: HALF_LIFE_DAYS,
+          ridge: RIDGE,
+          effectiveSample: ratings.effectiveSample,
+          ratingSample: ratings.sample,
+          newResults: decision.newResults,
+          adjustedAt: now.toISOString(),
+          reason: decision.reason,
+        } as unknown as Prisma.InputJsonValue;
 
         const competition = matches[0]!.competition;
         for (const [teamId, strength] of ratings.teams) {
@@ -426,13 +500,7 @@ export async function runGenerateJob({
               leagueAvgHomeGoals: ratings.leagueAvgHomeGoals,
               leagueAvgAwayGoals: ratings.leagueAvgAwayGoals,
               sampleMatches: strength.matches,
-              params: {
-                model: ANALYSIS_MODEL_NAME,
-                rho: ratings.rho,
-                halfLifeDays: HALF_LIFE_DAYS,
-                ridge: RIDGE,
-                effectiveSample: ratings.effectiveSample,
-              } as unknown as Prisma.InputJsonValue,
+              params: ratingParams,
             },
             update: {
               competitionCode: code,
@@ -442,23 +510,21 @@ export async function runGenerateJob({
               leagueAvgHomeGoals: ratings.leagueAvgHomeGoals,
               leagueAvgAwayGoals: ratings.leagueAvgAwayGoals,
               sampleMatches: strength.matches,
-              params: {
-                model: ANALYSIS_MODEL_NAME,
-                rho: ratings.rho,
-                halfLifeDays: HALF_LIFE_DAYS,
-                ridge: RIDGE,
-                effectiveSample: ratings.effectiveSample,
-              } as unknown as Prisma.InputJsonValue,
+              params: ratingParams,
             },
           });
         }
-        logger(`[ratings] ${code}: reajustados ${ratings.teams.size} equipos`);
+        logger(
+          `[ratings] ${code}: reajustados ${ratings.teams.size} equipos (${decision.reason}, ${decision.newResults} resultados nuevos)`,
+        );
       } else {
         const stored = await loadStoredRatings(code);
         if (stored) {
           ratingsByCode.set(code, stored);
           ratingsReused.push(code);
-          logger(`[ratings] ${code}: reutilizados desde la base`);
+          logger(
+            `[ratings] ${code}: reutilizados (${decision.reason}, ${decision.newResults} resultados nuevos)`,
+          );
         } else {
           errors.push(`${code}: no hay ratings utilizables`);
         }
@@ -477,6 +543,7 @@ export async function runGenerateJob({
       upcoming: fixtures.length,
       ratingsRefreshed,
       ratingsReused,
+      ratingsBudgetExceeded,
       errors,
     });
   }
@@ -697,6 +764,7 @@ export async function runGenerateJob({
       upcoming: fixtures.length,
       ratingsRefreshed,
       ratingsReused,
+      ratingsBudgetExceeded,
       errors,
     });
   }
@@ -719,6 +787,7 @@ export async function runGenerateJob({
       upcoming: fixtures.length,
       ratingsRefreshed,
       ratingsReused,
+      ratingsBudgetExceeded,
       errors,
     });
   }
@@ -740,6 +809,7 @@ export async function runGenerateJob({
     unresolved: [...unresolved.keys()],
     ratingsRefreshed,
     ratingsReused,
+    ratingsBudgetExceeded,
     errors,
     durationMs: Date.now() - startedAt,
   };
