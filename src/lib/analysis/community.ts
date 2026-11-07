@@ -34,14 +34,19 @@ export type CommunityAggregate = {
 
 const TIME_TOLERANCE_MS = 36 * 60 * 60 * 1000;
 
-function canonicalKey(raw: string, aliases: TeamAliasesFile): string {
+/** Nombre canónico normalizado: resuelve alias y vuelve a normalizar. */
+export function canonicalTeamKey(
+  raw: string,
+  aliases: TeamAliasesFile,
+): string {
   const key = normalizeTeamName(raw);
   if (!key) return "";
   const canonical = aliases.teams[key];
   return normalizeTeamName(canonical ?? raw);
 }
 
-function splitEventName(name: string): [string, string] | null {
+/** "Local vs Visitante" → [Local, Visitante]. */
+export function splitEventName(name: string): [string, string] | null {
   const match = /^(.+?)\s+(?:vs\.?|v\.?|@|-)\s+(.+)$/i.exec(name.trim());
   if (!match?.[1] || !match[2]) return null;
   return [match[1], match[2]];
@@ -60,14 +65,14 @@ export function legMatchesFixture(
     return false;
   }
 
-  const homeKey = canonicalKey(fixture.homeName, aliases);
-  const awayKey = canonicalKey(fixture.awayName, aliases);
+  const homeKey = canonicalTeamKey(fixture.homeName, aliases);
+  const awayKey = canonicalTeamKey(fixture.awayName, aliases);
   if (!homeKey || !awayKey) return false;
 
   const parts = splitEventName(leg.eventName);
   if (parts) {
-    const first = canonicalKey(parts[0], aliases);
-    const second = canonicalKey(parts[1], aliases);
+    const first = canonicalTeamKey(parts[0], aliases);
+    const second = canonicalTeamKey(parts[1], aliases);
     if (
       (first === homeKey && second === awayKey) ||
       (first === awayKey && second === homeKey)

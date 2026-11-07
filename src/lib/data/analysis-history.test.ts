@@ -1,0 +1,317 @@
+import type { PrismaClient } from "@prisma/client";
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  EMPTY_HISTORY_FILTERS,
+  type HistoryFilterState,
+} from "@/lib/analysis/history";
+
+import { getAnalysisHistory } from "./analysis-history";
+
+const LIMA = "America/Lima";
+
+type SnapshotFixture = {
+  matchKey: string;
+  snapshotAt: Date;
+  kickoff: Date;
+  finalProbability: { home: number; draw: number; away: number } | null;
+  confidence: "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT";
+};
+
+type RowFixture = {
+  id: string;
+  competition: string;
+  competitionCode: string | null;
+  playedAt: Date;
+  homeGoals: number;
+  awayGoals: number;
+  provisional: boolean;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeam: { canonicalName: string };
+  awayTeam: { canonicalName: string };
+};
+
+function row({
+  id,
+  home,
+  away,
+  playedAt,
+  homeGoals = 2,
+  awayGoals = 1,
+}: {
+  id: string;
+  home: string;
+  away: string;
+  playedAt: Date;
+  homeGoals?: number;
+  awayGoals?: number;
+}): RowFixture {
+  return {
+    id,
+    competition: "Premier League",
+    competitionCode: "E0",
+    playedAt,
+    homeGoals,
+    awayGoals,
+    provisional: false,
+    homeTeamId: `team-${home.toLowerCase()}`,
+    awayTeamId: `team-${away.toLowerCase()}`,
+    homeTeam: { canonicalName: home },
+    awayTeam: { canonicalName: away },
+  };
+}
+
+function makeClient({
+  rows,
+  snapshots = [],
+  legs = [],
+  teams = [],
+}: {
+  rows: RowFixture[];
+  snapshots?: SnapshotFixture[];
+  legs?: { eventName: string; eventDate: Date | null }[];
+  teams?: { id: string; canonicalName: string }[];
+}) {
+  const historicalMatch = {
+    count: vi.fn(async () => rows.length),
+    findMany: vi.fn(async (args?: { skip?: number; take?: number }) => {
+      const skip = args?.skip ?? 0;
+      const take = args?.take ?? rows.length;
+      return rows.slice(skip, skip + take);
+    }),
+  };
+  const analysisSnapshot = {
+    findMany: vi.fn(
+      async (args: { where: { matchKey: { in: string[] } } }) => {
+        const keys = new Set(args.where.matchKey.in);
+        return snapshots.filter((snapshot) => keys.has(snapshot.matchKey));
+      },
+    ),
+  };
+  const betLeg = {
+    findMany: vi.fn(async () => legs),
+  };
+  const team = {
+    findMany: vi.fn(async () => teams),
+  };
+
+  return {
+    client: {
+      historicalMatch,
+      analysisSnapshot,
+      betLeg,
+      team,
+    } as unknown as PrismaClient,
+    historicalMatch,
+    team,
+  };
+}
+
+function filters(
+  overrides: Partial<HistoryFilterState> = {},
+): HistoryFilterState {
+  return { ...EMPTY_HISTORY_FILTERS, ...overrides };
+}
+
+const arsenalChelsea = row({
+  id: "m1",
+  home: "Arsenal",
+  away: "Chelsea",
+  playedAt: new Date("2026-11-07T12:00:00.000Z"),
+});
+const liverpoolEverton = row({
+  id: "m2",
+  home: "Liverpool",
+  away: "Everton",
+  playedAt: new Date("2026-11-06T12:00:00.000Z"),
+});
+const arsenalTottenham = row({
+  id: "m3",
+  home: "Arsenal",
+  away: "Tottenham",
+  playedAt: new Date("2026-11-05T12:00:00.000Z"),
+});
+
+const savedSnapshot: SnapshotFixture = {
+  matchKey: "arsenal|chelsea|2026-11-07",
+  snapshotAt: new Date("2026-11-07T10:00:00.000Z"),
+  kickoff: new Date("2026-11-07T12:00:00.000Z"),
+  finalProbability: { home: 0.5, draw: 0.3, away: 0.2 },
+  confidence: "HIGH",
+};
+
+describe("getAnalysisHistory", () => {
+  it("marca guardada solo si la captura es anterior al inicio", async () => {
+    const { client } = makeClient({
+      rows: [arsenalChelsea, liverpoolEverton, arsenalTottenham],
+      snapshots: [
+        savedSnapshot,
+        {
+          // Captura posterior al inicio: no vale como "guardada".
+          matchKey: "arsenal|tottenham|2026-11-05",
+          snapshotAt: new Date("2026-11-05T13:00:00.000Z"),
+          kickoff: new Date("2026-11-05T12:00:00.000Z"),
+          finalProbability: { home: 0.4, draw: 0.3, away: 0.3 },
+          confidence: "LOW",
+        },
+      ],
+    });
+
+    const result = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters(),
+      timeZone: LIMA,
+      client,
+    });
+
+    expect(result.total).toBe(3);
+    expect(result.items.map((item) => item.id)).toEqual(["m1", "m2", "m3"]);
+    expect(result.items.map((item) => item.mode)).toEqual([
+      "saved",
+      "reconstructed",
+      "reconstructed",
+    ]);
+    expect(result.items[0]?.prediction).toEqual({
+      home: 0.5,
+      draw: 0.3,
+      away: 0.2,
+    });
+    expect(result.items[1]?.prediction).toBeNull();
+  });
+
+  it("filtra por modo guardada recorriendo el rango", async () => {
+    const { client } = makeClient({
+      rows: [arsenalChelsea, liverpoolEverton, arsenalTottenham],
+      snapshots: [savedSnapshot],
+    });
+
+    const saved = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters({ mode: "saved" }),
+      timeZone: LIMA,
+      client,
+    });
+    expect(saved.total).toBe(1);
+    expect(saved.items[0]?.id).toBe("m1");
+
+    const reconstructed = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters({ mode: "reconstructed" }),
+      timeZone: LIMA,
+      client,
+    });
+    expect(reconstructed.items.map((item) => item.id)).toEqual(["m2", "m3"]);
+  });
+
+  it("cruza 'mis partidos' con los legs del usuario", async () => {
+    const { client } = makeClient({
+      rows: [arsenalChelsea, liverpoolEverton],
+      legs: [
+        {
+          eventName: "Chelsea vs Arsenal",
+          eventDate: new Date("2026-11-07T14:00:00.000Z"),
+        },
+      ],
+    });
+
+    const result = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters({ mine: true }),
+      timeZone: LIMA,
+      client,
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.items[0]?.id).toBe("m1");
+    expect(result.items[0]?.hasBet).toBe(true);
+  });
+
+  it("resuelve el equipo por alias antes de consultar", async () => {
+    const { client, team } = makeClient({
+      rows: [arsenalChelsea],
+      teams: [{ id: "team-arsenal", canonicalName: "Arsenal" }],
+    });
+
+    const result = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters({ query: "arsenal" }),
+      timeZone: LIMA,
+      client,
+    });
+
+    expect(team.findMany).toHaveBeenCalledTimes(1);
+    expect(result.matchedTeams).toEqual([
+      { id: "team-arsenal", name: "Arsenal" },
+    ]);
+    expect(result.unknownTeam).toBe(false);
+  });
+
+  it("devuelve unknownTeam cuando el nombre no resuelve", async () => {
+    const { client, historicalMatch } = makeClient({ rows: [arsenalChelsea] });
+
+    const result = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters({ query: "equipo inexistente" }),
+      timeZone: LIMA,
+      client,
+    });
+
+    expect(result).toMatchObject({
+      items: [],
+      total: 0,
+      unknownTeam: true,
+    });
+    expect(historicalMatch.findMany).not.toHaveBeenCalled();
+  });
+
+  it("convierte el rango de fechas desde la zona del usuario", async () => {
+    const { client, historicalMatch } = makeClient({ rows: [arsenalChelsea] });
+
+    await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters({ from: "2026-11-01", to: "2026-11-07" }),
+      timeZone: LIMA,
+      client,
+    });
+
+    const args = historicalMatch.findMany.mock.calls[0]?.[0] as {
+      where: { AND: { playedAt: { gte: Date; lte: Date } }[] };
+    };
+    expect(args.where.AND[0]?.playedAt.gte.toISOString()).toBe(
+      "2026-11-01T05:00:00.000Z",
+    );
+    expect(args.where.AND[0]?.playedAt.lte.toISOString()).toBe(
+      "2026-11-08T04:59:00.000Z",
+    );
+  });
+
+  it("pagina y ajusta una página fuera de rango", async () => {
+    const manyRows = Array.from({ length: 25 }, (_, index) =>
+      row({
+        id: `m${index}`,
+        home: "Arsenal",
+        away: `Rival ${index}`,
+        playedAt: new Date(Date.UTC(2026, 10, 7 - index, 12)),
+      }),
+    );
+    const { client, historicalMatch } = makeClient({ rows: manyRows });
+
+    const result = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters({ page: 99 }),
+      timeZone: LIMA,
+      client,
+    });
+
+    expect(result.total).toBe(25);
+    expect(result.totalPages).toBe(2);
+    expect(result.page).toBe(2);
+    expect(result.items).toHaveLength(5);
+    expect(historicalMatch.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 20 }),
+    );
+  });
+});
+
+

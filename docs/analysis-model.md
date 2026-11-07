@@ -310,6 +310,23 @@ escribe el usuario se compara con la cuota justa del mercado
 recomendación. Tocar un mercado de la tarjeta o del detalle precarga mercado,
 línea y selección en `/bets/new`, nunca la cuota.
 
+### Historial de partidos jugados
+
+`/analysis/historial` busca solo partidos ya terminados (`HistoricalMatch`):
+
+- **Equipo:** se resuelve contra `Team.normalizedName` y `TeamAlias`, así que
+  “Man Utd” y “Manchester United” devuelven lo mismo. No hay coincidencia
+  difusa: si el nombre no resuelve a un equipo, la pantalla lo dice.
+- **Filtros:** competiciones múltiples, rango de fechas inclusivo en la zona del
+  usuario, captura guardada/reconstruida y paginación de 20.
+- **Guardada** significa que existe una `AnalysisSnapshot` anterior al inicio;
+  si no, el partido se marca **Reconstruida** y el detalle se calcula con los
+  ratings de esa semana (no es la predicción que se mostró en su momento).
+- **Mis partidos** cruza los `BetLeg` del usuario por nombre normalizado con
+  alias y una tolerancia de ±36 h.
+- Los resultados provisionales de la API se marcan como tales; el CSV oficial
+  los reemplaza.
+
 La operación automática (import → sync → recálculo, lock, estado y cron) está en
 [`docs/analysis-ops.md`](./analysis-ops.md).
 
