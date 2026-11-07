@@ -1,6 +1,11 @@
 import type { JobLock } from "./lock";
 
-export type RefreshStepName = "import" | "sync" | "results" | "generate";
+export type RefreshStepName =
+  | "import"
+  | "sync"
+  | "results"
+  | "generate"
+  | "evaluate";
 export type RefreshStepStatus = "success" | "failed" | "skipped";
 export type RefreshRunStatus = "SUCCESS" | "PARTIAL" | "FAILED" | "SKIPPED";
 
@@ -44,6 +49,7 @@ export const REFRESH_STEP_ORDER: readonly RefreshStepName[] = [
   "sync",
   "results",
   "generate",
+  "evaluate",
 ];
 
 type Logger = (message: string) => void;

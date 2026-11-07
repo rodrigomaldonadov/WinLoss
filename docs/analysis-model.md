@@ -17,11 +17,12 @@ El modelo **solo cubre ligas domésticas**. Para Champions, Europa League,
 Libertadores y similares no hay modelo: la UI debe mostrar “Modelo no
 disponible” y, si existe, la cuota de mercado.
 
-Cada semana se reajusta con todos los partidos anteriores a esa semana, usando
-el ajuste previo como arranque en caliente. Un partido nunca usa datos de la
-misma semana ni posteriores. El job automático reutiliza los ratings guardados
-hasta que cumplen 7 días; los análisis se recalculan cada 6 horas con esos
-ratings, sin reajustar el modelo en cada corrida.
+Los ratings se reajustan como máximo una vez al día por liga cuando hay al menos
+`ANALYSIS_RATING_MIN_NEW_RESULTS` resultados nuevos (5 por defecto). Si pasan 7
+días sin alcanzar el umbral, se reajustan igualmente como respaldo semanal. El
+job tiene un presupuesto de tiempo para ratings y usa los ratings guardados si
+se agota. Un partido nunca usa datos de la misma semana ni posteriores. Los
+análisis se recalculan cada 6 horas con los ratings disponibles.
 
 ## Mercado de referencia
 
@@ -161,6 +162,47 @@ mercado solo, el peso de producción es **0**.
 probabilidad final es 0: se muestra como fuente separada, nunca como mejora del
 mercado. Los pesos y temperaturas quedan versionados en
 `analysis-weights.json` y persistidos en `ModelEvaluation`.
+
+## Forward test desde que está en uso
+
+Cada vez que `analysis:generate` corre antes del inicio de un partido, guarda
+una **captura inmutable** en `AnalysisSnapshot`: probabilidades de mercado y
+modelo, confianza, fuente final, versión de ratings (`modelo:asOf`) y parámetros
+del ajuste. Las regeneraciones posteriores crean nuevas capturas; no modifican
+las anteriores. Si hay varias capturas del mismo partido, la evaluación usa la
+más reciente antes del inicio y marca las anteriores como `superseded`.
+
+Cuando el partido termina (+3 h), el paso `evaluate` busca el resultado en
+`HistoricalMatch` (CSV oficial o API provisional) y, como respaldo, en
+`BetLeg` con marcador. Calcula Brier y log-loss de mercado y modelo y los guarda
+en el snapshot. El panel **Precisión del modelo** muestra una sección separada
+**“Desde que está en uso”** con N, Brier de modelo vs. mercado y desglose por
+liga. Si N < 30 se muestra una advertencia de muestra pequeña.
+
+Comando de revisión:
+
+```bash
+npm run analysis:review
+```
+
+Evalúa pendientes, compara el forward test con el backtest de
+`analysis-weights.json` y avisa si el modelo se deteriora o si el peso óptimo
+del modelo respecto al mercado deja de ser 0. **No modifica parámetros ni
+pesos**; solo reporta y recomienda.
+
+## Fuentes de resultados para ratings
+
+| Fuente | ¿Alimenta ratings? | Detalle |
+| --- | --- | --- |
+| CSV oficial football-data.co.uk | **Sí** | Importación manual; `HistoricalMatch` con `provisional=false`. |
+| API football-data.org / TheSportsDB | **Sí, provisional** | El paso `results` guarda `HistoricalMatch` con `source='api'` y `provisional=true`; el CSV oficial lo reemplaza. |
+| BetLeg (resultados de usuarios) | **No** | Solo se usa como respaldo para evaluar snapshots forward, nunca para entrenar. |
+| `UpcomingFixture` de APIs | **No** | Solo calendario/análisis; el resultado entra por `results` cuando termina. |
+
+Todos los ratings salen de `HistoricalMatch`. En las 7 ligas objetivo (E0, SP1,
+I1, D1, F1, BRA, ARG) hay CSV histórico. Liga 1 (PER1) no tiene CSV y, por
+tanto, no genera ratings; sus resultados de API no crean un modelo. Los
+resultados de usuarios nunca entrenan el modelo.
 
 ## Conclusión de esta fase
 

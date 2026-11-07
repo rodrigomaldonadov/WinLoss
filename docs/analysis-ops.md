@@ -10,8 +10,12 @@ El job programado:
 
 1. Importa solo archivos nuevos o modificados de `data-football/`.
 2. Sincroniza próximos partidos desde las APIs deportivas.
-3. Recalcula `MatchAnalysis` con los ratings disponibles.
-4. Reajusta ratings como máximo una vez cada 7 días.
+3. Trae resultados FINISHED (+3 h) y los guarda como `HistoricalMatch`
+   provisionales (`source='api'`).
+4. Recalcula `MatchAnalysis` con los ratings disponibles; reajusta ratings como
+   máximo una vez al día por liga si hay suficientes resultados nuevos, con
+   respaldo semanal.
+5. Evalúa los snapshots forward cuyo partido ya terminó.
 
 Todo se ejecuta desde un único punto de entrada:
 
@@ -110,6 +114,9 @@ THESPORTSDB_API_KEY="123"
 ANALYSIS_DATA_DIR="/app/data-football"
 ANALYSIS_WINDOW_DAYS="14"
 ANALYSIS_RATING_MAX_AGE_DAYS="7"
+ANALYSIS_RATING_MIN_NEW_RESULTS="5"
+ANALYSIS_RATINGS_BUDGET_MS="90000"
+ANALYSIS_EVALUATION_DELAY_MS="10800000"
 ANALYSIS_REFRESH_TIMEOUT_MS="840000"
 ```
 
@@ -119,7 +126,12 @@ ANALYSIS_REFRESH_TIMEOUT_MS="840000"
 - `THESPORTSDB_API_KEY`: `123` es la clave pública de prueba; usa una propia si
   tienes plan.
 - `ANALYSIS_DATA_DIR`: ruta del volumen persistente.
-- `ANALYSIS_RATING_MAX_AGE_DAYS`: control semanal de ratings (por defecto 7).
+- `ANALYSIS_RATING_MAX_AGE_DAYS`: respaldo semanal de ratings (por defecto 7).
+- `ANALYSIS_RATING_MIN_NEW_RESULTS`: umbral de resultados nuevos para reajuste
+  nocturno (por defecto 5).
+- `ANALYSIS_RATINGS_BUDGET_MS`: presupuesto de tiempo para reajustar ratings.
+- `ANALYSIS_EVALUATION_DELAY_MS`: espera tras el inicio antes de evaluar un
+  snapshot (por defecto 3 h).
 - `ANALYSIS_REFRESH_TIMEOUT_MS`: límite del job completo. La ruta declara
   `maxDuration = 900`; configura el proxy con un timeout mayor.
 
@@ -146,8 +158,9 @@ docker exec -it <contenedor> npm run analysis:generate
 docker exec -it <contenedor> npm run analysis:refresh
 ```
 
-`analysis:refresh` ejecuta el flujo completo (import → sync → generate), usa el
-mismo lock y deja el mismo registro en `AnalysisRefreshRun` que el endpoint.
+`analysis:refresh` ejecuta el flujo completo (import → sync → results →
+generate → evaluate), usa el mismo lock y deja el mismo registro en
+`AnalysisRefreshRun` que el endpoint.
 Para reprocesar todos los CSV aunque no hayan cambiado:
 
 ```bash
@@ -242,12 +255,14 @@ LIMIT 5;
   "steps": [
     { "name": "import", "status": "success", "durationMs": 1200 },
     { "name": "sync", "status": "success", "durationMs": 68000 },
-    { "name": "generate", "status": "success", "durationMs": 2800 }
+    { "name": "results", "status": "success", "durationMs": 12000 },
+    { "name": "generate", "status": "success", "durationMs": 2800 },
+    { "name": "evaluate", "status": "success", "durationMs": 800 }
   ]
 }
 ```
 
-- `SUCCESS`: los tres pasos terminaron bien.
+- `SUCCESS`: todos los pasos terminaron bien.
 - `PARTIAL`: al menos uno falló; los demás siguieron.
 - `FAILED`: ningún paso terminó bien.
 - `SKIPPED`: ya había una corrida en curso (`reason: "locked"`).
@@ -264,6 +279,17 @@ LIMIT 5;
 
 El lock está en `AnalysisRefreshLock` y caduca solo; si el proceso muere, la
 siguiente corrida puede tomarlo cuando expire.
+
+## Revisión del forward test
+
+```bash
+docker exec -it <contenedor> npm run analysis:review
+```
+
+Evalúa snapshots pendientes y compara el forward test con el backtest. No
+cambia parámetros: solo muestra alertas si el modelo se deteriora o si el peso
+óptimo del modelo respecto al mercado deja de ser 0. Recomendado: semanal o
+mensual, y antes de cualquier promoción de versión.
 
 ## Solución de problemas
 

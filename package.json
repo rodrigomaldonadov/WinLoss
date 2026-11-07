@@ -20,6 +20,7 @@
     "analysis:sync": "tsx scripts/analysis-sync-fixtures.ts",
     "analysis:generate": "tsx scripts/analysis-generate.ts",
     "analysis:refresh": "tsx scripts/analysis-refresh.ts",
+    "analysis:review": "tsx scripts/analysis-review.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node scripts/smoke.mjs",

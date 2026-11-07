@@ -24,6 +24,10 @@ function steps(
       calls.push("generate");
       return { ok: results.generate ?? true };
     },
+    evaluate: async () => {
+      calls.push("evaluate");
+      return { ok: results.evaluate ?? true };
+    },
   };
 }
 
@@ -36,13 +40,14 @@ describe("runAnalysisRefresh", () => {
       logger: () => {},
     });
 
-    expect(calls).toEqual(["import", "sync", "results", "generate"]);
+    expect(calls).toEqual(["import", "sync", "results", "generate", "evaluate"]);
     expect(summary.status).toBe("PARTIAL");
     expect(summary.steps.map((step) => step.name)).toEqual([
       "import",
       "sync",
       "results",
       "generate",
+      "evaluate",
     ]);
     expect(summary.steps[0]?.status).toBe("failed");
     expect(summary.steps[1]?.status).toBe("success");
@@ -79,6 +84,7 @@ describe("runAnalysisRefresh", () => {
         sync: async () => ({ ok: true }),
         results: async () => ({ ok: true }),
         generate: async () => ({ ok: true }),
+        evaluate: async () => ({ ok: true }),
       },
       logger: () => {},
     });
@@ -109,6 +115,7 @@ describe("runAnalysisRefresh", () => {
         sync: async () => ({ ok: true }),
         results: async () => ({ ok: true }),
         generate: async () => ({ ok: true }),
+        evaluate: async () => ({ ok: true }),
       },
       logger: () => {},
     });

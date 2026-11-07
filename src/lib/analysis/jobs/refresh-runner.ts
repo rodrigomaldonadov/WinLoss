@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 
 import { runGenerateJob } from "./generate-job";
+import { runEvaluationJob } from "./evaluate-job";
 import { runImportJob } from "./import-job";
 import { createPrismaLock } from "./lock";
 import { runAnalysisRefresh, type RefreshSummary } from "./run";
@@ -89,6 +90,20 @@ export async function executeAnalysisRefresh({
         },
         generate: async ({ now: stepNow, deadline }) => {
           const result = await runGenerateJob({
+            prisma,
+            now: stepNow,
+            deadline,
+            logger,
+          });
+          return {
+            ok: result.ok,
+            summary: result,
+            error:
+              result.errors.length > 0 ? result.errors.join("; ") : undefined,
+          };
+        },
+        evaluate: async ({ now: stepNow, deadline }) => {
+          const result = await runEvaluationJob({
             prisma,
             now: stepNow,
             deadline,

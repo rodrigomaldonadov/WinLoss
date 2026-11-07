@@ -19,6 +19,7 @@ import {
   type AnalysisDays,
 } from "@/lib/analysis/view";
 import { getAnalysisFeed, getModelAccuracy } from "@/lib/data/analysis";
+import { getForwardAccuracy } from "@/lib/data/analysis-forward";
 import { getAnalysisDataStatus } from "@/lib/data/analysis-status";
 import { getUserPreferences } from "@/lib/data/user";
 
@@ -65,10 +66,11 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
   const days = parseDays(params.dias);
   const selected = parseCompetitions(params.competicion);
 
-  const [items, preferences, dataStatus] = await Promise.all([
+  const [items, preferences, dataStatus, forward] = await Promise.all([
     getAnalysisFeed(session.user.id, { days }),
     getUserPreferences(session.user.id),
     getAnalysisDataStatus(),
+    getForwardAccuracy(),
   ]);
   const accuracy = getModelAccuracy();
 
@@ -184,7 +186,7 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
         timeZone={preferences.timezone}
       />
 
-      <ModelAccuracyPanel accuracy={accuracy} />
+      <ModelAccuracyPanel accuracy={accuracy} forward={forward} />
 
       {items.length === 0 ? (
         <EmptyState

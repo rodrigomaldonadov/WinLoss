@@ -6,6 +6,7 @@ import type {
 } from "@/lib/analysis/view";
 import type { ModelAccuracy } from "@/lib/data/analysis";
 import type { AnalysisDataStatus } from "@/lib/data/analysis-status";
+import type { ForwardAccuracy } from "@/lib/analysis/forward";
 
 const reference = {
   hasMarketBacktest: true,
@@ -358,4 +359,28 @@ export const dataStatusFixture: AnalysisDataStatus = {
   },
   marketMissing: false,
   marketStale: false,
+};
+
+export const forwardFixture: ForwardAccuracy = {
+  sample: 12,
+  modelSample: 12,
+  marketSample: 12,
+  modelBrier: 0.618,
+  marketBrier: 0.594,
+  modelLogLoss: 1.031,
+  marketLogLoss: 1.002,
+  since: "2026-10-01T12:00:00.000Z",
+  competitions: [
+    {
+      competition: "Premier League",
+      code: "E0",
+      sample: 12,
+      modelSample: 12,
+      marketSample: 12,
+      modelBrier: 0.618,
+      marketBrier: 0.594,
+      modelLogLoss: 1.031,
+      marketLogLoss: 1.002,
+    },
+  ],
 };

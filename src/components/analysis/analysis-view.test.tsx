@@ -35,6 +35,7 @@ import {
   buildModelItem,
   buildNoDataItem,
   dataStatusFixture,
+  forwardFixture,
 } from "@/test/fixtures/analysis";
 
 describe("tarjetas de /analysis", () => {
@@ -219,7 +220,7 @@ describe("estado de los datos", () => {
 describe("panel de precisión del modelo", () => {
   it("muestra N, periodo y baselines de cierre, pre-cierre e ingenua", () => {
     const html = renderToStaticMarkup(
-      <ModelAccuracyPanel accuracy={accuracyFixture} />,
+      <ModelAccuracyPanel accuracy={accuracyFixture} forward={forwardFixture} />,
     );
 
     expect(html).toContain("Precisión del modelo");
@@ -230,5 +231,9 @@ describe("panel de precisión del modelo", () => {
     expect(html).toContain("Pre-cierre");
     expect(html).toContain("Ingenua");
     expect(html).toContain("por qué cambia N");
+    expect(html).toContain("Desde que está en uso");
+    expect(html).toContain("Forward test");
+    expect(html).toContain("N=12");
+    expect(html).toContain("Muestra pequeña");
   });
 });

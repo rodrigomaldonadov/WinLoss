@@ -33,6 +33,8 @@ import {
   weightForCompetition,
 } from "@/lib/analysis/weights";
 
+import { buildSnapshotRecord, hasSnapshotData, shouldSnapshot } from "./snapshot";
+
 const ENGINE_SOURCE = "analysis-engine";
 const HALF_LIFE_DAYS = 365;
 const RIDGE = 70;
@@ -69,6 +71,7 @@ export type GenerateJobSummary = {
   ratingsRefreshed: string[];
   ratingsReused: string[];
   ratingsBudgetExceeded: boolean;
+  snapshots: number;
   errors: string[];
   durationMs: number;
 };
@@ -182,6 +185,7 @@ export async function runGenerateJob({
     ratingsRefreshed: [],
     ratingsReused: [],
     ratingsBudgetExceeded: false,
+    snapshots: 0,
     errors: [],
     durationMs: Date.now() - startedAt,
     ...overrides,
@@ -544,6 +548,7 @@ export async function runGenerateJob({
       ratingsRefreshed,
       ratingsReused,
       ratingsBudgetExceeded,
+      snapshots: 0,
       errors,
     });
   }
@@ -590,6 +595,7 @@ export async function runGenerateJob({
 
   const unresolved = new Map<string, number>();
   const analyses: Prisma.MatchAnalysisCreateManyInput[] = [];
+  const snapshots: Prisma.AnalysisSnapshotCreateManyInput[] = [];
   let marketCount = 0;
   let modelCount = 0;
   let communityCount = 0;
@@ -712,6 +718,46 @@ export async function runGenerateJob({
     if (analysis.sources.community.available) communityCount += 1;
     if (!analysis.final.available) insufficientCount += 1;
 
+    if (
+      shouldSnapshot(fixture.primary.kickoff, now) &&
+      hasSnapshotData(analysis.final, analysis.sources)
+    ) {
+      snapshots.push(
+        buildSnapshotRecord({
+          matchKey: fixtureKey(fixture.primary, canonical),
+          externalEventId: fixture.primary.id,
+          competition: fixture.primary.competition,
+          competitionCode: code,
+          kickoff: fixture.primary.kickoff,
+          homeName: fixture.homeName,
+          awayName: fixture.awayName,
+          homeTeamId: fixture.homeTeamId,
+          awayTeamId: fixture.awayTeamId,
+          final: analysis.final,
+          sources: analysis.sources,
+          ratingsVersion: ratings
+            ? `${ANALYSIS_MODEL_NAME}:${ratings.asOf.toISOString()}`
+            : null,
+          ratingsParams: ratings
+            ? {
+                model: ANALYSIS_MODEL_NAME,
+                rho: ratings.rho,
+                halfLifeDays: ratings.halfLifeDays,
+                ridge: ratings.ridge,
+                effectiveSample: ratings.effectiveSample,
+                homeAdvantage: ratings.homeAdvantage,
+                leagueAvgHomeGoals: ratings.leagueAvgHomeGoals,
+                leagueAvgAwayGoals: ratings.leagueAvgAwayGoals,
+                ratingSample: ratings.sample,
+              }
+            : null,
+          marketCapturedAt: capturedAt,
+          marketFresh: fresh,
+          snapshotAt: now,
+        }),
+      );
+    }
+
     analyses.push({
       source: ENGINE_SOURCE,
       externalEventId: fixture.primary.id,
@@ -765,6 +811,7 @@ export async function runGenerateJob({
       ratingsRefreshed,
       ratingsReused,
       ratingsBudgetExceeded,
+      snapshots: 0,
       errors,
     });
   }
@@ -788,8 +835,24 @@ export async function runGenerateJob({
       ratingsRefreshed,
       ratingsReused,
       ratingsBudgetExceeded,
+      snapshots: 0,
       errors,
     });
+  }
+
+  let snapshotsCreated = 0;
+  if (snapshots.length > 0) {
+    try {
+      const result = await prisma.analysisSnapshot.createMany({
+        data: snapshots,
+        skipDuplicates: true,
+      });
+      snapshotsCreated = result.count;
+      logger(`[snapshots] ${snapshotsCreated} capturas inmutables guardadas`);
+    } catch (error) {
+      errors.push(`snapshots: ${String(error)}`);
+      logger(`[snapshots] falló (${String(error)})`);
+    }
   }
 
   logger(
@@ -810,6 +873,7 @@ export async function runGenerateJob({
     ratingsRefreshed,
     ratingsReused,
     ratingsBudgetExceeded,
+    snapshots: snapshotsCreated,
     errors,
     durationMs: Date.now() - startedAt,
   };

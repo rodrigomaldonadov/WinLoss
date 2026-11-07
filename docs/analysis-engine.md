@@ -28,11 +28,13 @@ npm run analysis:import
 npm run analysis:sync
 npm run analysis:generate
 npm run analysis:refresh
+npm run analysis:review
 npm run analysis:backtest
 ```
 
 `analysis:refresh` ejecuta el flujo completo dentro del contenedor, con el mismo
-lock y registro que el endpoint HTTP.
+lock y registro que el endpoint HTTP. `analysis:review` evalúa snapshots forward
+y compara con el backtest sin cambiar parámetros.
 
 No hay scraping ni descarga automática de football-data.co.uk. La copia de CSV
 es manual; el resto es automático.

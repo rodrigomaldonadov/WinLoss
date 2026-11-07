@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import type { ForwardAccuracy } from "@/lib/analysis/forward";
 import type { ModelAccuracy } from "@/lib/data/analysis";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -55,7 +56,13 @@ function Metric({
  * Panel de precisión del modelo. Consume el mismo contrato que
  * GET /api/analysis/model: N, periodo y baselines del backtest.
  */
-export function ModelAccuracyPanel({ accuracy }: { accuracy: ModelAccuracy }) {
+export function ModelAccuracyPanel({
+  accuracy,
+  forward,
+}: {
+  accuracy: ModelAccuracy;
+  forward: ForwardAccuracy;
+}) {
   const marketWins = accuracy.competitions.filter(
     (competition) => competition.marketBrier < competition.modelBrier,
   ).length;
@@ -64,6 +71,10 @@ export function ModelAccuracyPanel({ accuracy }: { accuracy: ModelAccuracy }) {
     accuracy.global.weight,
     ...accuracy.competitions.map((competition) => competition.weight),
   );
+  const forwardDiff =
+    forward.modelBrier !== null && forward.marketBrier !== null
+      ? forward.modelBrier - forward.marketBrier
+      : null;
   const periodEnd = accuracy.holdout.end
     ? formatDate(accuracy.holdout.end, {
         day: "2-digit",
@@ -249,6 +260,150 @@ export function ModelAccuracyPanel({ accuracy }: { accuracy: ModelAccuracy }) {
             </p>
           </div>
         </details>
+
+        <div className="border-t pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">Desde que está en uso</h3>
+            <Badge variant="outline">Forward test</Badge>
+          </div>
+
+          {forward.sample === 0 ? (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Aún no hay partidos evaluados desde que está en uso. Los snapshots
+              se evalúan cuando el partido termina.
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Desde{" "}
+                {forward.since
+                  ? formatDate(forward.since, {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "—"}{" "}
+                · {forward.sample} partidos evaluados
+              </p>
+
+              <div className="mt-2 grid grid-cols-3 gap-1.5">
+                <Metric
+                  label="Modelo"
+                  value={
+                    forward.modelBrier === null
+                      ? "—"
+                      : forward.modelBrier.toFixed(3)
+                  }
+                  hint={`N=${forward.modelSample}`}
+                />
+                <Metric
+                  label="Mercado"
+                  value={
+                    forward.marketBrier === null
+                      ? "—"
+                      : forward.marketBrier.toFixed(3)
+                  }
+                  hint={`N=${forward.marketSample}`}
+                />
+                <Metric
+                  label="Diferencia"
+                  value={
+                    forwardDiff === null
+                      ? "—"
+                      : `${forwardDiff > 0 ? "+" : ""}${forwardDiff.toFixed(3)}`
+                  }
+                  hint="Modelo − mercado"
+                />
+              </div>
+
+              {forward.sample < 30 && (
+                <p className="mt-2 rounded bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-900 dark:text-amber-200">
+                  Muestra pequeña (N={forward.sample}); todavía no es
+                  concluyente.
+                </p>
+              )}
+
+              <details className="group mt-2 rounded-lg border bg-muted/20">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-2 text-xs font-medium">
+                  Forward por liga
+                  <ChevronDown
+                    className="size-4 shrink-0 transition-transform group-open:rotate-180"
+                    aria-hidden
+                  />
+                </summary>
+                <div className="overflow-x-auto border-t px-2.5 py-2">
+                  <table className="w-full min-w-[22rem] border-collapse text-left text-[11px]">
+                    <thead>
+                      <tr className="border-b text-muted-foreground">
+                        <th className="py-1.5 pr-2 font-medium">Liga</th>
+                        <th className="py-1.5 pr-2 text-right font-medium">
+                          N
+                        </th>
+                        <th className="py-1.5 pr-2 text-right font-medium">
+                          Modelo
+                        </th>
+                        <th className="py-1.5 pr-2 text-right font-medium">
+                          Mercado
+                        </th>
+                        <th className="py-1.5 text-right font-medium">
+                          Δ
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {forward.competitions.map((competition) => {
+                        const difference =
+                          competition.modelBrier !== null &&
+                          competition.marketBrier !== null
+                            ? competition.modelBrier -
+                              competition.marketBrier
+                            : null;
+                        return (
+                          <tr
+                            key={competition.competition}
+                            className="border-b last:border-0"
+                          >
+                            <th className="py-1.5 pr-2 font-medium">
+                              <span className="block">
+                                {competition.competition}
+                              </span>
+                              <span className="block text-[10px] font-normal text-muted-foreground">
+                                {competition.code ?? "—"}
+                              </span>
+                            </th>
+                            <td className="py-1.5 pr-2 text-right tabular-nums">
+                              {competition.sample}
+                            </td>
+                            <td className="py-1.5 pr-2 text-right tabular-nums">
+                              {competition.modelBrier === null
+                                ? "—"
+                                : competition.modelBrier.toFixed(3)}
+                            </td>
+                            <td className="py-1.5 pr-2 text-right tabular-nums">
+                              {competition.marketBrier === null
+                                ? "—"
+                                : competition.marketBrier.toFixed(3)}
+                            </td>
+                            <td className="py-1.5 text-right tabular-nums">
+                              {difference === null
+                                ? "—"
+                                : `${difference > 0 ? "+" : ""}${difference.toFixed(3)}`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+
+              <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+                Forward test separado del backtest histórico. N pequeño no es
+                concluyente; no se cambian parámetros automáticamente.
+              </p>
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
