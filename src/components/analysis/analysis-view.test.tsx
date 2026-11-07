@@ -39,20 +39,21 @@ import {
 } from "@/test/fixtures/analysis";
 
 describe("tarjetas de /analysis", () => {
-  it("muestra el mercado sin margen y el comparador de cuotas justas", () => {
+  it("muestra el mercado, los chips y la tarjeta completa tocable", () => {
     const item = buildMarketItem();
     const html = renderToStaticMarkup(<AnalysisCard item={item} />);
 
     expect(html).toContain("Probabilidad del mercado (sin margen)");
     expect(html).toContain("50%");
-    expect(html).toContain("Comparador de cuotas justas");
-    expect(html).toContain("Cuota justa = 1 / probabilidad");
-    expect(html).toContain("+11%");
     expect(html).toContain("Registrar apuesta");
     expect(html).toContain("analisis=analysis-market");
     expect(html).toContain("mercadoKey=MATCH_RESULT");
     expect(html).toContain("mercadoKey=TOTAL_GOALS");
     expect(html).toContain("mercadoKey=BTTS");
+    expect(html).toContain('aria-label="Ver detalle de Arsenal vs Chelsea"');
+    expect(html).toContain('href="/analysis/analysis-market"');
+    expect(html).not.toContain("Ver detalle<");
+    expect(html).not.toContain("Comparador de cuotas justas");
   });
 
   it("precarga mercado, línea y selección desde los chips", () => {
@@ -82,16 +83,16 @@ describe("tarjetas de /analysis", () => {
     expect(btts.searchParams.get("seleccion")).toBe("Sí");
   });
 
-  it("muestra el modelo sin cuotas, confianza baja y el aviso fijo", () => {
+  it("muestra el modelo sin cuotas y confianza baja", () => {
     const item = buildModelItem();
     const html = renderToStaticMarkup(<AnalysisCard item={item} />);
 
     expect(html).toContain("Estimación del modelo (sin cuotas)");
     expect(html).toContain("Confianza baja");
-    expect(html).toContain(
+    expect(html).not.toContain("Comparador de cuotas justas");
+    expect(html).not.toContain(
       "En pruebas, el mercado superó a este modelo en todas las ligas",
     );
-    expect(html).not.toContain("Comparador de cuotas justas");
   });
 
   it("no sube la confianza del modelo cuando no hay cuotas de mercado", () => {
@@ -114,8 +115,7 @@ describe("tarjetas de /analysis", () => {
     const item = buildNoDataItem();
     const html = renderToStaticMarkup(<NoAnalysisCard item={item} />);
 
-    expect(html).toContain("Sin probabilidades");
-    expect(html).toContain("Sin datos suficientes");
+    expect(html).toContain("Sin análisis disponible para este partido");
     expect(html).toContain("Registrar apuesta");
     expect(html).toContain("analisis=analysis-none");
     expect(html).not.toContain("Probabilidad del mercado");
@@ -196,6 +196,13 @@ describe("comparador con cuota de la casa", () => {
 });
 
 describe("estado de los datos", () => {
+  it("no muestra aviso cuando todo está bien", () => {
+    const html = renderToStaticMarkup(
+      <DataStatusNotice status={dataStatusFixture} />,
+    );
+    expect(html).toBe("");
+  });
+
   it("avisa cuando la fuente de mercado está desactualizada", () => {
     const stale = {
       ...dataStatusFixture,

@@ -1,5 +1,4 @@
 import {
-  CheckCircle2,
   Clock3,
   RefreshCw,
   TriangleAlert,
@@ -8,6 +7,8 @@ import {
 import type { AnalysisDataStatus } from "@/lib/data/analysis-status";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+const DAY_MS = 86_400_000;
 
 const RUN_STATUS_LABEL: Record<string, string> = {
   SUCCESS: "Correcta",
@@ -59,8 +60,17 @@ export function DataStatusNotice({
 }) {
   const batch = status.fixtureBatch;
   const stale = status.marketStale;
-  const missing = status.marketMissing;
   const runProblem = hasRunProblem(status);
+  const now = new Date(status.now);
+  const batchDate = batch
+    ? new Date(batch.capturedAt)
+    : status.lastFixtureImportAt
+      ? new Date(status.lastFixtureImportAt)
+      : null;
+  const noRecentBatch =
+    !batchDate || now.getTime() - batchDate.getTime() > 7 * DAY_MS;
+
+  if (!stale && !noRecentBatch && !runProblem) return null;
 
   const importLabel = status.lastHistoricalImportAt
     ? formatDateTime(status.lastHistoricalImportAt, timeZone)
@@ -68,29 +78,6 @@ export function DataStatusNotice({
   const batchLabel = batch
     ? `${formatDateTime(batch.capturedAt, timeZone)} (${formatAgeDays(batch.ageDays)})`
     : "sin lote";
-  const runLabel = status.lastRun
-    ? `${runStatusLabel(status.lastRun.status)} · ${formatDateTime(status.lastRun.startedAt, timeZone)}`
-    : "sin corridas registradas";
-
-  if (!stale && !missing && !runProblem) {
-    return (
-      <div className="space-y-0.5 text-[10px] leading-snug text-muted-foreground">
-        <p className="flex items-start gap-1.5">
-          <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          Datos: último import {importLabel} · cuotas {batchLabel} · última
-          corrida {runLabel}.
-        </p>
-        <p>
-          Resultados API hoy: {status.resultsToday} · último reajuste de ratings:{" "}
-          {status.lastRatingAt
-            ? formatDateTime(status.lastRatingAt, timeZone)
-            : "sin registro"}{" "}
-          · modelo: {status.champion?.name ?? "sin campeón"} · retador:{" "}
-          {status.challenger?.name ?? "sin retador"}.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -111,8 +98,8 @@ export function DataStatusNotice({
         <p className="font-medium text-foreground">
           {stale
             ? "Fuente de mercado desactualizada"
-            : missing
-              ? "Sin lote de cuotas"
+            : noRecentBatch
+              ? "Sin lote de cuotas reciente"
               : "Actualización automática con incidencias"}
         </p>
         {stale && (
@@ -122,10 +109,10 @@ export function DataStatusNotice({
             fuente Mercado se oculta hasta que llegue un lote nuevo.
           </p>
         )}
-        {!stale && missing && (
+        {!stale && noRecentBatch && (
           <p>
-            No hay un lote de fixtures importado. La fuente Mercado no se
-            renueva hasta que llegue un CSV nuevo.
+            No ha llegado un lote de cuotas en más de 7 días. La fuente Mercado
+            no se renueva hasta que llegue un CSV nuevo.
           </p>
         )}
         {runProblem && status.lastRun && (

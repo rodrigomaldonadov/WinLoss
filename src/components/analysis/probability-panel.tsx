@@ -38,10 +38,12 @@ export function ProbabilityGrid({
   probabilities,
   className,
   hrefForOutcome,
+  compact = false,
 }: {
   probabilities: Triple;
   className?: string;
   hrefForOutcome?: (outcome: OutcomeKey) => string;
+  compact?: boolean;
 }) {
   const best = Math.max(
     probabilities.home,
@@ -55,18 +57,30 @@ export function ProbabilityGrid({
         const value = probabilities[outcome.key];
         const href = hrefForOutcome?.(outcome.key);
         const cellClass = cn(
-          "block rounded-lg border px-2 py-2 text-center",
+          "block rounded-lg border text-center",
+          compact ? "px-1 py-1" : "px-2 py-2",
           value === best
             ? "border-primary/40 bg-primary/5"
             : "border-border bg-muted/30",
-          href && "transition-colors hover:bg-muted/60",
+          href &&
+            "pointer-events-auto relative z-20 transition-colors hover:bg-muted/60",
         );
         const content = (
           <>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p
+              className={cn(
+                "font-medium uppercase tracking-wide text-muted-foreground",
+                compact ? "text-[9px]" : "text-[10px]",
+              )}
+            >
               {outcome.short} · {outcome.label}
             </p>
-            <p className="mt-0.5 text-lg font-semibold tabular-nums">
+            <p
+              className={cn(
+                "mt-0.5 font-semibold tabular-nums",
+                compact ? "text-sm" : "text-lg",
+              )}
+            >
               {probabilityLabel(value)}
             </p>
           </>
@@ -111,7 +125,10 @@ function TotalCell({
     <Link
       href={href}
       aria-label={`Precargar ${label} en una nueva apuesta`}
-      className={cn(className, "transition-colors hover:bg-muted/60")}
+      className={cn(
+        className,
+        "pointer-events-auto relative z-20 transition-colors hover:bg-muted/60",
+      )}
     >
       {content}
     </Link>
@@ -167,7 +184,7 @@ export function BttsLine({
           <Link
             href={hrefYes}
             aria-label="Precargar ambos marcan Sí en una nueva apuesta"
-            className="font-medium tabular-nums underline-offset-4 hover:underline"
+            className="pointer-events-auto relative z-20 font-medium tabular-nums underline-offset-4 hover:underline"
           >
             Sí {probabilityLabel(value)}
           </Link>
@@ -180,7 +197,7 @@ export function BttsLine({
           <Link
             href={hrefNo}
             aria-label="Precargar ambos marcan No en una nueva apuesta"
-            className="font-medium tabular-nums underline-offset-4 hover:underline"
+            className="pointer-events-auto relative z-20 font-medium tabular-nums underline-offset-4 hover:underline"
           >
             No {probabilityLabel(1 - value)}
           </Link>
@@ -194,8 +211,61 @@ export function BttsLine({
   );
 }
 
+export function CardMarketChips({ item }: { item: AnalysisFeedItem }) {
+  const totals = item.final.totals;
+  const btts = item.sources.model.btts;
+  const chips: { key: string; label: string; value: number; href: string }[] = [];
+
+  if (totals) {
+    chips.push({
+      key: "over",
+      label: "+2.5",
+      value: totals.over25,
+      href: analysisBetHref(item, totalGoalsPick("OVER", 2.5)),
+    });
+    chips.push({
+      key: "under",
+      label: "-2.5",
+      value: totals.under25,
+      href: analysisBetHref(item, totalGoalsPick("UNDER", 2.5)),
+    });
+  }
+  if (typeof btts === "number") {
+    chips.push({
+      key: "btts",
+      label: "BTTS",
+      value: btts,
+      href: analysisBetHref(item, bttsPick("YES")),
+    });
+  }
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div className="mt-1.5 flex gap-1.5">
+      {chips.slice(0, 3).map((chip) => (
+        <Link
+          key={chip.key}
+          href={chip.href}
+          aria-label={`Precargar ${chip.label} en una nueva apuesta`}
+          className="pointer-events-auto relative z-20 flex h-11 flex-1 items-center justify-between gap-1 rounded-lg border bg-background px-2 text-[10px] font-medium transition-colors hover:bg-muted/60"
+        >
+          <span className="text-muted-foreground">{chip.label}</span>
+          <span className="tabular-nums">{probabilityLabel(chip.value)}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /** Titular de la tarjeta: mercado si hay cuotas; modelo si no las hay. */
-export function ProbabilityHeadline({ item }: { item: AnalysisFeedItem }) {
+export function ProbabilityHeadline({
+  item,
+  compact = false,
+}: {
+  item: AnalysisFeedItem;
+  compact?: boolean;
+}) {
   const final = item.final;
   const probabilities = final.probabilities;
   if (!final.available || !probabilities) return null;
@@ -213,9 +283,9 @@ export function ProbabilityHeadline({ item }: { item: AnalysisFeedItem }) {
     : `${marketNote}.`;
 
   return (
-    <div className="mt-2">
+    <div className="mt-1.5">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-medium leading-snug text-muted-foreground">
+        <p className="text-[10px] font-medium leading-snug text-muted-foreground">
           {headlineTitle(final.source)}
         </p>
         <Badge variant={isMarket ? "secondary" : "outline"}>
@@ -225,39 +295,47 @@ export function ProbabilityHeadline({ item }: { item: AnalysisFeedItem }) {
 
       <ProbabilityGrid
         probabilities={probabilities}
-        className="mt-2"
+        className="mt-1.5"
+        compact={compact}
         hrefForOutcome={(outcome) =>
           analysisBetHref(item, matchResultPick(outcome))
         }
       />
-      <TotalsLine
-        totals={final.totals}
-        hrefOver={analysisBetHref(item, totalGoalsPick("OVER", 2.5))}
-        hrefUnder={analysisBetHref(item, totalGoalsPick("UNDER", 2.5))}
-      />
-      <BttsLine
-        value={modelBtts}
-        label={isMarket ? "Modelo · ambos marcan" : "Ambos marcan"}
-        hrefYes={analysisBetHref(item, bttsPick("YES"))}
-        hrefNo={analysisBetHref(item, bttsPick("NO"))}
-      />
-
-      {isMarket ? (
-        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-          {marketNoteWithPeriod}{" "}
-          {item.sources.model.available
-            ? "El modelo se muestra aparte solo para comparar."
-            : (item.sources.model.note ?? "Modelo no disponible")}
-        </p>
+      {compact ? (
+        <CardMarketChips item={item} />
       ) : (
-        <div className="mt-2 rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
-          <p className="font-medium text-foreground">{caveat}.</p>
-          <p className="mt-0.5">
-            Sin cuotas de mercado para este partido. La estimación es solo del
-            modelo y no se presenta como una probabilidad validada.
-          </p>
-        </div>
+        <>
+          <TotalsLine
+            totals={final.totals}
+            hrefOver={analysisBetHref(item, totalGoalsPick("OVER", 2.5))}
+            hrefUnder={analysisBetHref(item, totalGoalsPick("UNDER", 2.5))}
+          />
+          <BttsLine
+            value={modelBtts}
+            label={isMarket ? "Modelo · ambos marcan" : "Ambos marcan"}
+            hrefYes={analysisBetHref(item, bttsPick("YES"))}
+            hrefNo={analysisBetHref(item, bttsPick("NO"))}
+          />
+        </>
       )}
+
+      {!compact &&
+        (isMarket ? (
+          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+            {marketNoteWithPeriod}{" "}
+            {item.sources.model.available
+              ? "El modelo se muestra aparte solo para comparar."
+              : (item.sources.model.note ?? "Modelo no disponible")}
+          </p>
+        ) : (
+          <div className="mt-2 rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
+            <p className="font-medium text-foreground">{caveat}.</p>
+            <p className="mt-0.5">
+              Sin cuotas de mercado para este partido. La estimación es solo del
+              modelo y no se presenta como una probabilidad validada.
+            </p>
+          </div>
+        ))}
     </div>
   );
 }

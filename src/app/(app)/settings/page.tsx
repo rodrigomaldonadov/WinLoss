@@ -126,10 +126,17 @@ export default async function SettingsPage() {
         <AutoSettlePreference mode={user.autoSettleMode} />
       </section>
 
-      <ModelVersionsPanel
-        canPromote={canPromote}
-        adminConfigured={Boolean(adminEmail)}
-      />
+      <details className="rounded-xl border bg-card p-4 shadow-xs">
+        <summary className="cursor-pointer text-sm font-semibold">
+          Avanzado
+        </summary>
+        <div className="mt-3">
+          <ModelVersionsPanel
+            canPromote={canPromote}
+            adminConfigured={Boolean(adminEmail)}
+          />
+        </div>
+      </details>
 
       <section className="space-y-3 rounded-xl border bg-card p-4 shadow-xs">
         <div>

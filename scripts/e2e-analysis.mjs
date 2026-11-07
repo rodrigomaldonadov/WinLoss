@@ -162,14 +162,18 @@ try {
   });
   analysisId = analysis.id;
 
-  // 1. Tablero: tarjeta de mercado y comparador con cuota del usuario.
+  // 1. Tablero: pestañas, ayuda en hoja y tarjeta compacta.
   await page.goto(`${BASE_URL}/analysis`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Consenso" }).waitFor();
-  await page.getByText("Cómo leer esta pantalla").waitFor();
+  await page.getByRole("link", { name: "Próximos" }).waitFor();
+  await page.getByRole("link", { name: "Historial" }).waitFor();
+  await page.getByRole("link", { name: "Precisión" }).waitFor();
   await page
-    .getByText(/Datos: último import|Sin lote de cuotas|Fuente de mercado desactualizada/)
-    .first()
-    .waitFor();
+    .getByRole("button", { name: "Cómo leer esta pantalla" })
+    .click();
+  await page.getByText("Cómo leer esta pantalla").last().waitFor();
+  await page.keyboard.press("Escape");
+
   const card = page
     .locator("article")
     .filter({ hasText: "Arsenal E2E" })
@@ -178,27 +182,18 @@ try {
   await card
     .getByText("Probabilidad del mercado (sin margen)")
     .waitFor();
-  await card.getByText("Comparador de cuotas justas").waitFor();
   await card.getByText("50%").first().waitFor();
-
-  await card.getByLabel(/Cuota de tu casa/).fill("2,10");
-  await card
-    .getByText("5% mejor que la cuota justa del mercado.")
-    .waitFor();
+  await card.getByText("BTTS").waitFor();
   await page.screenshot({ path: "artifacts/e2e-analysis-board.png" });
 
-  // 2. Detalle.
-  await card.getByRole("link", { name: "Ver detalle" }).click();
+  // 2. Detalle desde la tarjeta completa (clic en la cabecera, no en un chip).
+  await card.click({ position: { x: 12, y: 12 } });
   await page.waitForURL(/\/analysis\/[^/]+$/, { timeout: 15_000 });
-  for (const heading of [
-    "Probabilidades",
-    "Fuentes",
-    "Forma reciente y H2H",
-    "Tu historial",
-    "Calidad de datos",
-  ]) {
+  for (const heading of ["Probabilidades", "Fuentes", "Calidad de datos"]) {
     await page.getByRole("heading", { name: heading }).waitFor();
   }
+  await page.getByText("Forma reciente y H2H").waitFor();
+  await page.getByText("Tu historial", { exact: true }).waitFor();
   await page.getByText("Estado de los datos").waitFor();
   await page.getByText("Comparador de cuotas justas").waitFor();
   await page.getByLabel(/Cuota de tu casa/).fill("2,10");
@@ -230,7 +225,7 @@ try {
     .first();
   await cardAgain
     .getByRole("link", {
-      name: "Precargar Más de 2,5 en una nueva apuesta",
+      name: "Precargar +2.5 en una nueva apuesta",
     })
     .click();
   await page.waitForURL(/\/bets\/new\?/, { timeout: 15_000 });

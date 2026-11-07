@@ -14,6 +14,7 @@ import {
   ProbabilityHeadline,
   TotalsLine,
 } from "@/components/analysis/probability-panel";
+import { AnalysisHelpButton } from "@/components/analysis/analysis-help";
 import { DataStatusDetails } from "@/components/analysis/data-status";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -283,9 +284,12 @@ export function AnalysisDetailView({
           timeZone,
         )}`}
         action={
-          <Button asChild size="sm">
-            <Link href={analysisBetHref(detail)}>Registrar apuesta</Link>
-          </Button>
+          <div className="flex items-center gap-1">
+            <AnalysisHelpButton />
+            <Button asChild size="sm">
+              <Link href={analysisBetHref(detail)}>Registrar apuesta</Link>
+            </Button>
+          </div>
         }
       />
 
@@ -339,15 +343,12 @@ export function AnalysisDetailView({
         </p>
       </section>
 
-      <section aria-labelledby="forma">
-        <h2
-          id="forma"
-          className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight"
-        >
+      <details className="rounded-xl border bg-card p-3">
+        <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold tracking-tight">
           <History className="size-4" aria-hidden />
           Forma reciente y H2H
-        </h2>
-        <div className="grid gap-2 md:grid-cols-2">
+        </summary>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
           <FormCard form={detail.form.home} />
           <FormCard form={detail.form.away} />
         </div>
@@ -358,43 +359,42 @@ export function AnalysisDetailView({
             awayName={detail.awayName}
           />
         </div>
-      </section>
+      </details>
 
-      <section aria-labelledby="tu-historial">
-        <h2
-          id="tu-historial"
-          className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight"
-        >
+      <details className="rounded-xl border bg-card p-3">
+        <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold tracking-tight">
           <ShieldCheck className="size-4" aria-hidden />
           Tu historial
-        </h2>
+        </summary>
 
-        {detail.sources.private.probabilities ? (
-          <SourceCard source={detail.sources.private} />
-        ) : (
-          <div className="rounded-lg border border-dashed bg-muted/20 p-3">
-            <p className="text-xs text-muted-foreground">
-              {detail.sources.private.note}
-            </p>
-            <Button asChild size="sm" className="mt-3">
-              <Link href={analysisBetHref(detail)}>Registrar apuesta</Link>
-            </Button>
-          </div>
-        )}
+        <div className="mt-3">
+          {detail.sources.private.probabilities ? (
+            <SourceCard source={detail.sources.private} />
+          ) : (
+            <div className="rounded-lg border border-dashed bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">
+                {detail.sources.private.note}
+              </p>
+              <Button asChild size="sm" className="mt-3">
+                <Link href={analysisBetHref(detail)}>Registrar apuesta</Link>
+              </Button>
+            </div>
+          )}
 
-        {detail.privateLegs.length > 0 && (
-          <ul className="mt-2 space-y-2">
-            {detail.privateLegs.map((leg) => (
-              <PrivateLegRow key={leg.id} leg={leg} timeZone={timeZone} />
-            ))}
-          </ul>
-        )}
+          {detail.privateLegs.length > 0 && (
+            <ul className="mt-2 space-y-2">
+              {detail.privateLegs.map((leg) => (
+                <PrivateLegRow key={leg.id} leg={leg} timeZone={timeZone} />
+              ))}
+            </ul>
+          )}
 
-        <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-          Tu historial solo lo ves tú. La comunidad se agrega de forma anónima
-          y solo aparece con al menos 5 usuarios distintos.
-        </p>
-      </section>
+          <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+            Tu historial solo lo ves tú. La comunidad se agrega de forma anónima
+            y solo aparece con al menos 5 usuarios distintos.
+          </p>
+        </div>
+      </details>
 
       <section aria-labelledby="calidad">
         <h2
@@ -503,8 +503,7 @@ export function AnalysisDetailView({
 
       <p className="flex items-start gap-1.5 pb-2 text-[10px] leading-snug text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-        Las probabilidades son estimaciones estadísticas y no garantizan el
-        resultado. Este detalle no recomienda apostar ni predice el retorno.
+        Probabilidades estimadas; no son una recomendación.
       </p>
     </div>
   );
