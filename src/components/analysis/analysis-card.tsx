@@ -12,7 +12,7 @@ import { formatDateTime } from "@/lib/format";
 
 function MatchHeading({ item }: { item: AnalysisFeedItem }) {
   return (
-    <h2 className="mt-0.5 truncate text-sm font-semibold leading-tight">
+    <h2 className="truncate text-[13px] font-semibold leading-tight">
       {item.homeName} <span className="font-normal text-muted-foreground">vs</span>{" "}
       {item.awayName}
     </h2>
@@ -27,13 +27,13 @@ function CardShell({
   children: ReactNode;
 }) {
   return (
-    <article className="group relative flex flex-col rounded-xl border bg-card p-2.5 shadow-xs transition-colors hover:bg-muted/30">
+    <article className="group relative flex flex-col rounded-lg border bg-card p-2 shadow-xs transition-colors hover:bg-muted/30 h-[210px]">
       <Link
         href={`/analysis/${item.id}`}
         aria-label={`Ver detalle de ${item.homeName} vs ${item.awayName}`}
-        className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
-      <div className="pointer-events-none relative z-10 flex flex-1 flex-col justify-between">
+      <div className="pointer-events-none relative z-10 flex flex-1 flex-col justify-between gap-1">
         {children}
       </div>
     </article>
