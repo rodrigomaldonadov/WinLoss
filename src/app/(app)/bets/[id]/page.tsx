@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ReceiptText } from "lucide-react";
+import { ArrowLeft, BarChart3, ReceiptText } from "lucide-react";
 
 import { auth } from "@/auth";
 import { BetActionsSheet } from "@/components/bets/bet-actions-sheet";
@@ -14,6 +14,7 @@ import { getBetTypeLabel } from "@/lib/bet-display";
 import { getBetStatusMeta } from "@/lib/bet-status";
 import { calculateBetClosingLineValue } from "@/lib/bet-math";
 import { getBetForUser } from "@/lib/data/bets";
+import { resolveHistoryMatchIds } from "@/lib/data/analysis-links";
 import { getOpenDebtSuggestion } from "@/lib/data/debts";
 import { getUserPreferences } from "@/lib/data/user";
 import {
@@ -43,9 +44,10 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
 
   if (!bet) notFound();
 
-  const [preferences, debtSuggestion] = await Promise.all([
+  const [preferences, debtSuggestion, analysisLinks] = await Promise.all([
     getUserPreferences(session.user.id),
     getOpenDebtSuggestion(session.user.id),
+    resolveHistoryMatchIds(bet.legs),
   ]);
   const timeZone = preferences.timezone;
 
@@ -259,6 +261,22 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
                   <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground">
                     Cuota de cierre: {formatOdds(leg.closingOdds)}
                   </p>
+                )}
+
+                {analysisLinks.has(leg.id) && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 h-9 w-full gap-1.5 text-xs"
+                  >
+                    <Link
+                      href={`/analysis/historial/${analysisLinks.get(leg.id)}`}
+                    >
+                      <BarChart3 className="size-3.5" aria-hidden />
+                      Ver análisis del partido
+                    </Link>
+                  </Button>
                 )}
               </li>
             );

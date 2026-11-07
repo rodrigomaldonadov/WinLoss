@@ -456,6 +456,169 @@ export async function getAnalysisHistory({
   };
 }
 
+export type RecentResultMarket = {
+  key: "1x2" | "over25" | "btts";
+  label: string;
+  occurred: boolean;
+  probability: number | null;
+};
+
+export type RecentResultItem = {
+  id: string;
+  competition: string;
+  playedAt: Date;
+  homeName: string;
+  awayName: string;
+  homeGoals: number;
+  awayGoals: number;
+  provisional: boolean;
+  markets: RecentResultMarket[];
+};
+
+const RECENT_OUTCOME_LABEL = {
+  home: "Local",
+  draw: "Empate",
+  away: "Visitante",
+} as const;
+
+function parseTotals(value: Prisma.JsonValue | null): {
+  over25: number | null;
+  under25: number | null;
+} {
+  const record =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  return {
+    over25: typeof record.over25 === "number" ? record.over25 : null,
+    under25: typeof record.under25 === "number" ? record.under25 : null,
+  };
+}
+
+function parseBtts(value: Prisma.JsonValue | null): number | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  return typeof record.btts === "number" ? record.btts : null;
+}
+
+/**
+ * Últimos partidos jugados con captura guardada. No reconstruye nada: los
+ * mercados y probabilidades salen del snapshot; si falta, el partido se omite.
+ */
+export async function getRecentResults({
+  days = 10,
+  limit = 4,
+  now = new Date(),
+  client = prisma,
+}: {
+  days?: number;
+  limit?: number;
+  now?: Date;
+  client?: PrismaClient;
+} = {}): Promise<RecentResultItem[]> {
+  const rows = await client.historicalMatch.findMany({
+    where: {
+      playedAt: {
+        gte: new Date(now.getTime() - days * DAY_MS),
+        lte: now,
+      },
+    },
+    orderBy: [{ playedAt: "desc" }, { id: "desc" }],
+    take: limit * 4,
+    select: ROW_SELECT,
+  });
+  if (rows.length === 0) return [];
+
+  const snapshots: {
+    matchKey: string;
+    snapshotAt: Date;
+    kickoff: Date;
+    finalProbability: Prisma.JsonValue | null;
+    markets: Prisma.JsonValue | null;
+  }[] = [];
+
+  const keys = [...new Set(rows.map(snapshotKey))];
+  for (const group of chunk(keys, 400)) {
+    const found = await client.analysisSnapshot.findMany({
+      where: { matchKey: { in: group } },
+      select: {
+        matchKey: true,
+        snapshotAt: true,
+        kickoff: true,
+        finalProbability: true,
+        markets: true,
+      },
+      orderBy: { snapshotAt: "desc" },
+    });
+    snapshots.push(...found);
+  }
+
+  const grouped = new Map<string, typeof snapshots>();
+  for (const snapshot of snapshots) {
+    const list = grouped.get(snapshot.matchKey) ?? [];
+    list.push(snapshot);
+    grouped.set(snapshot.matchKey, list);
+  }
+
+  const items: RecentResultItem[] = [];
+  for (const row of rows) {
+    const latest = selectLatestSnapshot(grouped.get(snapshotKey(row)) ?? []);
+    const final = latest ? parseTriple(latest.finalProbability) : null;
+    if (!latest || !final) continue;
+
+    const totals = parseTotals(latest.finalProbability);
+    const btts = parseBtts(latest.markets);
+    const outcome = actualOutcomeFromGoals(row.homeGoals, row.awayGoals);
+    const outcomeKey =
+      outcome === "HOME" ? "home" : outcome === "DRAW" ? "draw" : "away";
+    const totalGoals = row.homeGoals + row.awayGoals;
+    const bothScored = row.homeGoals > 0 && row.awayGoals > 0;
+
+    const markets: RecentResultMarket[] = [
+      {
+        key: "1x2",
+        label: `1X2 ${RECENT_OUTCOME_LABEL[outcomeKey]}`,
+        occurred: true,
+        probability: final[outcomeKey],
+      },
+    ];
+
+    if (totals.over25 !== null) {
+      markets.push({
+        key: "over25",
+        label: "Más de 2.5",
+        occurred: totalGoals >= 3,
+        probability: totals.over25,
+      });
+    }
+
+    if (btts !== null) {
+      markets.push({
+        key: "btts",
+        label: "Ambos marcan",
+        occurred: bothScored,
+        probability: btts,
+      });
+    }
+
+    items.push({
+      id: row.id,
+      competition: row.competition,
+      playedAt: row.playedAt,
+      homeName: row.homeTeam.canonicalName,
+      awayName: row.awayTeam.canonicalName,
+      homeGoals: row.homeGoals,
+      awayGoals: row.awayGoals,
+      provisional: row.provisional || row.source === "api",
+      markets,
+    });
+
+    if (items.length >= limit) break;
+  }
+
+  return items;
+}
+
 /** Competiciones con resultados importados, de mayor a menor volumen. */
 export async function getHistoryCompetitions(
   client: PrismaClient = prisma,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CopyPlus } from "lucide-react";
+import { BarChart3, CopyPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 type BetCardProps = {
   bet: BetListItem;
   timeZone?: string;
+  /** legId → id de HistoricalMatch para "Ver análisis del partido". */
+  analysisLinks?: Map<string, string>;
   debtSuggestion?: {
     id: string;
     lenderName: string;
@@ -33,12 +35,17 @@ const MAX_VISIBLE_LEGS = 3;
 export function BetCard({
   bet,
   timeZone,
+  analysisLinks,
   debtSuggestion,
 }: BetCardProps) {
   const status = getBetStatusMeta(bet.status);
   const currency = bet.bankroll.currency;
   const pending = bet.status === "PENDING";
   const typeLabel = getBetTypeLabel(bet);
+  const singleLeg = bet.legs.length === 1 ? bet.legs[0] : null;
+  const singleAnalysisId = singleLeg
+    ? analysisLinks?.get(singleLeg.id)
+    : undefined;
 
   const boostPct = bet.oddsBoostPct ?? 0;
   const effectiveOdds =
@@ -145,6 +152,14 @@ export function BetCard({
                       )
                       .join(" · ")}
                   </p>
+                  {!pending && analysisLinks?.has(leg.id) && (
+                    <Link
+                      href={`/analysis/historial/${analysisLinks.get(leg.id)}`}
+                      className="mt-0.5 inline-flex text-[10px] font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      Ver análisis
+                    </Link>
+                  )}
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-[11px] font-medium tabular-nums">
@@ -216,6 +231,20 @@ export function BetCard({
           </dd>
         </div>
       </dl>
+
+      {!pending && singleAnalysisId && (
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="mt-2.5 h-9 w-full gap-1.5 text-xs"
+        >
+          <Link href={`/analysis/historial/${singleAnalysisId}`}>
+            <BarChart3 className="size-3.5" aria-hidden />
+            Ver análisis del partido
+          </Link>
+        </Button>
+      )}
 
       {!pending && closingValue && closingPercentage !== null && (
         <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-1.5 text-xs">

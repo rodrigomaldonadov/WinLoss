@@ -9,6 +9,7 @@ import { AnalysisFilters } from "@/components/analysis/analysis-filters";
 import { AnalysisHelpButton } from "@/components/analysis/analysis-help";
 import { AnalysisTabs } from "@/components/analysis/analysis-tabs";
 import { DataStatusNotice } from "@/components/analysis/data-status";
+import { RecentResults } from "@/components/analysis/recent-results";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   type AnalysisDays,
 } from "@/lib/analysis/view";
 import { getAnalysisFeed } from "@/lib/data/analysis";
+import { getRecentResults } from "@/lib/data/analysis-history";
 import { getAnalysisDataStatus } from "@/lib/data/analysis-status";
 import { getUserPreferences } from "@/lib/data/user";
 
@@ -53,10 +55,11 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
   const days = parseDays(params.dias);
   const selected = parseCompetitions(params.competicion);
 
-  const [items, preferences, dataStatus] = await Promise.all([
+  const [items, preferences, dataStatus, recentResults] = await Promise.all([
     getAnalysisFeed(session.user.id, { days }),
     getUserPreferences(session.user.id),
     getAnalysisDataStatus(),
+    getRecentResults({ limit: 4 }),
   ]);
 
   const options = new Map<string, { label: string; count: number }>();
@@ -163,6 +166,11 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
           )}
         </>
       )}
+
+      <RecentResults
+        items={recentResults}
+        timeZone={preferences.timezone}
+      />
     </div>
   );
 }

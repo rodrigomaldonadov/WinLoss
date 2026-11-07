@@ -9,6 +9,7 @@ import {
 import {
   getAnalysisHistory,
   getHistoryMatchHeader,
+  getRecentResults,
   searchAnalysisTeams,
 } from "./analysis-history";
 
@@ -18,7 +19,14 @@ type SnapshotFixture = {
   matchKey: string;
   snapshotAt: Date;
   kickoff: Date;
-  finalProbability: { home: number; draw: number; away: number } | null;
+  finalProbability: {
+    home: number;
+    draw: number;
+    away: number;
+    over25?: number;
+    under25?: number;
+  } | null;
+  markets?: { btts?: number } | null;
   confidence: "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT";
   externalEventId?: string | null;
 };
@@ -469,6 +477,62 @@ describe("getHistoryMatchHeader", () => {
   it("devuelve null si el partido no existe", async () => {
     const { client } = makeClient({ rows: [arsenalChelsea] });
     expect(await getHistoryMatchHeader("no-existe", client)).toBeNull();
+  });
+});
+
+describe("getRecentResults", () => {
+  it("solo devuelve partidos con captura y sus mercados", async () => {
+    const { client } = makeClient({
+      rows: [arsenalChelsea, liverpoolEverton],
+      snapshots: [
+        {
+          ...savedSnapshot,
+          finalProbability: {
+            home: 0.5,
+            draw: 0.3,
+            away: 0.2,
+            over25: 0.55,
+            under25: 0.45,
+          },
+          markets: { btts: 0.6 },
+        },
+      ],
+    });
+
+    const items = await getRecentResults({
+      client,
+      now: new Date("2026-11-09T00:00:00.000Z"),
+      limit: 4,
+    });
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBe("m1");
+    expect(
+      items[0]?.markets.map((market) => [
+        market.key,
+        market.occurred,
+        market.probability,
+      ]),
+    ).toEqual([
+      ["1x2", true, 0.5],
+      ["over25", true, 0.55],
+      ["btts", true, 0.6],
+    ]);
+  });
+
+  it("omite mercados que la captura no guardó", async () => {
+    const { client } = makeClient({
+      rows: [arsenalChelsea],
+      snapshots: [savedSnapshot],
+    });
+
+    const items = await getRecentResults({
+      client,
+      now: new Date("2026-11-09T00:00:00.000Z"),
+    });
+
+    expect(items[0]?.markets).toHaveLength(1);
+    expect(items[0]?.markets[0]?.key).toBe("1x2");
   });
 });
 

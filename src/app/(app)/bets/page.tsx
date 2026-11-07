@@ -9,6 +9,7 @@ import { BetsFiltersSheet } from "@/components/bets/bets-filters-sheet";
 import { VerifyResultsButton } from "@/components/bets/verify-results-button";
 import { CreatedBetBanner } from "@/components/bets/created-bet-banner";
 import { getOpenDebtSuggestion } from "@/lib/data/debts";
+import { resolveHistoryMatchIds } from "@/lib/data/analysis-links";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -195,6 +196,12 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
       getUserPreferences(session.user.id),
       getOpenDebtSuggestion(session.user.id),
     ]);
+
+  const analysisLinks = await resolveHistoryMatchIds(
+    bets
+      .filter((bet) => bet.status !== "PENDING")
+      .flatMap((bet) => bet.legs),
+  );
 
   const sharedParams = {
     estado: filter,
@@ -451,6 +458,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
                 key={bet.id}
                 bet={bet}
                 timeZone={preferences.timezone}
+                analysisLinks={analysisLinks}
                 debtSuggestion={
                   preferences.showDebts ? debtSuggestion : null
                 }
