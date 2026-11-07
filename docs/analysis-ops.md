@@ -180,8 +180,8 @@ usa los mismos módulos desde `src/lib/analysis/jobs/`.
 
 ## Duración, proxies y ejecución sin proxy
 
-El `sync` tarda unos **76 s** por el throttle entre competiciones; el refresh
-completo ronda los **80 s**. Decisiones:
+El `sync` tarda unos **76 s** y `results` otros **76 s** por el throttle entre
+competiciones; el refresh completo ronda los **150 s**. Decisiones:
 
 - El endpoint `GET /api/cron/analysis-refresh` es **síncrono**: responde cuando
   termina y devuelve el resumen. No se responde 202 en segundo plano porque el
@@ -191,7 +191,7 @@ completo ronda los **80 s**. Decisiones:
   el job dentro del contenedor con `npm run analysis:refresh`, que no pasa por
   el proxy.
 - Si prefieres usar HTTP, configura el timeout de lectura del proxy en al menos
-  **180 s** (recomendado 900 s) para `/api/cron/analysis-refresh`.
+  **300 s** (recomendado 900 s) para `/api/cron/analysis-refresh`.
 - El lock evita que una ejecución HTTP y una ejecución de contenedor se solapen.
 
 Ejemplo de cron del VPS usando el contenedor para el análisis:
