@@ -71,6 +71,7 @@ const ROW_SELECT = {
   homeGoals: true,
   awayGoals: true,
   provisional: true,
+  source: true,
   homeTeamId: true,
   awayTeamId: true,
   homeTeam: { select: { canonicalName: true } },
@@ -180,12 +181,33 @@ function buildWhere({
   return and.length > 0 ? { AND: and } : {};
 }
 
+type MineIndex = {
+  fixtures: Map<string, number[]>;
+  eventKeys: Set<string>;
+};
+
+async function loadExternalEventKeys(
+  client: PrismaClient,
+  externalIds: string[],
+): Promise<Set<string>> {
+  const keys = new Set<string>();
+  for (const group of chunk(externalIds, 400)) {
+    const rows = await client.analysisSnapshot.findMany({
+      where: { externalEventId: { in: group } },
+      select: { matchKey: true },
+      distinct: ["matchKey"],
+    });
+    for (const row of rows) keys.add(row.matchKey);
+  }
+  return keys;
+}
+
 async function loadMineIndex(
   client: PrismaClient,
   userId: string,
   from: Date | null,
   to: Date | null,
-) {
+): Promise<MineIndex> {
   const legs = await client.betLeg.findMany({
     where: {
       bet: { userId },
@@ -196,10 +218,21 @@ async function loadMineIndex(
         ...(to ? { lte: new Date(to.getTime() + MATCH_TIME_TOLERANCE_MS) } : {}),
       },
     },
-    select: { eventName: true, eventDate: true },
+    select: { eventName: true, eventDate: true, externalEventId: true },
   });
 
-  return buildMineIndex(legs, aliases);
+  const externalIds = [
+    ...new Set(
+      legs.flatMap((leg) => (leg.externalEventId ? [leg.externalEventId] : [])),
+    ),
+  ];
+
+  const eventKeys =
+    externalIds.length > 0
+      ? await loadExternalEventKeys(client, externalIds)
+      : new Set<string>();
+
+  return { fixtures: buildMineIndex(legs, aliases), eventKeys };
 }
 
 function snapshotKey(row: HistoryRow): string {
@@ -246,16 +279,25 @@ async function latestSnapshotByKey(
 
 function toHistoryItem({
   row,
+  key,
   snapshot,
-  mineIndex,
+  mine,
 }: {
   row: HistoryRow;
+  key: string;
   snapshot: SnapshotRow | undefined;
-  mineIndex: Map<string, number[]>;
+  mine: MineIndex;
 }): AnalysisHistoryItem {
   const homeName = row.homeTeam.canonicalName;
   const awayName = row.awayTeam.canonicalName;
   const prediction = snapshot ? parseTriple(snapshot.finalProbability) : null;
+  const hasBet =
+    mine.eventKeys.has(key) ||
+    matchIsMine(
+      mine.fixtures,
+      { homeName, awayName, playedAt: row.playedAt },
+      aliases,
+    );
 
   return {
     id: row.id,
@@ -267,15 +309,11 @@ function toHistoryItem({
     homeGoals: row.homeGoals,
     awayGoals: row.awayGoals,
     outcome: actualOutcomeFromGoals(row.homeGoals, row.awayGoals),
-    provisional: row.provisional,
+    provisional: row.provisional || row.source === "api",
     mode: snapshot ? "saved" : "reconstructed",
     prediction,
     confidence: snapshot?.confidence ?? null,
-    hasBet: matchIsMine(
-      mineIndex,
-      { homeName, awayName, playedAt: row.playedAt },
-      aliases,
-    ),
+    hasBet,
   };
 }
 
@@ -355,13 +393,15 @@ export async function getAnalysisHistory({
     const snapshots = await latestSnapshotByKey(client, rows);
 
     return {
-      items: rows.map((row) =>
-        toHistoryItem({
+      items: rows.map((row) => {
+        const key = snapshotKey(row);
+        return toHistoryItem({
           row,
-          snapshot: snapshots.get(snapshotKey(row)),
-          mineIndex,
-        }),
-      ),
+          key,
+          snapshot: snapshots.get(key),
+          mine: mineIndex,
+        });
+      }),
       total,
       page,
       totalPages,
@@ -379,19 +419,25 @@ export async function getAnalysisHistory({
     loadMineIndex(client, userId, from, to),
   ]);
 
-  if (filters.mine && mineIndex.size === 0) {
+  if (
+    filters.mine &&
+    mineIndex.fixtures.size === 0 &&
+    mineIndex.eventKeys.size === 0
+  ) {
     return { ...emptyResult(false), matchedTeams };
   }
 
   const snapshots = await latestSnapshotByKey(client, rows);
   const items = rows
-    .map((row) =>
-      toHistoryItem({
+    .map((row) => {
+      const key = snapshotKey(row);
+      return toHistoryItem({
         row,
-        snapshot: snapshots.get(snapshotKey(row)),
-        mineIndex,
-      }),
-    )
+        key,
+        snapshot: snapshots.get(key),
+        mine: mineIndex,
+      });
+    })
     .filter((item) => filters.mode === "all" || item.mode === filters.mode)
     .filter((item) => !filters.mine || item.hasBet);
 
@@ -428,5 +474,18 @@ export async function getHistoryCompetitions(
       (left, right) =>
         right.count - left.count || left.name.localeCompare(right.name, "es"),
     );
+}
+
+/** Sugerencias para el autocompletado de equipo (alias ya resueltos). */
+export async function searchAnalysisTeams(
+  query: string,
+  {
+    limit = 8,
+    client = prisma,
+  }: { limit?: number; client?: PrismaClient } = {},
+): Promise<{ id: string; name: string }[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+  return (await resolveTeams(client, trimmed)).slice(0, limit);
 }
 

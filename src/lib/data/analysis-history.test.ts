@@ -6,7 +6,7 @@ import {
   type HistoryFilterState,
 } from "@/lib/analysis/history";
 
-import { getAnalysisHistory } from "./analysis-history";
+import { getAnalysisHistory, searchAnalysisTeams } from "./analysis-history";
 
 const LIMA = "America/Lima";
 
@@ -16,6 +16,7 @@ type SnapshotFixture = {
   kickoff: Date;
   finalProbability: { home: number; draw: number; away: number } | null;
   confidence: "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT";
+  externalEventId?: string | null;
 };
 
 type RowFixture = {
@@ -26,6 +27,7 @@ type RowFixture = {
   homeGoals: number;
   awayGoals: number;
   provisional: boolean;
+  source: string;
   homeTeamId: string;
   awayTeamId: string;
   homeTeam: { canonicalName: string };
@@ -55,6 +57,7 @@ function row({
     homeGoals,
     awayGoals,
     provisional: false,
+    source: "football-data.co.uk",
     homeTeamId: `team-${home.toLowerCase()}`,
     awayTeamId: `team-${away.toLowerCase()}`,
     homeTeam: { canonicalName: home },
@@ -70,7 +73,7 @@ function makeClient({
 }: {
   rows: RowFixture[];
   snapshots?: SnapshotFixture[];
-  legs?: { eventName: string; eventDate: Date | null }[];
+  legs?: { eventName: string; eventDate: Date | null; externalEventId?: string | null }[];
   teams?: { id: string; canonicalName: string }[];
 }) {
   const historicalMatch = {
@@ -83,8 +86,23 @@ function makeClient({
   };
   const analysisSnapshot = {
     findMany: vi.fn(
-      async (args: { where: { matchKey: { in: string[] } } }) => {
-        const keys = new Set(args.where.matchKey.in);
+      async (args: {
+        where: {
+          matchKey?: { in: string[] };
+          externalEventId?: { in: string[] };
+        };
+      }) => {
+        if (args.where.externalEventId) {
+          const ids = new Set(args.where.externalEventId.in);
+          return snapshots
+            .filter(
+              (snapshot) =>
+                snapshot.externalEventId &&
+                ids.has(snapshot.externalEventId),
+            )
+            .map((snapshot) => ({ matchKey: snapshot.matchKey }));
+        }
+        const keys = new Set(args.where.matchKey?.in ?? []);
         return snapshots.filter((snapshot) => keys.has(snapshot.matchKey));
       },
     ),
@@ -93,7 +111,7 @@ function makeClient({
     findMany: vi.fn(async () => legs),
   };
   const team = {
-    findMany: vi.fn(async () => teams),
+    findMany: vi.fn(async (_args?: { where: unknown }) => teams),
   };
 
   return {
@@ -227,6 +245,46 @@ describe("getAnalysisHistory", () => {
     expect(result.items[0]?.hasBet).toBe(true);
   });
 
+  it("liga la apuesta por externalEventId aunque el nombre no coincida", async () => {
+    const { client } = makeClient({
+      rows: [arsenalChelsea, liverpoolEverton],
+      snapshots: [{ ...savedSnapshot, externalEventId: "evt-99" }],
+      legs: [
+        {
+          eventName: "Evento sin equipos",
+          eventDate: null,
+          externalEventId: "evt-99",
+        },
+      ],
+    });
+
+    const result = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters({ mine: true }),
+      timeZone: LIMA,
+      client,
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.items[0]?.id).toBe("m1");
+    expect(result.items[0]?.hasBet).toBe(true);
+  });
+
+  it("marca como provisional un resultado de la API", async () => {
+    const { client } = makeClient({
+      rows: [{ ...arsenalChelsea, source: "api", provisional: false }],
+    });
+
+    const result = await getAnalysisHistory({
+      userId: "user-1",
+      filters: filters(),
+      timeZone: LIMA,
+      client,
+    });
+
+    expect(result.items[0]?.provisional).toBe(true);
+  });
+
   it("resuelve el equipo por alias antes de consultar", async () => {
     const { client, team } = makeClient({
       rows: [arsenalChelsea],
@@ -313,5 +371,46 @@ describe("getAnalysisHistory", () => {
     );
   });
 });
+
+describe("searchAnalysisTeams", () => {
+  it("normaliza el nombre y busca por alias, sin sufijos de club", async () => {
+    const { client, team } = makeClient({
+      rows: [],
+      teams: [{ id: "team-barcelona", canonicalName: "Barcelona" }],
+    });
+
+    const result = await searchAnalysisTeams("FC Barcelona", { client });
+
+    expect(result).toEqual([
+      { id: "team-barcelona", name: "Barcelona" },
+    ]);
+
+    const args = team.findMany.mock.calls[0]?.[0] as unknown as {
+      where: {
+        AND: {
+          OR: {
+            normalizedName?: { contains: string };
+            aliases?: { some: { normalized: { contains: string } } };
+          }[];
+        }[];
+      };
+    };
+    expect(args.where.AND[0]?.OR[0]).toEqual({
+      normalizedName: { contains: "barcelona" },
+    });
+    expect(args.where.AND[0]?.OR[2]).toEqual({
+      aliases: { some: { normalized: { contains: "barcelona" } } },
+    });
+  });
+
+  it("no consulta la base con menos de dos caracteres", async () => {
+    const { client, team } = makeClient({ rows: [] });
+
+    expect(await searchAnalysisTeams("a", { client })).toEqual([]);
+    expect(team.findMany).not.toHaveBeenCalled();
+  });
+});
+
+
 
 

@@ -1,15 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  CalendarDays,
-  Filter,
-  Search,
-  Ticket,
-  X,
-} from "lucide-react";
+import { CalendarDays, Filter, Ticket, X } from "lucide-react";
 
+import { HistoryTeamSearch } from "@/components/analysis/history-team-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -93,6 +88,12 @@ export function HistoryFilters({
   presets,
 }: HistoryFiltersProps) {
   const visibleCompetitions = competitions.slice(0, MAX_COMPETITION_CHIPS);
+  const [competitionQuery, setCompetitionQuery] = useState("");
+  const filteredCompetitions = visibleCompetitions.filter((competition) =>
+    competition.name
+      .toLowerCase()
+      .includes(competitionQuery.trim().toLowerCase()),
+  );
 
   const activeChips = [
     ...(filters.query
@@ -152,32 +153,7 @@ export function HistoryFilters({
     <div className="space-y-1.5">
       <form action="/analysis/historial" method="get" role="search">
         {hiddenParams(filters)}
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            key={filters.query}
-            name="q"
-            type="search"
-            defaultValue={filters.query}
-            placeholder="Buscar equipo: Real Madrid, Man Utd…"
-            aria-label="Buscar por equipo"
-            enterKeyHint="search"
-            autoComplete="off"
-            className="h-10 pr-11 pl-9 text-sm"
-          />
-          <Button
-            type="submit"
-            size="icon-xs"
-            variant="ghost"
-            className="absolute top-1/2 right-1 -translate-y-1/2"
-            aria-label="Buscar"
-          >
-            <ArrowRight className="size-4" aria-hidden />
-          </Button>
-        </div>
+        <HistoryTeamSearch key={filters.query} filters={filters} />
       </form>
 
       {filters.query && matchedTeams.length > 0 && (
@@ -259,6 +235,14 @@ export function HistoryFilters({
                 >
                   Competiciones
                 </h3>
+                <Input
+                  value={competitionQuery}
+                  onChange={(event) => setCompetitionQuery(event.target.value)}
+                  placeholder="Filtrar competiciones"
+                  aria-label="Filtrar competiciones"
+                  autoComplete="off"
+                  className="h-10 text-sm"
+                />
                 <div className="flex flex-wrap gap-1.5">
                   <Link
                     href={historyHref({
@@ -278,7 +262,7 @@ export function HistoryFilters({
                   >
                     Todas
                   </Link>
-                  {visibleCompetitions.map((competition) => {
+                  {filteredCompetitions.map((competition) => {
                     const active = filters.competitions.includes(
                       competition.name,
                     );
@@ -313,6 +297,11 @@ export function HistoryFilters({
                     );
                   })}
                 </div>
+                {filteredCompetitions.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Sin competiciones con ese nombre.
+                  </p>
+                )}
                 {competitions.length > MAX_COMPETITION_CHIPS && (
                   <p className="text-[11px] text-muted-foreground">
                     Se muestran las {MAX_COMPETITION_CHIPS} competiciones con
