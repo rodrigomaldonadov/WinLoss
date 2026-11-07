@@ -24,8 +24,9 @@ CSV; la copia de archivos es la única tarea manual.
 
 El import es incremental: guarda tamaño, `mtime` y hash SHA-256 por archivo en
 `AnalysisImportFile`. Si nada cambió, termina en milisegundos; si un archivo
-cambió, procesa solo ese. Los históricos se agregan con `skipDuplicates` (las
-filas ya existentes no se sobrescriben) y los lotes de fixtures se reemplazan al
+cambió, procesa solo ese. Los históricos de la **temporada en curso** se
+actualizan por la clave única (marcador, resultado, cuotas y estadísticas); las
+temporadas cerradas no se sobrescriben. Los lotes de fixtures se reemplazan al
 llegar uno nuevo. Para forzar un reproceso completo:
 
 ```bash

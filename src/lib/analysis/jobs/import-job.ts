@@ -24,6 +24,12 @@ import {
   isContentChanged,
   needsHashCheck,
 } from "./incremental";
+import {
+  isCurrentSeasonRow,
+  planHistoricalUpdates,
+  type HistoricalValue,
+} from "./historical-update";
+import { resultDedupeKey } from "./result-dedupe";
 
 const CHUNK_SIZE = 1_000;
 
@@ -41,6 +47,7 @@ type HistoricalStats = {
   file: string;
   rows: number;
   created: number;
+  updated: number;
   existing: number;
   old: number;
   invalid: number;
@@ -59,6 +66,7 @@ export type ImportJobSummary = {
     files: number;
     rows: number;
     created: number;
+    updated: number;
     existing: number;
     old: number;
     invalid: number;
@@ -139,6 +147,7 @@ function emptySummary(
       files: 0,
       rows: 0,
       created: 0,
+      updated: 0,
       existing: 0,
       old: 0,
       invalid: 0,
@@ -313,6 +322,7 @@ export async function runImportJob({
 
     try {
       const records: Prisma.HistoricalMatchCreateManyInput[] = [];
+      const values: HistoricalValue[] = [];
       const unresolvedBefore = new Set(unresolved);
       for (const row of parsed.rows) {
         if (Date.now() >= deadline) {
@@ -322,6 +332,13 @@ export async function runImportJob({
         const homeTeamId = await teamIdFor(row.homeName);
         const awayTeamId = await teamIdFor(row.awayName);
         if (!homeTeamId || !awayTeamId) continue;
+        const dedupeKey = resultDedupeKey({
+          competition: row.competition.competition,
+          competitionCode: row.competition.code,
+          playedAt: row.playedAt,
+          homeTeamId,
+          awayTeamId,
+        });
 
         records.push({
           source: HISTORICAL_SOURCE,
@@ -337,7 +354,197 @@ export async function runImportJob({
           result: row.result,
           odds: (row.odds as Prisma.InputJsonValue | null) ?? undefined,
           stats: (row.stats as Prisma.InputJsonValue | null) ?? undefined,
+          dedupeKey,
         });
+        values.push({
+          competition: row.competition.competition,
+          competitionCode: row.competition.code,
+          season: row.season,
+          seasonStart: row.seasonStart,
+          playedAt: row.playedAt,
+          homeTeamId,
+          awayTeamId,
+          homeGoals: row.homeGoals,
+          awayGoals: row.awayGoals,
+          result: row.result,
+          odds: row.odds,
+          stats: row.stats,
+          dedupeKey,
+        });
+      }
+
+      if (timedOut) {
+        logger(`[import] ${entry.relative}: detenido por límite de tiempo`);
+        break;
+      }
+
+      // La temporada en curso se actualiza: marcador corregido y cuotas de
+      // cierre que aparecen después del primer import.
+      let updated = 0;
+      const recordsByKey = new Map(
+        records
+          .filter((record) => record.dedupeKey)
+          .map((record) => [record.dedupeKey!, record] as const),
+      );
+      const valuesByKey = new Map(
+        values
+          .filter((value) => value.dedupeKey)
+          .map((value) => [value.dedupeKey!, value] as const),
+      );
+
+      // El CSV oficial reemplaza cualquier fila provisional de API.
+      if (recordsByKey.size > 0) {
+        const provisionalRows = await prisma.historicalMatch.findMany({
+          where: {
+            dedupeKey: { in: [...recordsByKey.keys()] },
+            provisional: true,
+          },
+          select: {
+            id: true,
+            dedupeKey: true,
+            homeGoals: true,
+            awayGoals: true,
+            source: true,
+          },
+        });
+
+        for (const provisional of provisionalRows) {
+          if (Date.now() >= deadline) {
+            timedOut = true;
+            break;
+          }
+          const value = provisional.dedupeKey
+            ? valuesByKey.get(provisional.dedupeKey)
+            : undefined;
+          const record = provisional.dedupeKey
+            ? recordsByKey.get(provisional.dedupeKey)
+            : undefined;
+          if (!value || !record) continue;
+
+          if (
+            provisional.homeGoals !== value.homeGoals ||
+            provisional.awayGoals !== value.awayGoals
+          ) {
+            await prisma.resultDiscrepancy.create({
+              data: {
+                dedupeKey: value.dedupeKey!,
+                competition: value.competition,
+                playedAt: value.playedAt,
+                homeTeamId: value.homeTeamId,
+                awayTeamId: value.awayTeamId,
+                csvHomeGoals: value.homeGoals,
+                csvAwayGoals: value.awayGoals,
+                apiHomeGoals: provisional.homeGoals,
+                apiAwayGoals: provisional.awayGoals,
+                apiSource: provisional.source,
+                resolvedBy: "csv",
+              },
+            });
+          }
+
+          // Si ya existe una fila oficial con la misma clave única, la
+          // provisional es redundante: gana el CSV y se elimina el duplicado.
+          const official = await prisma.historicalMatch.findFirst({
+            where: {
+              competition: value.competition,
+              season: value.season,
+              playedAt: value.playedAt,
+              homeTeamId: value.homeTeamId,
+              awayTeamId: value.awayTeamId,
+              provisional: false,
+            },
+            select: { id: true },
+          });
+          if (official && official.id !== provisional.id) {
+            await prisma.historicalMatch.delete({
+              where: { id: provisional.id },
+            });
+            continue;
+          }
+
+          await prisma.historicalMatch.update({
+            where: { id: provisional.id },
+            data: {
+              source: HISTORICAL_SOURCE,
+              provisional: false,
+              competitionCode: value.competitionCode,
+              season: value.season,
+              seasonStart: value.seasonStart,
+              playedAt: value.playedAt,
+              homeGoals: value.homeGoals,
+              awayGoals: value.awayGoals,
+              result: value.result,
+              odds: record.odds ?? Prisma.JsonNull,
+              stats: record.stats ?? Prisma.JsonNull,
+              dedupeKey: value.dedupeKey,
+            },
+          });
+          updated += 1;
+        }
+      }
+
+      if (timedOut) {
+        logger(`[import] ${entry.relative}: detenido por límite de tiempo`);
+        break;
+      }
+
+      const currentValues = values.filter((value) =>
+        isCurrentSeasonRow(value, now),
+      );
+      if (currentValues.length > 0) {
+        const currentSeasons = [
+          ...new Set(currentValues.map((value) => value.season)),
+        ];
+        const existingRows = await prisma.historicalMatch.findMany({
+          where: {
+            competition: records[0]?.competition ?? "",
+            season: { in: currentSeasons },
+          },
+          select: {
+            id: true,
+            competition: true,
+            competitionCode: true,
+            season: true,
+            seasonStart: true,
+            playedAt: true,
+            homeTeamId: true,
+            awayTeamId: true,
+            homeGoals: true,
+            awayGoals: true,
+            result: true,
+            odds: true,
+            stats: true,
+            dedupeKey: true,
+            provisional: true,
+          },
+        });
+        const updates = planHistoricalUpdates(currentValues, existingRows, now);
+
+        for (const update of updates) {
+          if (Date.now() >= deadline) {
+            timedOut = true;
+            break;
+          }
+          const { odds, stats, ...rest } = update.data;
+          const data: Prisma.HistoricalMatchUpdateInput = { ...rest };
+          if (odds !== undefined) {
+            data.odds =
+              odds === null
+                ? Prisma.JsonNull
+                : (odds as Prisma.InputJsonValue);
+          }
+          if (stats !== undefined) {
+            data.stats =
+              stats === null
+                ? Prisma.JsonNull
+                : (stats as Prisma.InputJsonValue);
+          }
+          await prisma.historicalMatch.update({
+            where: { id: update.id },
+            data,
+          });
+          updated += 1;
+        }
       }
 
       if (timedOut) {
@@ -368,6 +575,7 @@ export async function runImportJob({
         file: entry.relative,
         rows: parsed.rows.length,
         created,
+        updated,
         existing,
         old: parsed.skippedOld,
         invalid: parsed.skippedInvalid,
@@ -396,7 +604,7 @@ export async function runImportJob({
       });
 
       logger(
-        `[historical] ${entry.relative} | leídas ${parsed.rows.length} | nuevas ${created} | existentes ${existing} | antiguas ${parsed.skippedOld} | inválidas ${parsed.skippedInvalid} | sin marcador ${parsed.skippedMissingScore} | duplicadas ${parsed.duplicatesInFile}`,
+        `[historical] ${entry.relative} | leídas ${parsed.rows.length} | nuevas ${created} | actualizadas ${updated} | existentes ${existing} | antiguas ${parsed.skippedOld} | inválidas ${parsed.skippedInvalid} | sin marcador ${parsed.skippedMissingScore} | duplicadas ${parsed.duplicatesInFile}`,
       );
     } catch (error) {
       errors.push(`${entry.relative}: ${String(error)}`);
@@ -548,6 +756,10 @@ export async function runImportJob({
     (sum, item) => sum + item.created,
     0,
   );
+  const totalUpdated = historicalStats.reduce(
+    (sum, item) => sum + item.updated,
+    0,
+  );
   const totalRows = historicalStats.reduce((sum, item) => sum + item.rows, 0);
   const totalOld = historicalStats.reduce((sum, item) => sum + item.old, 0);
   const totalInvalid = historicalStats.reduce(
@@ -564,7 +776,7 @@ export async function runImportJob({
   );
 
   logger(
-    `[import] resumen: ${changed.length} archivos revisados, ${totalRows} filas válidas, ${totalCreated} nuevas, ${skippedFiles} sin cambios`,
+    `[import] resumen: ${changed.length} archivos revisados, ${totalRows} filas válidas, ${totalCreated} nuevas, ${totalUpdated} actualizadas, ${skippedFiles} sin cambios`,
   );
 
   return {
@@ -577,6 +789,7 @@ export async function runImportJob({
       files: historicalStats.length,
       rows: totalRows,
       created: totalCreated,
+      updated: totalUpdated,
       existing: historicalStats.reduce((sum, item) => sum + item.existing, 0),
       old: totalOld,
       invalid: totalInvalid,

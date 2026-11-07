@@ -143,8 +143,11 @@ Si la imagen conserva las dependencias de desarrollo y `tsx`:
 docker exec -it <contenedor> npm run analysis:import
 docker exec -it <contenedor> npm run analysis:sync
 docker exec -it <contenedor> npm run analysis:generate
+docker exec -it <contenedor> npm run analysis:refresh
 ```
 
+`analysis:refresh` ejecuta el flujo completo (import → sync → generate), usa el
+mismo lock y deja el mismo registro en `AnalysisRefreshRun` que el endpoint.
 Para reprocesar todos los CSV aunque no hayan cambiado:
 
 ```bash
@@ -154,6 +157,77 @@ docker exec -it <contenedor> npm run analysis:import -- --force
 Si la imagen poda devDependencies, usa el endpoint programado o reconstruye la
 imagen con las dependencias necesarias. El job de la app no depende de `tsx`:
 usa los mismos módulos desde `src/lib/analysis/jobs/`.
+
+## Duración, proxies y ejecución sin proxy
+
+El `sync` tarda unos **76 s** por el throttle entre competiciones; el refresh
+completo ronda los **80 s**. Decisiones:
+
+- El endpoint `GET /api/cron/analysis-refresh` es **síncrono**: responde cuando
+  termina y devuelve el resumen. No se responde 202 en segundo plano porque el
+  trabajo posterior a la respuesta no está garantizado en todos los despliegues
+  de Next.js; el lock y `AnalysisRefreshRun` siguen siendo la fuente de verdad.
+- Si tu proxy corta a los 30–60 s, **no aumentes el timeout a ciegas**: ejecuta
+  el job dentro del contenedor con `npm run analysis:refresh`, que no pasa por
+  el proxy.
+- Si prefieres usar HTTP, configura el timeout de lectura del proxy en al menos
+  **180 s** (recomendado 900 s) para `/api/cron/analysis-refresh`.
+- El lock evita que una ejecución HTTP y una ejecución de contenedor se solapen.
+
+Ejemplo de cron del VPS usando el contenedor para el análisis:
+
+```cron
+*/20 * * * * . /etc/winloss/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/settle >/dev/null
+0 */6 * * * docker exec winloss npm run analysis:refresh >> /var/log/winloss-analysis.log 2>&1
+0 18 * * 5 docker exec winloss npm run analysis:refresh >> /var/log/winloss-analysis.log 2>&1
+0 18 * * 2 docker exec winloss npm run analysis:refresh >> /var/log/winloss-analysis.log 2>&1
+```
+
+En Dokploy puedes usar una tarea programada con el comando
+`npm run analysis:refresh` dentro del servicio, sin `curl`.
+
+## Estado de la última corrida
+
+Endpoint protegido:
+
+```bash
+curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
+  https://tu-dominio/api/cron/analysis-refresh/status
+```
+
+Devuelve:
+
+```json
+{
+  "ok": true,
+  "running": false,
+  "lock": null,
+  "lastRun": {
+    "status": "SUCCESS",
+    "startedAt": "2026-11-07T18:00:00.000Z",
+    "finishedAt": "2026-11-07T18:01:16.000Z",
+    "durationMs": 76000,
+    "steps": [],
+    "error": null
+  },
+  "recentRuns": []
+}
+```
+
+- `running`: hay un lock vigente.
+- `lock`: cuándo se tomó y cuándo caduca.
+- `lastRun`: último resumen guardado, con `status`, duración y pasos.
+- `recentRuns`: las últimas 5 corridas.
+
+También puedes consultarlo directamente en la base:
+
+```sql
+SELECT "startedAt", "status", "durationMs", "steps", "error"
+FROM "AnalysisRefreshRun"
+ORDER BY "startedAt" DESC
+LIMIT 5;
+```
+
 
 ## Qué devuelve el endpoint
 

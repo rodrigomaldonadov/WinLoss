@@ -19,6 +19,7 @@
     "analysis:aliases:api": "tsx scripts/analysis-api-aliases.ts",
     "analysis:sync": "tsx scripts/analysis-sync-fixtures.ts",
     "analysis:generate": "tsx scripts/analysis-generate.ts",
+    "analysis:refresh": "tsx scripts/analysis-refresh.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node scripts/smoke.mjs",

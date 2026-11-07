@@ -175,3 +175,170 @@ export async function fetchFootballDataFixtures(
     away: match.awayTeam?.name ?? "",
   }));
 }
+
+export type ApiResult = {
+  provider: "football-data" | "thesportsdb";
+  competition: string;
+  competitionCode: string | null;
+  externalId: string;
+  kickoff: string;
+  home: string;
+  away: string;
+  homeGoals: number;
+  awayGoals: number;
+};
+
+type FdResultMatch = {
+  id: number;
+  utcDate: string;
+  status?: string;
+  homeTeam?: { name?: string | null };
+  awayTeam?: { name?: string | null };
+  score?: {
+    duration?: string;
+    fullTime?: { home?: number | null; away?: number | null };
+    extraTime?: { home?: number | null; away?: number | null } | null;
+    penalties?: { home?: number | null; away?: number | null } | null;
+  };
+};
+
+type TsdbResultEvent = {
+  idEvent?: string;
+  strHomeTeam?: string;
+  strAwayTeam?: string;
+  strTimestamp?: string;
+  dateEvent?: string;
+  strTime?: string;
+  intHomeScore?: string | number | null;
+  intAwayScore?: string | number | null;
+  strStatus?: string | null;
+};
+
+function parseScore(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    return Number(value);
+  }
+  return null;
+}
+
+function isFinishedFootballData(match: FdResultMatch): boolean {
+  if (match.status !== "FINISHED") return false;
+  if (match.score?.duration && match.score.duration !== "REGULAR") return false;
+  if (match.score?.extraTime || match.score?.penalties) return false;
+  return (
+    parseScore(match.score?.fullTime?.home) !== null &&
+    parseScore(match.score?.fullTime?.away) !== null
+  );
+}
+
+function isFinishedTsdb(event: TsdbResultEvent): boolean {
+  const status = (event.strStatus ?? "").trim().toUpperCase();
+  if (!status) return false;
+  if (
+    /(AET|PEN|AP|POSTP|CANC|ABAND|LIVE|1H|2H|HT|ET)/.test(status)
+  ) {
+    return false;
+  }
+  return /^(FT|MATCH FINISHED|FINISHED)$/.test(status);
+}
+
+function tsdbKickoff(event: TsdbResultEvent): string | null {
+  const timestamp = event.strTimestamp;
+  if (timestamp) {
+    const value = /Z$|[+-]\d{2}:\d{2}$/.test(timestamp)
+      ? timestamp
+      : `${timestamp}Z`;
+    return Number.isNaN(Date.parse(value)) ? null : value;
+  }
+  if (!event.dateEvent) return null;
+  const value = `${event.dateEvent}T${event.strTime ?? "00:00:00"}Z`;
+  return Number.isNaN(Date.parse(value)) ? null : value;
+}
+
+/** Resultados FINISHED de football-data.org; solo 90 minutos reglamentarios. */
+export async function fetchFootballDataResults(
+  competition: string,
+  now: Date,
+  windowDays = 7,
+): Promise<ApiResult[]> {
+  const key = process.env.FOOTBALL_DATA_API_KEY;
+  if (!key) return [];
+  const code = getCompetitionProviderKeys("Fútbol", competition)?.footballData;
+  if (!code) return [];
+
+  const from = isoDate(new Date(now.getTime() - windowDays * DAY_MS));
+  const to = isoDate(now);
+  const json = (await fetchJson(
+    `${FD_BASE}/competitions/${code}/matches?dateFrom=${from}&dateTo=${to}&status=FINISHED`,
+    { headers: { "X-Auth-Token": key } },
+  )) as { matches?: FdResultMatch[] };
+
+  return (json.matches ?? [])
+    .filter(isFinishedFootballData)
+    .map((match) => ({
+      provider: "football-data" as const,
+      competition,
+      competitionCode:
+        TARGETS.find((target) => target.competition === competition)?.code ??
+        null,
+      externalId: `fd:${match.id}`,
+      kickoff: match.utcDate,
+      home: match.homeTeam?.name ?? "",
+      away: match.awayTeam?.name ?? "",
+      homeGoals: parseScore(match.score?.fullTime?.home) ?? 0,
+      awayGoals: parseScore(match.score?.fullTime?.away) ?? 0,
+    }))
+    .filter(
+      (result) =>
+        result.home &&
+        result.away &&
+        !Number.isNaN(Date.parse(result.kickoff)),
+    );
+}
+
+/** Resultados FINISHED de TheSportsDB; descarta AET/PEN/estados no finales. */
+export async function fetchTsdbResults(
+  competition: string,
+  now: Date,
+  windowDays = 7,
+): Promise<ApiResult[]> {
+  const leagueId = tsdbLeagueId(competition);
+  if (!leagueId) return [];
+  const key = process.env.THESPORTSDB_API_KEY ?? "123";
+  const json = (await fetchJson(
+    `${TSDB_BASE}/${key}/eventspastleague.php?id=${leagueId}`,
+  )) as { events?: TsdbResultEvent[] | null };
+
+  const from = now.getTime() - windowDays * DAY_MS;
+  const to = now.getTime();
+
+  return (json.events ?? [])
+    .filter(isFinishedTsdb)
+    .map((event) => {
+      const kickoff = tsdbKickoff(event);
+      return {
+        provider: "thesportsdb" as const,
+        competition,
+        competitionCode:
+          TARGETS.find((target) => target.competition === competition)?.code ??
+          null,
+        externalId: `tsdb:${event.idEvent ?? ""}`,
+        kickoff: kickoff ?? "",
+        home: event.strHomeTeam ?? "",
+        away: event.strAwayTeam ?? "",
+        homeGoals: parseScore(event.intHomeScore) ?? 0,
+        awayGoals: parseScore(event.intAwayScore) ?? 0,
+      };
+    })
+    .filter((result) => {
+      const time = Date.parse(result.kickoff);
+      return (
+        result.home &&
+        result.away &&
+        !Number.isNaN(time) &&
+        time >= from &&
+        time <= to
+      );
+    });
+}

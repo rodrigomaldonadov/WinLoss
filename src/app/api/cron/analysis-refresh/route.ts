@@ -1,17 +1,10 @@
-import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { runGenerateJob } from "@/lib/analysis/jobs/generate-job";
-import { runImportJob } from "@/lib/analysis/jobs/import-job";
-import { createPrismaLock } from "@/lib/analysis/jobs/lock";
-import { runAnalysisRefresh } from "@/lib/analysis/jobs/run";
-import { runSyncJob } from "@/lib/analysis/jobs/sync-job";
+import { executeAnalysisRefresh } from "@/lib/analysis/jobs/refresh-runner";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 900;
-
-const LOCK_KEY = "analysis-refresh";
 
 function authorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -23,29 +16,12 @@ function authorized(request: Request): boolean {
   return token === secret;
 }
 
-async function recordRun(summary: Awaited<ReturnType<typeof runAnalysisRefresh>>) {
-  try {
-    await prisma.analysisRefreshRun.create({
-      data: {
-        trigger: "cron",
-        status: summary.status,
-        startedAt: new Date(summary.startedAt),
-        finishedAt: new Date(summary.finishedAt),
-        durationMs: summary.durationMs,
-        steps: summary.steps as unknown as Prisma.InputJsonValue,
-        error: summary.reason ?? null,
-      },
-    });
-    return true;
-  } catch (error) {
-    console.error("[cron/analysis-refresh] no se pudo guardar el resumen", error);
-    return false;
-  }
-}
-
 /**
  * Job único de /analysis: import incremental → sync de APIs → recálculo.
  * Protegido con CRON_SECRET. Si ya hay una corrida en curso devuelve SKIPPED.
+ *
+ * La ejecución es síncrona (unos 80 s por el throttle del sync). Para proxies
+ * con timeout bajo, usa `npm run analysis:refresh` dentro del contenedor.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -62,76 +38,26 @@ export async function GET(request: Request) {
     );
   }
 
-  const timeoutMs = Number(
-    process.env.ANALYSIS_REFRESH_TIMEOUT_MS ?? "840000",
-  );
-  const lock = createPrismaLock(prisma, LOCK_KEY, timeoutMs + 120_000);
-
-  let summary: Awaited<ReturnType<typeof runAnalysisRefresh>>;
   try {
-    summary = await runAnalysisRefresh({
-      lock,
-      timeoutMs,
+    const { summary, logged } = await executeAnalysisRefresh({
+      prisma,
+      trigger: "cron",
       logger: (message) => console.log(message),
-      steps: {
-        import: async ({ now, deadline }) => {
-          const result = await runImportJob({
-            prisma,
-            now,
-            deadline,
-            logger: (message) => console.log(message),
-          });
-          return {
-            ok: result.ok,
-            summary: result,
-            error: result.errors.length > 0 ? result.errors.join("; ") : undefined,
-          };
-        },
-        sync: async ({ now, deadline }) => {
-          const result = await runSyncJob({
-            prisma,
-            now,
-            deadline,
-            logger: (message) => console.log(message),
-          });
-          return {
-            ok: result.ok,
-            summary: result,
-            error: result.errors.length > 0 ? result.errors.join("; ") : undefined,
-          };
-        },
-        generate: async ({ now, deadline }) => {
-          const result = await runGenerateJob({
-            prisma,
-            now,
-            deadline,
-            logger: (message) => console.log(message),
-          });
-          return {
-            ok: result.ok,
-            summary: result,
-            error: result.errors.length > 0 ? result.errors.join("; ") : undefined,
-          };
-        },
-      },
+    });
+    return NextResponse.json({
+      ok: summary.status === "SUCCESS" || summary.status === "PARTIAL",
+      logged,
+      ...summary,
     });
   } catch (error) {
     console.error("[cron/analysis-refresh]", error);
-    const now = new Date();
-    summary = {
-      status: "FAILED",
-      reason: error instanceof Error ? error.message : String(error),
-      startedAt: now.toISOString(),
-      finishedAt: now.toISOString(),
-      durationMs: 0,
-      steps: [],
-    };
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Error interno",
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
   }
-
-  const logged = await recordRun(summary);
-  return NextResponse.json({
-    ok: summary.status === "SUCCESS" || summary.status === "PARTIAL",
-    logged,
-    ...summary,
-  });
 }

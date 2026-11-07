@@ -343,6 +343,10 @@ model HistoricalMatch {
   result          String?
   odds            Json?
   stats           Json?
+  // Resultado provisional de API; el CSV oficial lo reemplaza.
+  provisional     Boolean  @default(false)
+  // Clave común CSV/API: competición + fecha + equipos normalizados.
+  dedupeKey       String?  @unique
   importedAt      DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -584,4 +588,23 @@ model AnalysisRefreshRun {
   createdAt  DateTime @default(now())
 
   @@index([startedAt])
+}
+
+model ResultDiscrepancy {
+  id          String   @id @default(cuid())
+  dedupeKey   String
+  competition String
+  playedAt    DateTime
+  homeTeamId  String
+  awayTeamId  String
+  csvHomeGoals Int
+  csvAwayGoals Int
+  apiHomeGoals Int
+  apiAwayGoals Int
+  apiSource    String
+  resolvedBy   String   @default("csv")
+  createdAt    DateTime @default(now())
+
+  @@index([dedupeKey])
+  @@index([competition, playedAt])
 }
