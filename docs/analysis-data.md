@@ -98,3 +98,8 @@ football-data.co.uk permite el uso **privado** y excluye productos comerciales
 o entrenamiento de datos con bots, scrapers o IA automatizados. No descargues
 los archivos automáticamente. Si la app se abre a terceros, pide permiso al
 autor o migra a una API con licencia.
+
+## Modelo
+
+Metodología, hiperparámetros y resultados del backtest:
+[`docs/analysis-model.md`](./analysis-model.md).

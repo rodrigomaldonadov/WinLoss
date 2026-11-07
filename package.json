@@ -15,6 +15,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "analysis:import": "tsx scripts/analysis-import.ts",
     "analysis:aliases": "tsx scripts/analysis-aliases.ts",
+    "analysis:backtest": "tsx scripts/analysis-backtest.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node scripts/smoke.mjs",
