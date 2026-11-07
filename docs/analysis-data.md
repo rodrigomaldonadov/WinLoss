@@ -86,6 +86,23 @@ npm run analysis:aliases
 Un partido próximo con un equipo sin alias aparece como “sin datos
 suficientes”; no se inventa una predicción.
 
+Para cruzar los nombres del histórico con los próximos partidos de TheSportsDB
+y football-data.org:
+
+```bash
+npm run analysis:aliases:api
+```
+
+En la prueba del 07/11/2026, football-data.org quedó con **0 nombres sin
+resolver** (294 menciones) y TheSportsDB con **2**, ambos de Liga 1 sin
+histórico (`ADT`, `Sporting Cristal`). El detalle está en
+[`docs/analysis-engine.md`](./analysis-engine.md).
+
+## Motor
+
+Flujo, fuentes, confianza y comandos:
+[`docs/analysis-engine.md`](./analysis-engine.md).
+
 ## Estadísticas de partido
 
 Se importan tiros, tiros a puerta, córneres, tarjetas y xG cuando existen. En

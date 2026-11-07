@@ -88,6 +88,12 @@ export function competitionForCode(
   };
 }
 
+/** true si el código pertenece a una liga doméstica importada (no copa). */
+export function isDomesticCompetitionCode(code: string | null): boolean {
+  if (!code) return false;
+  return Boolean(MAIN_COMPETITIONS[code] ?? EXTRA_COMPETITIONS[code]);
+}
+
 export type HistoricalRow = {
   competition: CompetitionInfo;
   season: string;
