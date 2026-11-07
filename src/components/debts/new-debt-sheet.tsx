@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { DateTimeCompact } from "@/components/bets/date-time-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -271,28 +272,28 @@ export function NewDebtSheet({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="debt-borrowed-at">Fecha</Label>
-                <Input
+                <input type="hidden" name="borrowedAt" value={borrowedAt} />
+                <DateTimeCompact
                   id="debt-borrowed-at"
-                  name="borrowedAt"
-                  type="date"
+                  mode="date"
+                  size="default"
                   value={borrowedAt}
-                  onChange={(event) => setBorrowedAt(event.target.value)}
+                  onChange={setBorrowedAt}
                   required
-                  className="h-11"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="debt-due-date">Vencimiento</Label>
-                <Input
+                <input type="hidden" name="dueDate" value={dueDate} />
+                <DateTimeCompact
                   id="debt-due-date"
-                  name="dueDate"
-                  type="date"
+                  mode="date"
+                  size="default"
                   value={dueDate}
-                  onChange={(event) => setDueDate(event.target.value)}
-                  className="h-11"
+                  onChange={setDueDate}
                 />
               </div>
             </div>
