@@ -204,6 +204,42 @@ I1, D1, F1, BRA, ARG) hay CSV histórico. Liga 1 (PER1) no tiene CSV y, por
 tanto, no genera ratings; sus resultados de API no crean un modelo. Los
 resultados de usuarios nunca entrenan el modelo.
 
+## Campeón y retador
+
+Las versiones del modelo se guardan en `ModelVersion` con estado `CHAMPION`,
+`CHALLENGER` o `RETIRED`, parámetros, métricas, fecha y notas. El comando
+mensual:
+
+```bash
+npm run analysis:tune
+```
+
+hace una búsqueda acotada sobre decaimiento (180–730 días), regularización,
+tratamiento de la ventaja de local y temperatura, con validación walk-forward
+sobre los resultados disponibles (CSV y API provisional). Crea un **retador**;
+no modifica el campeón ni `analysis-weights.json`.
+
+El retador predice **en sombra** en cada `analysis:generate`; sus probabilidades
+se guardan en `AnalysisSnapshot.challengerProbability` y **no se muestran** en
+`/analysis`. La evaluación forward calcula también su Brier/log-loss.
+
+Regla de promoción (configurable por entorno):
+
+- Muestra forward agrupada ≥ 300 partidos.
+- Mejora relativa de Brier ≥ 0.5 %.
+- Intervalo bootstrap pareado del 95 % que excluya 0.
+- Log-loss no peor que el campeón.
+
+Por defecto la promoción es **manual**: `/settings` muestra campeón, retador,
+métricas, N forward, mejora, IC y motivos. El botón “Promover” solo se habilita
+si se cumple la regla. También hay “Volver a esta versión” para rollback. Cada
+cambio guarda métricas antes/después en el `ModelVersion` y actualiza el campeón
+usado por los siguientes análisis.
+
+El peso modelo/mercado se reestima con la misma regla en cada tuning; sigue en
+0 salvo mejora significativa sostenida. Las variantes con tiros/córneres son
+opcionales y no se activan sin pasar por el mismo proceso.
+
 ## Conclusión de esta fase
 
 El mercado de cierre sigue siendo **mejor que el modelo en todas las ligas** y
@@ -252,10 +288,14 @@ La operación automática (import → sync → recálculo, lock, estado y cron) 
 
 ```bash
 npm run analysis:backtest
+npm run analysis:review
+npm run analysis:tune
 ```
 
 Genera `analysis-weights.json` y actualiza `ModelEvaluation` con métricas de
-cierre, pre-cierre, calibración y mezcla. Parámetros opcionales:
+cierre, pre-cierre, calibración y mezcla. `analysis:review` evalúa el forward
+test. `analysis:tune` crea un retador; no cambia el campeón ni los pesos.
+Parámetros opcionales:
 
 ```bash
 ANALYSIS_HALF_LIFE=365 ANALYSIS_RIDGE=70 npm run analysis:backtest

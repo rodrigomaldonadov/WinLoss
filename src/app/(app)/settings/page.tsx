@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { UserProfileSheet } from "@/components/settings/user-profile-sheet";
 import { AutoSettlePreference } from "@/components/settings/auto-settle-preference";
 import { DebtPreferences } from "@/components/settings/debt-preferences";
+import { ModelVersionsPanel } from "@/components/settings/model-versions-panel";
 import { ThemePreference } from "@/components/settings/theme-preference";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions/auth";
@@ -118,6 +119,8 @@ export default async function SettingsPage() {
         </div>
         <AutoSettlePreference mode={user.autoSettleMode} />
       </section>
+
+      <ModelVersionsPanel />
 
       <section className="space-y-3 rounded-xl border bg-card p-4 shadow-xs">
         <div>

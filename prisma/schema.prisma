@@ -645,6 +645,12 @@ model AnalysisSnapshot {
   modelBrier    Decimal? @db.Decimal(12, 6)
   modelLogLoss  Decimal? @db.Decimal(12, 6)
 
+  // Predicción del retador en sombra; no se muestra en /analysis.
+  challengerProbability Json?
+  challengerVersionId   String?
+  challengerBrier       Decimal? @db.Decimal(12, 6)
+  challengerLogLoss     Decimal? @db.Decimal(12, 6)
+
   createdAt DateTime @default(now())
 
   @@unique([matchKey, snapshotAt])
@@ -652,4 +658,28 @@ model AnalysisSnapshot {
   @@index([evaluatedAt])
   @@index([competition, evaluatedAt])
   @@index([matchKey, kickoff])
+  @@index([challengerVersionId])
+}
+
+enum ModelVersionState {
+  CHAMPION
+  CHALLENGER
+  RETIRED
+}
+
+model ModelVersion {
+  id String @id @default(cuid())
+
+  name   String
+  state  ModelVersionState @default(CHALLENGER)
+  params Json
+  metrics Json?
+  notes  String?
+
+  createdAt        DateTime  @default(now())
+  promotedAt       DateTime?
+  retiredAt        DateTime?
+  previousVersionId String?
+
+  @@index([state, createdAt])
 }

@@ -34,6 +34,8 @@ export type SnapshotInput = {
   marketCapturedAt: Date | null;
   marketFresh: boolean;
   snapshotAt: Date;
+  challengerProbability?: [number, number, number] | null;
+  challengerVersionId?: string | null;
 };
 
 export function buildSnapshotRecord(
@@ -69,5 +71,10 @@ export function buildSnapshotRecord(
       undefined,
     marketCapturedAt: input.marketCapturedAt,
     marketFresh: input.marketFresh,
+    challengerProbability:
+      (input.challengerProbability as unknown as
+        | Prisma.InputJsonValue
+        | null) ?? undefined,
+    challengerVersionId: input.challengerVersionId ?? null,
   };
 }

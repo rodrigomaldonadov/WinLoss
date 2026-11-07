@@ -20,6 +20,7 @@ function snapshot(id: string, snapshotAt: string) {
     snapshotAt: new Date(snapshotAt),
     marketProbability: { home: 0.45, draw: 0.3, away: 0.25 },
     modelProbability: { home: 0.5, draw: 0.25, away: 0.25 },
+    challengerProbability: { home: 0.55, draw: 0.2, away: 0.25 },
   };
 }
 
@@ -82,9 +83,11 @@ describe("runEvaluationJob", () => {
     const metrics = updateData as {
       modelBrier?: number;
       marketBrier?: number;
+      challengerBrier?: number;
     } | null;
     expect(metrics?.modelBrier).toBeGreaterThan(0);
     expect(metrics?.marketBrier).toBeGreaterThan(0);
+    expect(metrics?.challengerBrier).toBeGreaterThan(0);
   });
 
   it("usa BetLeg como respaldo cuando no hay HistoricalMatch", async () => {

@@ -336,8 +336,12 @@ export const accuracyFixture: ModelAccuracy = {  generatedFrom: "2025-07-24T00:0
 
 export const dataStatusFixture: AnalysisDataStatus = {
   now: "2026-11-07T12:00:00.000Z",
+  resultsToday: 4,
   lastHistoricalImportAt: "2026-11-07T10:00:00.000Z",
   lastFixtureImportAt: "2026-11-07T10:05:00.000Z",
+  lastRatingAt: "2026-11-07T02:00:00.000Z",
+  champion: { name: "baseline-poisson-dc-v1", promotedAt: "2026-11-07T02:00:00.000Z" },
+  challenger: { name: "challenger-2026-11-07", createdAt: "2026-11-07T03:00:00.000Z" },
   fixtureBatch: {
     sourceFile: "data-football/fixtures/fixtures.csv",
     capturedAt: "2026-11-07T10:05:00.000Z",

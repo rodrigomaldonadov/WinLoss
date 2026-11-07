@@ -155,6 +155,10 @@ describe("detalle de /analysis", () => {
     expect(html).toContain("Cuotas capturadas");
     expect(html).toContain("Arsenal");
     expect(html).toContain("Chelsea");
+    expect(html).toContain("Resultados API hoy");
+    expect(html).toContain("Último reajuste de ratings");
+    expect(html).toContain("Modelo activo");
+    expect(html).toContain("Retador en observación");
   });
 });
 

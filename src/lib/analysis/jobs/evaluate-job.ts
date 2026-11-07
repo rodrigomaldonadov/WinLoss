@@ -198,6 +198,7 @@ export async function runEvaluationJob({
       const outcome = outcomeIndex(homeGoals, awayGoals);
       const market = parseTriple(snapshot.marketProbability);
       const model = parseTriple(snapshot.modelProbability);
+      const challenger = parseTriple(snapshot.challengerProbability);
 
       await prisma.analysisSnapshot.update({
         where: { id: snapshot.id },
@@ -212,6 +213,12 @@ export async function runEvaluationJob({
           marketLogLoss: market ? logLoss(market, outcome) : null,
           modelBrier: model ? brierScore(model, outcome) : null,
           modelLogLoss: model ? logLoss(model, outcome) : null,
+          challengerBrier: challenger
+            ? brierScore(challenger, outcome)
+            : null,
+          challengerLogLoss: challenger
+            ? logLoss(challenger, outcome)
+            : null,
         },
       });
       evaluated += 1;

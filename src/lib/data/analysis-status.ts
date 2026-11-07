@@ -19,8 +19,12 @@ export type AnalysisRunStepStatus = {
 
 export type AnalysisDataStatus = {
   now: string;
+  resultsToday: number;
   lastHistoricalImportAt: string | null;
   lastFixtureImportAt: string | null;
+  lastRatingAt: string | null;
+  champion: { name: string; promotedAt: string | null } | null;
+  challenger: { name: string; createdAt: string } | null;
   fixtureBatch: {
     sourceFile: string;
     capturedAt: string;
@@ -62,7 +66,7 @@ function parseSteps(value: Prisma.JsonValue | null): AnalysisRunStepStatus[] {
 export async function getAnalysisDataStatus(
   now = new Date(),
 ): Promise<AnalysisDataStatus> {
-  const [lastHistoricalFile, lastHistoricalRow, lastFixtureFile, batch, lastRun] =
+  const [lastHistoricalFile, lastHistoricalRow, lastFixtureFile, batch, lastRun, resultsToday, lastRating, champion, challenger] =
     await Promise.all([
       prisma.analysisImportFile.findFirst({
         where: { kind: "historical" },
@@ -99,6 +103,29 @@ export async function getAnalysisDataStatus(
           steps: true,
         },
       }),
+      prisma.historicalMatch.count({
+        where: {
+          source: "api",
+          OR: [
+            { importedAt: { gte: new Date(`${now.toISOString().slice(0, 10)}T00:00:00.000Z`) } },
+            { updatedAt: { gte: new Date(`${now.toISOString().slice(0, 10)}T00:00:00.000Z`) } },
+          ],
+        },
+      }),
+      prisma.teamRating.findFirst({
+        orderBy: { asOf: "desc" },
+        select: { asOf: true },
+      }),
+      prisma.modelVersion.findFirst({
+        where: { state: "CHAMPION" },
+        orderBy: { promotedAt: "desc" },
+        select: { name: true, promotedAt: true },
+      }),
+      prisma.modelVersion.findFirst({
+        where: { state: "CHALLENGER" },
+        orderBy: { createdAt: "desc" },
+        select: { name: true, createdAt: true },
+      }),
     ]);
 
   const lastHistoricalImportAt =
@@ -119,8 +146,22 @@ export async function getAnalysisDataStatus(
 
   return {
     now: now.toISOString(),
+    resultsToday,
     lastHistoricalImportAt: lastHistoricalImportAt?.toISOString() ?? null,
     lastFixtureImportAt: lastFixtureImportAt?.toISOString() ?? null,
+    lastRatingAt: lastRating?.asOf.toISOString() ?? null,
+    champion: champion
+      ? {
+          name: champion.name,
+          promotedAt: champion.promotedAt?.toISOString() ?? null,
+        }
+      : null,
+    challenger: challenger
+      ? {
+          name: challenger.name,
+          createdAt: challenger.createdAt.toISOString(),
+        }
+      : null,
     fixtureBatch,
     lastRun: lastRun
       ? {

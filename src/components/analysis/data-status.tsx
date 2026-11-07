@@ -74,11 +74,21 @@ export function DataStatusNotice({
 
   if (!stale && !missing && !runProblem) {
     return (
-      <p className="flex items-start gap-1.5 text-[10px] leading-snug text-muted-foreground">
-        <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-        Datos: último import {importLabel} · cuotas {batchLabel} · última
-        corrida {runLabel}.
-      </p>
+      <div className="space-y-0.5 text-[10px] leading-snug text-muted-foreground">
+        <p className="flex items-start gap-1.5">
+          <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          Datos: último import {importLabel} · cuotas {batchLabel} · última
+          corrida {runLabel}.
+        </p>
+        <p>
+          Resultados API hoy: {status.resultsToday} · último reajuste de ratings:{" "}
+          {status.lastRatingAt
+            ? formatDateTime(status.lastRatingAt, timeZone)
+            : "sin registro"}{" "}
+          · modelo: {status.champion?.name ?? "sin campeón"} · retador:{" "}
+          {status.challenger?.name ?? "sin retador"}.
+        </p>
+      </div>
     );
   }
 
@@ -157,6 +167,32 @@ export function DataStatusDetails({
             {status.lastHistoricalImportAt
               ? formatDateTime(status.lastHistoricalImportAt, timeZone)
               : "Sin registro"}
+          </dd>
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <dt className="text-muted-foreground">Resultados API hoy</dt>
+          <dd className="text-right font-medium tabular-nums">
+            {status.resultsToday}
+          </dd>
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <dt className="text-muted-foreground">Último reajuste de ratings</dt>
+          <dd className="text-right font-medium">
+            {status.lastRatingAt
+              ? formatDateTime(status.lastRatingAt, timeZone)
+              : "Sin ratings"}
+          </dd>
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <dt className="text-muted-foreground">Modelo activo</dt>
+          <dd className="text-right font-medium">
+            {status.champion?.name ?? "Sin campeón registrado"}
+          </dd>
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <dt className="text-muted-foreground">Retador en observación</dt>
+          <dd className="text-right font-medium">
+            {status.challenger?.name ?? "Sin retador"}
           </dd>
         </div>
         <div className="flex items-start justify-between gap-3">

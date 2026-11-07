@@ -47,7 +47,7 @@ Los lotes de fixtures se reemplazan cuando llega uno nuevo. Un lote con más de
 
 ### Dokploy
 
-Crea dos *Scheduled Tasks* (o *Cron Jobs*) en el servicio:
+Crea las *Scheduled Tasks* (o *Cron Jobs*) en el servicio:
 
 | Tarea | Expresión | Comando |
 | --- | --- | --- |
@@ -55,11 +55,13 @@ Crea dos *Scheduled Tasks* (o *Cron Jobs*) en el servicio:
 | Análisis | `0 */6 * * *` | `curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/analysis-refresh` |
 | Extra fixtures | `0 18 * * 5` | igual que Análisis |
 | Extra fixtures | `0 18 * * 2` | igual que Análisis |
+| Tuning mensual | `0 4 1 * *` | `docker exec winloss npm run analysis:tune` |
 
 La corrida cada 6 horas ya cubre el día; las ejecuciones extra de viernes y
 martes por la tarde sirven para procesar los fixtures recién publicados sin
-esperar a la siguiente ventana. Ajusta la hora a la zona del servidor
-(`TZ=Europe/London` o `TZ=America/Lima`, por ejemplo).
+esperar a la siguiente ventana. El día 1 de cada mes se genera un retador; no se
+activa solo. Ajusta la hora a la zona del servidor (`TZ=Europe/London` o
+`TZ=America/Lima`, por ejemplo).
 
 ### Cron de un VPS
 
@@ -79,6 +81,7 @@ Crontab:
 0 */6 * * * . /etc/winloss/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/analysis-refresh >/dev/null
 0 18 * * 5 . /etc/winloss/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/analysis-refresh >/dev/null
 0 18 * * 2 . /etc/winloss/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://tu-dominio/api/cron/analysis-refresh >/dev/null
+0 4 1 * * docker exec winloss npm run analysis:tune >> /var/log/winloss-tune.log 2>&1
 ```
 
 No pongas el secreto en la URL ni en logs. El endpoint también acepta
@@ -132,6 +135,10 @@ ANALYSIS_REFRESH_TIMEOUT_MS="840000"
 - `ANALYSIS_RATINGS_BUDGET_MS`: presupuesto de tiempo para reajustar ratings.
 - `ANALYSIS_EVALUATION_DELAY_MS`: espera tras el inicio antes de evaluar un
   snapshot (por defecto 3 h).
+- `ANALYSIS_CHALLENGER_BUDGET_MS`: presupuesto para predecir en sombra.
+- `ANALYSIS_PROMOTION_MIN_SAMPLE`: N forward mínimo para promover (300).
+- `ANALYSIS_PROMOTION_MIN_IMPROVEMENT`: mejora relativa de Brier mínima (0.005).
+- `ANALYSIS_ADMIN_EMAIL`: si se define, limita promoción/rollback a ese email.
 - `ANALYSIS_REFRESH_TIMEOUT_MS`: límite del job completo. La ruta declara
   `maxDuration = 900`; configura el proxy con un timeout mayor.
 
@@ -345,9 +352,13 @@ recálculo no llegó a guardar.
 `/analysis` muestra:
 
 - Fecha del último import.
+- Resultados API recibidos hoy.
+- Último reajuste de ratings.
+- Modelo activo y retador en observación.
 - Antigüedad del lote de cuotas.
 - Resultado y duración de la última corrida.
 - Aviso si el mercado está desactualizado (>4 días) y se está ocultando.
 
 El detalle `/analysis/[id]` incluye el mismo estado dentro de **Calidad de
-datos**.
+datos**. La promoción/rollback del modelo se hace en `/settings`. El peso
+modelo/mercado sigue en 0 salvo mejora sostenida y aprobación manual.

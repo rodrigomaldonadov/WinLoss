@@ -38,6 +38,8 @@ describe("snapshots inmutables", () => {
       marketCapturedAt: now,
       marketFresh: true,
       snapshotAt: now,
+      challengerProbability: [0.4, 0.3, 0.3],
+      challengerVersionId: "challenger-1",
     });
 
     expect(record).toMatchObject({
@@ -46,9 +48,11 @@ describe("snapshots inmutables", () => {
       finalSource: "market",
       ratingsVersion: "poisson-dc-v1:2026-11-07T00:00:00.000Z",
       marketFresh: true,
+      challengerVersionId: "challenger-1",
     });
     expect(record.marketProbability).toEqual(item.sources.market.probabilities);
     expect(record.modelProbability).toEqual(item.sources.model.probabilities);
     expect(record.finalProbability).toEqual(item.final.probabilities);
+    expect(record.challengerProbability).toEqual([0.4, 0.3, 0.3]);
   });
 });

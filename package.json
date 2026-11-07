@@ -21,6 +21,7 @@
     "analysis:generate": "tsx scripts/analysis-generate.ts",
     "analysis:refresh": "tsx scripts/analysis-refresh.ts",
     "analysis:review": "tsx scripts/analysis-review.ts",
+    "analysis:tune": "tsx scripts/analysis-tune.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node scripts/smoke.mjs",

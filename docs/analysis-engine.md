@@ -13,8 +13,12 @@ Ejecuta en orden:
 
 1. Import incremental de archivos nuevos o modificados en `data-football/`.
 2. Sync de próximos partidos desde TheSportsDB / football-data.org.
-3. Recálculo de `MatchAnalysis` con ratings guardados; el reajuste de ratings
-   corre como máximo una vez cada 7 días.
+3. `results`: resultados FINISHED (+3 h) de APIs, guardados como
+   `HistoricalMatch` provisionales (`source='api'`).
+4. Recálculo de `MatchAnalysis` con ratings guardados; los ratings se reajustan
+   como máximo una vez al día por liga si hay al menos 5 resultados nuevos, con
+   respaldo semanal.
+5. `evaluate`: Brier/log-loss de los snapshots forward ya terminados.
 
 Cada paso se aísla: si uno falla, los demás continúan. Hay lock persistente,
 límite de tiempo y un resumen por corrida en `AnalysisRefreshRun`. Los detalles
@@ -29,12 +33,14 @@ npm run analysis:sync
 npm run analysis:generate
 npm run analysis:refresh
 npm run analysis:review
+npm run analysis:tune
 npm run analysis:backtest
 ```
 
 `analysis:refresh` ejecuta el flujo completo dentro del contenedor, con el mismo
 lock y registro que el endpoint HTTP. `analysis:review` evalúa snapshots forward
-y compara con el backtest sin cambiar parámetros.
+y compara con el backtest sin cambiar parámetros. `analysis:tune` genera un
+retador mensual; no lo activa.
 
 No hay scraping ni descarga automática de football-data.co.uk. La copia de CSV
 es manual; el resto es automático.
@@ -117,8 +123,9 @@ No se crean alias automáticamente.
 
 ## Acceso desde la app
 
-- `GET /api/cron/analysis-refresh`: job único import → sync → recálculo,
-  protegido con `CRON_SECRET`.
+- `GET /api/cron/analysis-refresh`: job único import → sync → results →
+  generate → evaluate, protegido con `CRON_SECRET`.
+- `GET /api/cron/analysis-refresh/status`: estado del lock y últimas corridas.
 - `GET /api/cron/settle`: auto-liquidación, cada 15–30 minutos.
 - `GET /api/analysis?dias=7`: feed autenticado con comunidad y privado al vuelo.
 - `GET /api/analysis/model`: números del panel “Precisión del modelo”.

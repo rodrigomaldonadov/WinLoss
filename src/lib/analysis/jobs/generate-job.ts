@@ -6,7 +6,10 @@ import {
   aggregateCommunityForFixture,
   type CommunityLeg,
 } from "@/lib/analysis/community";
-import { naiveProbabilities } from "@/lib/analysis/calibration";
+import {
+  applyTemperature,
+  naiveProbabilities,
+} from "@/lib/analysis/calibration";
 import {
   buildAnalysis,
   type AnalysisConfidence,
@@ -72,6 +75,9 @@ export type GenerateJobSummary = {
   ratingsReused: string[];
   ratingsBudgetExceeded: boolean;
   snapshots: number;
+  challengerVersionId: string | null;
+  challengerSnapshots: number;
+  challengerBudgetExceeded: boolean;
   errors: string[];
   durationMs: number;
 };
@@ -84,7 +90,8 @@ export type RatingRefreshDecision = {
     | "weekly-fallback"
     | "new-results"
     | "same-day"
-    | "below-threshold";
+    | "below-threshold"
+    | "version-change";
   newResults: number;
 };
 
@@ -143,6 +150,32 @@ function jsonObject(value: Prisma.JsonValue | null): Record<string, unknown> {
     : {};
 }
 
+function readChallengerParams(value: Prisma.JsonValue | null): {
+  halfLifeDays: number;
+  ridge: number;
+  homeAdvantageMode: "fit" | "league";
+  temperature: number;
+} | null {
+  const params = jsonObject(value);
+  const halfLifeDays = Number(params.halfLifeDays);
+  const ridge = Number(params.ridge);
+  const temperature = Number(params.temperature);
+  if (
+    !Number.isFinite(halfLifeDays) ||
+    !Number.isFinite(ridge) ||
+    !Number.isFinite(temperature)
+  ) {
+    return null;
+  }
+  return {
+    halfLifeDays: Math.max(30, halfLifeDays),
+    ridge: Math.max(1, ridge),
+    homeAdvantageMode:
+      params.homeAdvantageMode === "league" ? "league" : "fit",
+    temperature: Math.min(2, Math.max(0.3, temperature)),
+  };
+}
+
 /**
  * Recalcula ratings (máximo semanal) y MatchAnalysis para los próximos
  * partidos. Si no hay fixtures, termina sin tocar análisis.
@@ -158,6 +191,9 @@ export async function runGenerateJob({
     process.env.ANALYSIS_RATING_MIN_NEW_RESULTS ?? "5",
   ),
   ratingBudgetMs = Number(process.env.ANALYSIS_RATINGS_BUDGET_MS ?? "90000"),
+  challengerBudgetMs = Number(
+    process.env.ANALYSIS_CHALLENGER_BUDGET_MS ?? "60000",
+  ),
   logger = () => {},
 }: {
   prisma: PrismaClient;
@@ -168,6 +204,7 @@ export async function runGenerateJob({
   ratingMaxAgeDays?: number;
   ratingMinNewResults?: number;
   ratingBudgetMs?: number;
+  challengerBudgetMs?: number;
   logger?: Logger;
 }): Promise<GenerateJobSummary> {
   const startedAt = Date.now();
@@ -186,6 +223,9 @@ export async function runGenerateJob({
     ratingsReused: [],
     ratingsBudgetExceeded: false,
     snapshots: 0,
+    challengerVersionId: null,
+    challengerSnapshots: 0,
+    challengerBudgetExceeded: false,
     errors: [],
     durationMs: Date.now() - startedAt,
     ...overrides,
@@ -417,6 +457,16 @@ export async function runGenerateJob({
   }
 
   const ratingAsOf = dayStart(now);
+  const championVersion = await prisma.modelVersion.findFirst({
+    where: { state: "CHAMPION" },
+    orderBy: { promotedAt: "desc" },
+  });
+  const championParams = championVersion
+    ? readChallengerParams(championVersion.params)
+    : null;
+  const championHalfLifeDays =
+    championParams?.halfLifeDays ?? HALF_LIFE_DAYS;
+  const championRidge = championParams?.ridge ?? RIDGE;
 
   for (const code of codes) {
     if (Date.now() >= deadline) {
@@ -437,7 +487,7 @@ export async function runGenerateJob({
       const latest = await prisma.teamRating.findFirst({
         where: { competitionCode: code },
         orderBy: { asOf: "desc" },
-        select: { asOf: true },
+        select: { asOf: true, params: true },
       });
       const newResults = await prisma.historicalMatch.count({
         where: {
@@ -447,13 +497,25 @@ export async function runGenerateJob({
             : {}),
         },
       });
-      const decision = shouldRefreshRatings({
-        latestAsOf: latest?.asOf ?? null,
-        now,
-        newResults,
-        minNewResults: Math.max(1, ratingMinNewResults),
-        maxAgeMs: ratingMaxAgeMs,
-      });
+      const latestVersionId = latest
+        ? jsonObject(latest.params).modelVersionId
+        : null;
+      const versionChanged = Boolean(
+        championVersion && latestVersionId !== championVersion.id,
+      );
+      const decision = versionChanged
+        ? {
+            refresh: true,
+            reason: "version-change" as const,
+            newResults,
+          }
+        : shouldRefreshRatings({
+            latestAsOf: latest?.asOf ?? null,
+            now,
+            newResults,
+            minNewResults: Math.max(1, ratingMinNewResults),
+            maxAgeMs: ratingMaxAgeMs,
+          });
 
       if (decision.refresh) {
         const modelMatches: ModelMatch[] = matches.map((match) => ({
@@ -465,17 +527,25 @@ export async function runGenerateJob({
         }));
         const ratings = fitRatings(modelMatches, {
           asOf: now,
-          halfLifeDays: HALF_LIFE_DAYS,
-          ridge: RIDGE,
+          halfLifeDays: championHalfLifeDays,
+          ridge: championRidge,
         });
+        if (championParams?.homeAdvantageMode === "league") {
+          ratings.homeAdvantage = Math.log(
+            Math.max(0.05, ratings.leagueAvgHomeGoals) /
+              Math.max(0.05, ratings.leagueAvgAwayGoals),
+          );
+        }
         ratingsByCode.set(code, ratings);
         ratingsRefreshed.push(code);
 
         const ratingParams = {
           model: ANALYSIS_MODEL_NAME,
+          modelVersionId: championVersion?.id ?? null,
+          modelVersion: championVersion?.name ?? null,
           rho: ratings.rho,
-          halfLifeDays: HALF_LIFE_DAYS,
-          ridge: RIDGE,
+          halfLifeDays: ratings.halfLifeDays,
+          ridge: ratings.ridge,
           effectiveSample: ratings.effectiveSample,
           ratingSample: ratings.sample,
           newResults: decision.newResults,
@@ -537,6 +607,58 @@ export async function runGenerateJob({
       errors.push(`ratings ${code}: ${String(error)}`);
       logger(`[ratings] ${code}: falló (${String(error)})`);
     }
+  }
+
+  const challengerVersion = await prisma.modelVersion.findFirst({
+    where: { state: "CHALLENGER" },
+    orderBy: { createdAt: "desc" },
+  });
+  const challengerParams = challengerVersion
+    ? readChallengerParams(challengerVersion.params)
+    : null;
+  const challengerRatingsByCode = new Map<string, Ratings>();
+  let challengerBudgetExceeded = false;
+
+  if (challengerVersion && challengerParams) {
+    const challengerDeadline = Math.min(
+      deadline,
+      Date.now() + Math.max(1, challengerBudgetMs),
+    );
+    for (const code of codes) {
+      if (Date.now() >= challengerDeadline) {
+        challengerBudgetExceeded = true;
+        break;
+      }
+      const matches = historicalByCode.get(code) ?? [];
+      if (matches.length < 80) continue;
+      try {
+        const modelMatches: ModelMatch[] = matches.map((match) => ({
+          homeTeamId: match.homeTeamId,
+          awayTeamId: match.awayTeamId,
+          homeGoals: match.homeGoals,
+          awayGoals: match.awayGoals,
+          playedAt: match.playedAt,
+        }));
+        const ratings = fitRatings(modelMatches, {
+          asOf: now,
+          halfLifeDays: challengerParams.halfLifeDays,
+          ridge: challengerParams.ridge,
+        });
+        if (challengerParams.homeAdvantageMode === "league") {
+          ratings.homeAdvantage = Math.log(
+            Math.max(0.05, ratings.leagueAvgHomeGoals) /
+              Math.max(0.05, ratings.leagueAvgAwayGoals),
+          );
+        }
+        challengerRatingsByCode.set(code, ratings);
+      } catch (error) {
+        errors.push(`challenger ${code}: ${String(error)}`);
+        logger(`[challenger] ${code}: falló (${String(error)})`);
+      }
+    }
+    logger(
+      `[challenger] ${challengerVersion.name}: ${challengerRatingsByCode.size} ligas en sombra${challengerBudgetExceeded ? " (presupuesto agotado)" : ""}`,
+    );
   }
 
   if (timedOut) {
@@ -662,7 +784,18 @@ export async function runGenerateJob({
       aliases,
     );
 
-    const weights = weightForCompetition(fixture.primary.competition, code);
+    const baseWeights = weightForCompetition(
+      fixture.primary.competition,
+      code,
+    );
+    const weights =
+      championParams && championParams.temperature !== 1
+        ? {
+            ...baseWeights,
+            temperature: championParams.temperature,
+            calibrationApplied: true,
+          }
+        : baseWeights;
     const analysis = buildAnalysis({
       fixture: {
         id: fixture.primary.id,
@@ -718,6 +851,32 @@ export async function runGenerateJob({
     if (analysis.sources.community.available) communityCount += 1;
     if (!analysis.final.available) insufficientCount += 1;
 
+    const challengerRatings = code
+      ? challengerRatingsByCode.get(code)
+      : undefined;
+    const challengerPrediction =
+      isDomesticLeague &&
+      challengerRatings &&
+      fixture.homeTeamId &&
+      fixture.awayTeamId
+        ? predictMatch(
+            challengerRatings,
+            fixture.homeTeamId,
+            fixture.awayTeamId,
+          )
+        : null;
+    const challengerProbability =
+      challengerPrediction && challengerParams
+        ? (applyTemperature(
+            [
+              challengerPrediction.home,
+              challengerPrediction.draw,
+              challengerPrediction.away,
+            ],
+            challengerParams.temperature,
+          ) as [number, number, number])
+        : null;
+
     if (
       shouldSnapshot(fixture.primary.kickoff, now) &&
       hasSnapshotData(analysis.final, analysis.sources)
@@ -736,7 +895,7 @@ export async function runGenerateJob({
           final: analysis.final,
           sources: analysis.sources,
           ratingsVersion: ratings
-            ? `${ANALYSIS_MODEL_NAME}:${ratings.asOf.toISOString()}`
+            ? `${championVersion?.name ?? ANALYSIS_MODEL_NAME}:${ratings.asOf.toISOString()}`
             : null,
           ratingsParams: ratings
             ? {
@@ -754,6 +913,11 @@ export async function runGenerateJob({
           marketCapturedAt: capturedAt,
           marketFresh: fresh,
           snapshotAt: now,
+          challengerProbability,
+          challengerVersionId:
+            challengerProbability && challengerVersion
+              ? challengerVersion.id
+              : null,
         }),
       );
     }
@@ -854,6 +1018,9 @@ export async function runGenerateJob({
       logger(`[snapshots] falló (${String(error)})`);
     }
   }
+  const challengerSnapshots = snapshots.filter(
+    (snapshot) => snapshot.challengerProbability,
+  ).length;
 
   logger(
     `[generate] ${fixtures.length} partidos | mercado ${marketCount} | modelo ${modelCount} | comunidad ${communityCount} | sin probabilidad ${insufficientCount}`,
@@ -874,6 +1041,9 @@ export async function runGenerateJob({
     ratingsReused,
     ratingsBudgetExceeded,
     snapshots: snapshotsCreated,
+    challengerVersionId: challengerVersion?.id ?? null,
+    challengerSnapshots,
+    challengerBudgetExceeded,
     errors,
     durationMs: Date.now() - startedAt,
   };
