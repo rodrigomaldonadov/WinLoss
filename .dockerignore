@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.gitignore
+artifacts
+coverage
+data-football
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo

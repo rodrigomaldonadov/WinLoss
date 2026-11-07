@@ -24,6 +24,10 @@ model User {
   currency      String    @default("PEN")
   timezone      String    @default("America/Lima")
   autoSettleMode AutoSettleMode @default(SUGGEST)
+  // Privacidad de la comunidad: solo agregados si el usuario lo permite.
+  shareAnonymousStats Boolean @default(true)
+  favoriteTeams String[] @default([])
+  favoriteCompetitions String[] @default([])
   // Tasa manual USD → PEN para reportes de deudas (unidades PEN por 1 USD).
   usdToPenRate Decimal? @db.Decimal(12, 6)
   // Umbral de alerta de deuda sobre capital propio.
@@ -290,6 +294,174 @@ model BankrollTransaction {
   @@index([userId, occurredAt])
   @@index([bankrollId, occurredAt])
   @@index([debtId])
+}
+
+model Team {
+  id             String   @id @default(cuid())
+  canonicalName  String
+  normalizedName String   @unique
+  country        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  aliases       TeamAlias[]
+  homeMatches   HistoricalMatch[] @relation("HomeTeam")
+  awayMatches   HistoricalMatch[] @relation("AwayTeam")
+  ratings       TeamRating[]
+  homeFixtures  UpcomingFixture[] @relation("FixtureHome")
+  awayFixtures  UpcomingFixture[] @relation("FixtureAway")
+  homeAnalyses  MatchAnalysis[] @relation("AnalysisHome")
+  awayAnalyses  MatchAnalysis[] @relation("AnalysisAway")
+
+  @@index([canonicalName])
+}
+
+model TeamAlias {
+  id         String @id @default(cuid())
+  teamId     String
+  alias      String
+  normalized String @unique
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+}
+
+model HistoricalMatch {
+  id              String   @id @default(cuid())
+  source          String
+  competition     String
+  competitionCode String?
+  season          String
+  seasonStart     Int
+  // Fecha del partido a mediodía UTC para que la clave sea estable.
+  playedAt        DateTime
+  homeTeamId      String
+  awayTeamId      String
+  homeGoals       Int
+  awayGoals       Int
+  result          String?
+  odds            Json?
+  stats           Json?
+  importedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  homeTeam Team @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Restrict)
+  awayTeam Team @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Restrict)
+
+  @@unique([competition, season, playedAt, homeTeamId, awayTeamId])
+  @@index([competition, playedAt])
+  @@index([homeTeamId, playedAt])
+  @@index([awayTeamId, playedAt])
+}
+
+model TeamRating {
+  id                 String   @id @default(cuid())
+  competition        String
+  competitionCode    String?
+  teamId             String
+  asOf               DateTime
+  attack             Decimal  @db.Decimal(12, 6)
+  defense            Decimal  @db.Decimal(12, 6)
+  homeAdvantage      Decimal? @db.Decimal(12, 6)
+  leagueAvgHomeGoals Decimal? @db.Decimal(12, 6)
+  leagueAvgAwayGoals Decimal? @db.Decimal(12, 6)
+  sampleMatches      Int
+  params             Json?
+  createdAt          DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([competition, teamId, asOf])
+  @@index([competition, asOf])
+}
+
+model MatchAnalysis {
+  id              String           @id @default(cuid())
+  source          String
+  externalEventId String
+  competition     String
+  competitionCode String?
+  homeTeamId      String?
+  awayTeamId      String?
+  homeName        String
+  awayName        String
+  kickoff         DateTime
+  probabilities   Json
+  confidence      AnalysisConfidence
+  metadata        Json?
+  generatedAt     DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  homeTeam Team? @relation("AnalysisHome", fields: [homeTeamId], references: [id], onDelete: SetNull)
+  awayTeam Team? @relation("AnalysisAway", fields: [awayTeamId], references: [id], onDelete: SetNull)
+
+  @@unique([source, externalEventId])
+  @@index([kickoff])
+  @@index([competition, kickoff])
+}
+
+model ModelEvaluation {
+  id              String   @id @default(cuid())
+  competition     String
+  model           String
+  asOf            DateTime
+  sample          Int
+  brier           Decimal? @db.Decimal(12, 6)
+  logLoss         Decimal? @db.Decimal(12, 6)
+  baselineBrier   Decimal? @db.Decimal(12, 6)
+  baselineLogLoss Decimal? @db.Decimal(12, 6)
+  calibration     Json?
+  params          Json?
+  createdAt       DateTime @default(now())
+
+  @@unique([competition, model, asOf])
+}
+
+model FixtureBatch {
+  id         String   @id @default(cuid())
+  source     String
+  sourceFile String
+  capturedAt DateTime
+  importedAt DateTime @default(now())
+  rowCount   Int
+  metadata   Json?
+
+  fixtures UpcomingFixture[]
+
+  @@index([source, capturedAt])
+}
+
+model UpcomingFixture {
+  id             String   @id @default(cuid())
+  batchId        String
+  source         String
+  sourceKey      String   @unique
+  competition    String
+  competitionCode String?
+  kickoff        DateTime
+  homeTeamId     String?
+  awayTeamId     String?
+  homeName       String
+  awayName       String
+  odds           Json?
+  oddsCapturedAt DateTime?
+  createdAt      DateTime @default(now())
+
+  batch    FixtureBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  homeTeam Team?        @relation("FixtureHome", fields: [homeTeamId], references: [id], onDelete: SetNull)
+  awayTeam Team?        @relation("FixtureAway", fields: [awayTeamId], references: [id], onDelete: SetNull)
+
+  @@index([kickoff])
+  @@index([competition, kickoff])
+}
+
+enum AnalysisConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT
 }
 
 enum DebtCurrency {

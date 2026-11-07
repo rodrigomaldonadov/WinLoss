@@ -25,6 +25,9 @@
 *.pem
 /artifacts
 
+# local football-data.co.uk CSV snapshots: nunca se commitean ni se sirven
+/data-football/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
