@@ -40,6 +40,19 @@ describe("snapshots inmutables", () => {
       snapshotAt: now,
       challengerProbability: [0.4, 0.3, 0.3],
       challengerVersionId: "challenger-1",
+      communityProbability: { home: 0.55, draw: 0.25, away: 0.2 },
+      communitySample: 7,
+      communityAvailable: true,
+      topScores: [{ home: 1, away: 0, probability: 0.12 }],
+      markets: {
+        home: 0.6,
+        draw: 0.25,
+        away: 0.15,
+        over15: 0.7,
+        over25: 0.45,
+        over35: 0.2,
+        btts: 0.5,
+      },
     });
 
     expect(record).toMatchObject({
@@ -49,10 +62,21 @@ describe("snapshots inmutables", () => {
       ratingsVersion: "poisson-dc-v1:2026-11-07T00:00:00.000Z",
       marketFresh: true,
       challengerVersionId: "challenger-1",
+      communitySample: 7,
+      communityAvailable: true,
     });
     expect(record.marketProbability).toEqual(item.sources.market.probabilities);
     expect(record.modelProbability).toEqual(item.sources.model.probabilities);
     expect(record.finalProbability).toEqual(item.final.probabilities);
     expect(record.challengerProbability).toEqual([0.4, 0.3, 0.3]);
+    expect(record.communityProbability).toEqual({
+      home: 0.55,
+      draw: 0.25,
+      away: 0.2,
+    });
+    expect(record.topScores).toEqual([
+      { home: 1, away: 0, probability: 0.12 },
+    ]);
+    expect(record.markets).toMatchObject({ home: 0.6, btts: 0.5 });
   });
 });

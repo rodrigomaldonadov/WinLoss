@@ -26,6 +26,7 @@ import {
   type ModelMatch,
   type Ratings,
 } from "../src/lib/analysis/model";
+import { weekStart } from "../src/lib/analysis/week";
 
 const TARGET_CODES = ["E0", "SP1", "I1", "D1", "F1", "BRA", "ARG"] as const;
 const HOLD_OUT_START = new Date(Date.UTC(2025, 6, 24));
@@ -112,20 +113,6 @@ type Evaluation = {
   asOf: Date;
   lastRho: number;
 };
-
-function weekStart(date: Date): string {
-  const copy = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-    ),
-  );
-  const day = copy.getUTCDay();
-  const offset = day === 0 ? -6 : 1 - day;
-  copy.setUTCDate(copy.getUTCDate() + offset);
-  return copy.toISOString().slice(0, 10);
-}
 
 function toModelMatch(row: Row): ModelMatch {
   return {

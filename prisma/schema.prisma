@@ -628,6 +628,11 @@ model AnalysisSnapshot {
   marketProbability Json?
   modelProbability  Json?
   finalProbability  Json?
+  communityProbability Json?
+  communitySample      Int?
+  communityAvailable   Boolean?
+  topScores            Json?
+  markets              Json?
   ratingsVersion    String?
   ratingsParams     Json?
   marketCapturedAt  DateTime?
@@ -683,4 +688,31 @@ model ModelVersion {
   previousVersionId String?
 
   @@index([state, createdAt])
+}
+
+model MatchReviewCache {
+  id String @id @default(cuid())
+
+  historicalMatchId String
+  modelVersionId    String
+  probabilities     Json
+  ratingsAsOf       DateTime
+  calculatedAt      DateTime @default(now())
+
+  @@unique([historicalMatchId, modelVersionId])
+  @@index([modelVersionId, calculatedAt])
+}
+
+model RatingAsOfCache {
+  id String @id @default(cuid())
+
+  competitionCode String
+  weekStart       DateTime
+  modelVersionId  String
+  ratings         Json
+  matchesUsed     Int
+  calculatedAt    DateTime @default(now())
+
+  @@unique([competitionCode, weekStart, modelVersionId])
+  @@index([modelVersionId, calculatedAt])
 }

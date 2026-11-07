@@ -23,6 +23,7 @@ import { brierScore, outcomeIndex } from "@/lib/analysis/metrics";
 import {
   fitRatings,
   predictMatch,
+  scoreMatrix,
   type ModelMatch,
   type Ratings,
 } from "@/lib/analysis/model";
@@ -35,8 +36,13 @@ import {
   ANALYSIS_MODEL_NAME,
   weightForCompetition,
 } from "@/lib/analysis/weights";
+import { readModelParams } from "@/lib/analysis/model-version";
 
 import { buildSnapshotRecord, hasSnapshotData, shouldSnapshot } from "./snapshot";
+import {
+  modelMarketsFromMatrix,
+  topScoresFromMatrix,
+} from "@/lib/analysis/review/markets";
 
 const ENGINE_SOURCE = "analysis-engine";
 const HALF_LIFE_DAYS = 365;
@@ -148,32 +154,6 @@ function jsonObject(value: Prisma.JsonValue | null): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
-}
-
-function readChallengerParams(value: Prisma.JsonValue | null): {
-  halfLifeDays: number;
-  ridge: number;
-  homeAdvantageMode: "fit" | "league";
-  temperature: number;
-} | null {
-  const params = jsonObject(value);
-  const halfLifeDays = Number(params.halfLifeDays);
-  const ridge = Number(params.ridge);
-  const temperature = Number(params.temperature);
-  if (
-    !Number.isFinite(halfLifeDays) ||
-    !Number.isFinite(ridge) ||
-    !Number.isFinite(temperature)
-  ) {
-    return null;
-  }
-  return {
-    halfLifeDays: Math.max(30, halfLifeDays),
-    ridge: Math.max(1, ridge),
-    homeAdvantageMode:
-      params.homeAdvantageMode === "league" ? "league" : "fit",
-    temperature: Math.min(2, Math.max(0.3, temperature)),
-  };
 }
 
 /**
@@ -462,7 +442,7 @@ export async function runGenerateJob({
     orderBy: { promotedAt: "desc" },
   });
   const championParams = championVersion
-    ? readChallengerParams(championVersion.params)
+    ? readModelParams(championVersion.params)
     : null;
   const championHalfLifeDays =
     championParams?.halfLifeDays ?? HALF_LIFE_DAYS;
@@ -625,7 +605,7 @@ export async function runGenerateJob({
     orderBy: { createdAt: "desc" },
   });
   const challengerParams = challengerVersion
-    ? readChallengerParams(challengerVersion.params)
+    ? readModelParams(challengerVersion.params)
     : null;
   const challengerRatingsByCode = new Map<string, Ratings>();
   let challengerBudgetExceeded = false;
@@ -888,6 +868,15 @@ export async function runGenerateJob({
           ) as [number, number, number])
         : null;
 
+    const championMatrix =
+      ratings && fixture.homeTeamId && fixture.awayTeamId
+        ? scoreMatrix(
+            ratings,
+            fixture.homeTeamId,
+            fixture.awayTeamId,
+          )
+        : null;
+
     if (
       shouldSnapshot(fixture.primary.kickoff, now) &&
       hasSnapshotData(analysis.final, analysis.sources)
@@ -929,6 +918,15 @@ export async function runGenerateJob({
             challengerProbability && challengerVersion
               ? challengerVersion.id
               : null,
+          communityProbability: analysis.sources.community.probabilities,
+          communitySample: analysis.sources.community.sample,
+          communityAvailable: analysis.sources.community.available,
+          topScores: championMatrix
+            ? topScoresFromMatrix(championMatrix)
+            : null,
+          markets: championMatrix
+            ? modelMarketsFromMatrix(championMatrix)
+            : null,
         }),
       );
     }

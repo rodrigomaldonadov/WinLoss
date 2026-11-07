@@ -1,5 +1,34 @@
 import { pairedBootstrapCi } from "./forward";
 
+export type ModelParams = {
+  halfLifeDays: number;
+  ridge: number;
+  homeAdvantageMode: "fit" | "league";
+  temperature: number;
+};
+
+export function readModelParams(value: unknown): ModelParams | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const params = value as Record<string, unknown>;
+  const halfLifeDays = Number(params.halfLifeDays);
+  const ridge = Number(params.ridge);
+  const temperature = Number(params.temperature);
+  if (
+    !Number.isFinite(halfLifeDays) ||
+    !Number.isFinite(ridge) ||
+    !Number.isFinite(temperature)
+  ) {
+    return null;
+  }
+  return {
+    halfLifeDays: Math.max(30, halfLifeDays),
+    ridge: Math.max(1, ridge),
+    homeAdvantageMode:
+      params.homeAdvantageMode === "league" ? "league" : "fit",
+    temperature: Math.min(2, Math.max(0.3, temperature)),
+  };
+}
+
 export type PromotionConfig = {
   minSample: number;
   minRelativeImprovement: number;

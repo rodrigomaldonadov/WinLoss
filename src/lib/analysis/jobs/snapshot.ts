@@ -1,6 +1,10 @@
 import type { Prisma } from "@prisma/client";
 
 import type { AnalysisResult } from "@/lib/analysis/engine";
+import type { ModelMarkets, TopScore } from "@/lib/analysis/review/markets";
+
+export type SnapshotTopScore = TopScore;
+
 
 export function shouldSnapshot(kickoff: Date, now: Date): boolean {
   return kickoff.getTime() > now.getTime();
@@ -36,6 +40,11 @@ export type SnapshotInput = {
   snapshotAt: Date;
   challengerProbability?: [number, number, number] | null;
   challengerVersionId?: string | null;
+  communityProbability?: { home: number; draw: number; away: number } | null;
+  communitySample?: number | null;
+  communityAvailable?: boolean;
+  topScores?: SnapshotTopScore[] | null;
+  markets?: ModelMarkets | null;
 };
 
 export function buildSnapshotRecord(
@@ -76,5 +85,16 @@ export function buildSnapshotRecord(
         | Prisma.InputJsonValue
         | null) ?? undefined,
     challengerVersionId: input.challengerVersionId ?? null,
+    communityProbability:
+      (input.communityProbability as unknown as
+        | Prisma.InputJsonValue
+        | null) ?? undefined,
+    communitySample: input.communitySample ?? null,
+    communityAvailable: input.communityAvailable ?? false,
+    topScores:
+      (input.topScores as unknown as Prisma.InputJsonValue | null) ??
+      undefined,
+    markets:
+      (input.markets as unknown as Prisma.InputJsonValue | null) ?? undefined,
   };
 }
