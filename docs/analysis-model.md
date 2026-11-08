@@ -330,6 +330,29 @@ línea y selección en `/bets/new`, nunca la cuota.
 La operación automática (import → sync → recálculo, lock, estado y cron) está en
 [`docs/analysis-ops.md`](./analysis-ops.md).
 
+### Predicción guardada vs reconstrucción
+
+El detalle de un partido (`/analysis/historial/[id]`) tiene dos modos:
+
+- **Predicción guardada**: usa la `AnalysisSnapshot` más reciente anterior al
+  inicio. Es lo que se mostró en su momento y no se recalcula. Incluye mercado,
+  modelo, final mostrada, mercados ampliados, top-5 de marcadores y comunidad,
+  si la captura los guardó.
+- **Reconstrucción retrospectiva**: se recalcula con los ratings as-of de la
+  semana del partido (solo partidos anteriores, sin la misma semana) y las
+  cuotas guardadas del partido. Los parámetros del campeón son actuales e
+  incluyen ese periodo, así que es una aproximación, no la predicción que se
+  mostró. La comunidad **no** se reconstruye.
+
+Los snapshots anteriores a la ampliación no tienen `markets`, `topScores` ni
+comunidad: el detalle muestra lo disponible y “No guardado” en lo que falta.
+Las ligas extra solo tienen cuota de cierre, así que el mercado pre-cierre no
+aparece. Un partido sin histórico (Liga 1, copas internacionales) muestra “Sin
+análisis disponible” en vez de inventar cifras.
+
+La puntuación del partido (Brier y log-loss por fuente) es informativa: un solo
+partido no permite concluir nada sobre la calidad del modelo.
+
 ## Limitaciones conocidas
 
 - Equipos recién ascendidos arrancan en la media de la liga: el modelo no conoce

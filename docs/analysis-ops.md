@@ -124,6 +124,7 @@ ANALYSIS_RATING_MIN_NEW_RESULTS="5"
 ANALYSIS_RATINGS_BUDGET_MS="90000"
 ANALYSIS_EVALUATION_DELAY_MS="10800000"
 ANALYSIS_REFRESH_TIMEOUT_MS="840000"
+ANALYSIS_REVIEW_CONCURRENCY="2"
 ```
 
 - `CRON_SECRET`: obligatorio para `/api/cron/analysis-refresh` y
@@ -144,6 +145,9 @@ ANALYSIS_REFRESH_TIMEOUT_MS="840000"
 - `ANALYSIS_ADMIN_EMAIL`: si se define, limita promoción/rollback a ese email.
 - `ANALYSIS_REFRESH_TIMEOUT_MS`: límite del job completo. La ruta declara
   `maxDuration = 900`; configura el proxy con un timeout mayor.
+- `ANALYSIS_REVIEW_CONCURRENCY`: revisiones simultáneas al abrir detalles sin
+  snapshot (por defecto 2). Cada una ajusta ratings y se cachea en
+  `MatchReviewCache` / `RatingAsOfCache`.
 
 ### Comprobar que la imagen no contiene CSV
 
@@ -300,6 +304,11 @@ Evalúa snapshots pendientes y compara el forward test con el backtest. No
 cambia parámetros: solo muestra alertas si el modelo se deteriora o si el peso
 óptimo del modelo respecto al mercado deja de ser 0. Recomendado: semanal o
 mensual, y antes de cualquier promoción de versión.
+
+El detalle de `/analysis/historial/[id]` reutiliza `getMatchReview`: si no hay
+snapshot, reconstruye con ratings as-of y guarda el resultado en
+`MatchReviewCache`. Los cálculos simultáneos se limitan con
+`ANALYSIS_REVIEW_CONCURRENCY` (2 por defecto).
 
 ## Solución de problemas
 
