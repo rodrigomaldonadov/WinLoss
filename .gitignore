@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# build de verificación aislado (script local)
+/.build-check/
+
 # production
 /build
 

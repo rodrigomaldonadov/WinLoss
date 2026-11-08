@@ -123,6 +123,49 @@ describe("getMatchReview", () => {
     expect(result?.mode).toBe("reconstructed");
     expect(result?.cacheHit).toBe(true);
     expect(result?.ratingsVersion).toContain("baseline");
+    // La comunidad nunca se reconstruye: solo se muestra si el snapshot la guardó.
+    expect(result?.community).toBeNull();
     expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it("tolera un snapshot antiguo sin mercados ni top-5", async () => {
+    const snapshot = {
+      snapshotAt: new Date("2026-11-05T18:00:00.000Z"),
+      kickoff: playedAt,
+      finalSource: "market",
+      finalProbability: { home: 0.55, draw: 0.25, away: 0.2 },
+      modelProbability: { home: 0.5, draw: 0.3, away: 0.2 },
+      marketProbability: { home: 0.55, draw: 0.25, away: 0.2 },
+      markets: null,
+      topScores: null,
+      communityAvailable: null,
+      communitySample: null,
+      communityProbability: null,
+      ratingsVersion: null,
+    };
+
+    const result = await getMatchReview({
+      userId: "user-1",
+      matchId: "match-1",
+      client: client(snapshot),
+    });
+
+    expect(result?.mode).toBe("saved");
+    expect(result?.modelMarkets).toMatchObject({
+      home: 0.5,
+      draw: 0.3,
+      away: 0.2,
+      over25: null,
+      btts: null,
+    });
+    expect(result?.topScores).toBeNull();
+    expect(result?.actualScoreInTop5).toBeNull();
+    expect(result?.community).toBeNull();
+    expect(
+      result?.rows.find((row) => row.key === "1X2_HOME")?.probabilities,
+    ).toMatchObject({ marketClose: 0.55, model: 0.5, final: 0.55 });
+    expect(
+      result?.rows.find((row) => row.key === "OVER_2.5")?.probabilities.model,
+    ).toBeNull();
   });
 });
