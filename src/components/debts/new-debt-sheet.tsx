@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
@@ -35,15 +36,25 @@ import {
   type DebtCurrencyCode,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { formatDate, formatOdds } from "@/lib/format";
 
 const initialState: DebtActionState = {};
 const QUICK_AMOUNTS = [50, 100, 500, 1000] as const;
+
+export type ExchangeRateOption = {
+  id: string;
+  label: string;
+  buyRate: number;
+  sellRate: number;
+  effectiveAt: Date;
+};
 
 type NewDebtSheetProps = {
   bankrolls: { id: string; name: string; currency: string }[];
   defaultCurrency: DebtCurrencyCode;
   today: string;
   usdToPenRate: number;
+  rates: ExchangeRateOption[];
   trigger?: React.ReactNode;
 };
 
@@ -67,6 +78,7 @@ export function NewDebtSheet({
   defaultCurrency,
   today,
   usdToPenRate,
+  rates,
   trigger,
 }: NewDebtSheetProps) {
   const router = useRouter();
@@ -87,6 +99,8 @@ export function NewDebtSheet({
       usdToPenRate,
     ),
   );
+  const [rateId, setRateId] = useState("");
+  const [rateKind, setRateKind] = useState<"BUY" | "SELL">("BUY");
   const [interestRate, setInterestRate] = useState("");
   const [notes, setNotes] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -95,7 +109,32 @@ export function NewDebtSheet({
   const needsRate = Boolean(
     selectedBankroll && currency !== selectedBankroll.currency,
   );
+  const canUseSavedRate =
+    needsRate &&
+    currency === "USD" &&
+    selectedBankroll?.currency === "PEN" &&
+    rates.length > 0;
+  const savedRate = rates.find((item) => item.id === rateId) ?? null;
   const currencyInfo = DEBT_CURRENCY_LABELS[currency];
+
+  const savedValue = (entry: ExchangeRateOption, kind: "BUY" | "SELL") =>
+    kind === "BUY" ? entry.buyRate : entry.sellRate;
+
+  const selectSavedRate = (id: string) => {
+    if (id === "manual") {
+      setRateId("");
+      return;
+    }
+    const entry = rates.find((item) => item.id === id);
+    if (!entry) return;
+    setRateId(id);
+    setExchangeRate(String(savedValue(entry, rateKind)));
+  };
+
+  const selectRateKind = (kind: "BUY" | "SELL") => {
+    setRateKind(kind);
+    if (savedRate) setExchangeRate(String(savedValue(savedRate, kind)));
+  };
 
   useEffect(() => {
     if (!state.ok) {
@@ -119,6 +158,7 @@ export function NewDebtSheet({
 
   const selectCurrency = (next: DebtCurrencyCode) => {
     setCurrency(next);
+    setRateId("");
     setExchangeRate(
       suggestedRate(next, selectedBankroll?.currency ?? "PEN", usdToPenRate),
     );
@@ -126,6 +166,7 @@ export function NewDebtSheet({
 
   const selectBankroll = (next: string) => {
     setBankrollId(next);
+    setRateId("");
     const bankroll = bankrolls.find((item) => item.id === next);
     setExchangeRate(
       suggestedRate(currency, bankroll?.currency ?? "PEN", usdToPenRate),
@@ -348,13 +389,91 @@ export function NewDebtSheet({
                   Tasa de cambio ({selectedBankroll?.currency} por 1{" "}
                   {currency})
                 </Label>
+
+                {canUseSavedRate && (
+                  <div className="space-y-1.5 rounded-lg border bg-muted/20 p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium">
+                        Tasa guardada
+                      </span>
+                      <Link
+                        href="/settings"
+                        className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        Gestionar
+                      </Link>
+                    </div>
+                    <Select
+                      value={rateId || "manual"}
+                      onValueChange={selectSavedRate}
+                    >
+                      <SelectTrigger className="h-11 w-full" aria-label="Tasa guardada">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual</SelectItem>
+                        {rates.map((rate) => (
+                          <SelectItem key={rate.id} value={rate.id}>
+                            {rate.label} ·{" "}
+                            {formatDate(rate.effectiveAt, {
+                              day: "2-digit",
+                              month: "short",
+                            })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {savedRate && (
+                      <div className="grid grid-cols-2 gap-1 rounded-lg bg-background p-1">
+                        {(["BUY", "SELL"] as const).map((kind) => {
+                          const active = rateKind === kind;
+                          return (
+                            <button
+                              key={kind}
+                              type="button"
+                              aria-pressed={active}
+                              onClick={() => selectRateKind(kind)}
+                              className={cn(
+                                "h-11 min-w-0 rounded-md px-1 text-xs font-medium transition-colors",
+                                active
+                                  ? "bg-primary/10 text-primary"
+                                  : "text-muted-foreground active:bg-muted",
+                              )}
+                            >
+                              {kind === "BUY" ? "Compra" : "Venta"} ·{" "}
+                              <span className="tabular-nums">
+                                {formatOdds(savedValue(savedRate, kind))}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {rateId && (
+                      <>
+                        <input type="hidden" name="rateId" value={rateId} />
+                        <input
+                          type="hidden"
+                          name="rateKind"
+                          value={rateKind}
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <Input
                   id="debt-rate"
                   name="exchangeRate"
                   type="text"
                   inputMode="decimal"
                   value={exchangeRate}
-                  onChange={(event) => setExchangeRate(event.target.value)}
+                  onChange={(event) => {
+                    setRateId("");
+                    setExchangeRate(event.target.value);
+                  }}
                   placeholder={
                     currency === "USD"
                       ? String(usdToPenRate)
@@ -365,7 +484,9 @@ export function NewDebtSheet({
                   aria-invalid={Boolean(state.fieldErrors?.exchangeRate)}
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Última tasa usada como sugerencia. Puedes cambiarla.
+                  {canUseSavedRate
+                    ? "Elige una tasa guardada o edita la cifra para usar una manual."
+                    : "Última tasa usada como sugerencia. Puedes cambiarla."}
                 </p>
                 {state.fieldErrors?.exchangeRate?.[0] && (
                   <p className="text-xs text-destructive">
@@ -436,3 +557,4 @@ export function NewDebtSheet({
     </Sheet>
   );
 }
+

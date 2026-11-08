@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Landmark,
   Percent,
+  RefreshCw,
   Wallet,
 } from "lucide-react";
 
@@ -18,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { getDebtForUser } from "@/lib/data/debts";
+import { getExchangeRates } from "@/lib/data/exchange-rates";
 import { getUserPreferences } from "@/lib/data/user";
 import { getDebtStatusMeta } from "@/lib/debt-display";
 import { toZonedDateTimeInput } from "@/lib/date";
@@ -49,9 +51,10 @@ export default async function DebtDetailPage({
   const openPayment = Array.isArray(query.pagar)
     ? query.pagar[0] === "1"
     : query.pagar === "1";
-  const [debt, preferences] = await Promise.all([
+  const [debt, preferences, exchangeRates] = await Promise.all([
     getDebtForUser(session.user.id, id),
     getUserPreferences(session.user.id),
+    getExchangeRates(session.user.id),
   ]);
 
   if (!debt) notFound();
@@ -167,6 +170,18 @@ export default async function DebtDetailPage({
             <Landmark className="size-3.5 shrink-0" aria-hidden />
             {formatCurrency(debt.equivalentPen, "PEN")} aprox.
           </span>
+          {debt.exchangeRate !== null && (
+            <span className="flex items-center gap-1">
+              <RefreshCw className="size-3.5 shrink-0" aria-hidden />
+              {debt.rateKind === "BUY"
+                ? "Compra"
+                : debt.rateKind === "SELL"
+                  ? "Venta"
+                  : "Tasa"}{" "}
+              {debt.exchangeRate}
+              {debt.rateLabel ? ` · ${debt.rateLabel}` : ""}
+            </span>
+          )}
           {debt.notes && (
             <span className="max-w-full break-words">{debt.notes}</span>
           )}
@@ -204,6 +219,7 @@ export default async function DebtDetailPage({
             debt={debt}
             usdToPenRate={preferences.usdToPenRate}
             today={today}
+            rates={exchangeRates}
             defaultOpen={openPayment}
             trigger={
               <Button type="button" className="h-11">
@@ -271,7 +287,11 @@ export default async function DebtDetailPage({
                           ? "Desde el bankroll"
                           : "Pagado aparte"}
                         {payment.exchangeRate !== null
-                          ? ` · tasa ${payment.exchangeRate}`
+                          ? ` · tasa ${payment.exchangeRate}${
+                              payment.rateLabel
+                                ? ` (${payment.rateKind === "SELL" ? "venta" : "compra"} ${payment.rateLabel})`
+                                : ""
+                            }`
                           : ""}
                       </p>
                       {payment.note && (

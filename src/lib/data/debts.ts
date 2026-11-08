@@ -30,6 +30,8 @@ export type DebtPaymentItem = {
   paidAt: Date;
   source: DebtPaymentSource;
   exchangeRate: number | null;
+  rateKind: "BUY" | "SELL" | null;
+  rateLabel: string | null;
   note: string | null;
   voidedAt: Date | null;
   transactionId: string | null;
@@ -43,6 +45,9 @@ export type DebtItem = {
   borrowedAt: Date;
   dueDate: Date | null;
   interestRateMonthly: number | null;
+  exchangeRate: number | null;
+  rateKind: "BUY" | "SELL" | null;
+  rateLabel: string | null;
   status: DebtStatus;
   notes: string | null;
   bankrollId: string;
@@ -134,6 +139,8 @@ export async function getDebtsForUser(
           paidAt: true,
           source: true,
           exchangeRate: true,
+          rateKind: true,
+          rateLabel: true,
           note: true,
           voidedAt: true,
           transaction: { select: { id: true } },
@@ -154,6 +161,9 @@ export async function getDebtsForUser(
         : total > 0
           ? Math.min(1, Math.max(0, paid / total))
           : 0;
+    const equivalentRate = debt.exchangeRate
+      ? Number(debt.exchangeRate)
+      : preferences.usdToPenRate;
 
     return {
       id: debt.id,
@@ -166,6 +176,12 @@ export async function getDebtsForUser(
         debt.interestRateMonthly === null
           ? null
           : debt.interestRateMonthly.toNumber(),
+      exchangeRate: debt.exchangeRate ? Number(debt.exchangeRate) : null,
+      rateKind:
+        debt.rateKind === "BUY" || debt.rateKind === "SELL"
+          ? debt.rateKind
+          : null,
+      rateLabel: debt.rateLabel,
       status: snapshot.status,
       notes: debt.notes,
       bankrollId: debt.bankrollId,
@@ -180,7 +196,7 @@ export async function getDebtsForUser(
       equivalentPen: convertDebtToPen(
         snapshot.balance,
         debt.currency,
-        preferences.usdToPenRate,
+        equivalentRate,
       ).toNumber(),
       createdAt: debt.createdAt,
     } satisfies DebtItem;
@@ -235,6 +251,8 @@ export async function getDebtForUser(
           paidAt: true,
           source: true,
           exchangeRate: true,
+          rateKind: true,
+          rateLabel: true,
           note: true,
           voidedAt: true,
           transaction: { select: { id: true } },
@@ -283,6 +301,12 @@ export async function getDebtForUser(
       debt.interestRateMonthly === null
         ? null
         : debt.interestRateMonthly.toNumber(),
+    exchangeRate: debt.exchangeRate ? Number(debt.exchangeRate) : null,
+    rateKind:
+      debt.rateKind === "BUY" || debt.rateKind === "SELL"
+        ? debt.rateKind
+        : null,
+    rateLabel: debt.rateLabel,
     status: snapshot.status,
     notes: debt.notes,
     bankrollId: debt.bankrollId,
@@ -297,7 +321,9 @@ export async function getDebtForUser(
     equivalentPen: convertDebtToPen(
       snapshot.balance,
       debt.currency,
-      preferences.usdToPenRate,
+      debt.exchangeRate
+        ? Number(debt.exchangeRate)
+        : preferences.usdToPenRate,
     ).toNumber(),
     createdAt: debt.createdAt,
     payments: debt.payments.map((payment) => ({
@@ -307,6 +333,11 @@ export async function getDebtForUser(
       source: payment.source,
       exchangeRate:
         payment.exchangeRate === null ? null : payment.exchangeRate.toNumber(),
+      rateKind:
+        payment.rateKind === "BUY" || payment.rateKind === "SELL"
+          ? payment.rateKind
+          : null,
+      rateLabel: payment.rateLabel,
       note: payment.note,
       voidedAt: payment.voidedAt,
       transactionId: payment.transaction?.id ?? null,
@@ -378,7 +409,9 @@ export async function getDebtSummaryForUser(
     totalPen += convertDebtToPen(
       snapshot.balance,
       debt.currency,
-      preferences.usdToPenRate,
+      debt.exchangeRate
+        ? Number(debt.exchangeRate)
+        : preferences.usdToPenRate,
     ).toNumber();
     if (snapshot.isOverdue) overdueCount += 1;
     if (debt.dueDate && debt.dueDate.getTime() >= now.getTime()) {
@@ -506,3 +539,4 @@ export async function getBankrollMovements(
     lenderName: transaction.debt?.lenderName ?? null,
   }));
 }
+

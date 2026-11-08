@@ -15,6 +15,7 @@ import {
   type DebtFilter,
 } from "@/lib/data/debts";
 import { getUserBankrollOptions } from "@/lib/data/bankrolls";
+import { getExchangeRates } from "@/lib/data/exchange-rates";
 import { getUserPreferences } from "@/lib/data/user";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toZonedDateTimeInput } from "@/lib/date";
@@ -89,12 +90,14 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
   const status = parseStatus(params.estado);
   const currency = parseCurrency(params.moneda);
 
-  const [debtsResult, summary, bankrolls, preferences] = await Promise.all([
-    getDebtsForUser(session.user.id, { status, currency }),
-    getDebtSummaryForUser(session.user.id),
-    getUserBankrollOptions(session.user.id),
-    getUserPreferences(session.user.id),
-  ]);
+  const [debtsResult, summary, bankrolls, preferences, exchangeRates] =
+    await Promise.all([
+      getDebtsForUser(session.user.id, { status, currency }),
+      getDebtSummaryForUser(session.user.id),
+      getUserBankrollOptions(session.user.id),
+      getUserPreferences(session.user.id),
+      getExchangeRates(session.user.id),
+    ]);
 
   const { debts } = debtsResult;
   const today = toZonedDateTimeInput(
@@ -127,6 +130,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
                 defaultCurrency={defaultCurrency}
                 today={today}
                 usdToPenRate={preferences.usdToPenRate}
+                rates={exchangeRates}
                 trigger={
                   <Button type="button" size="icon" aria-label="Nueva deuda">
                     <Plus className="size-5" aria-hidden />
@@ -270,6 +274,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
                 defaultCurrency={defaultCurrency}
                 today={today}
                 usdToPenRate={preferences.usdToPenRate}
+                rates={exchangeRates}
                 trigger={<Button type="button">Registrar deuda</Button>}
               />
             )
@@ -289,6 +294,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
           defaultCurrency={defaultCurrency}
           today={today}
           usdToPenRate={preferences.usdToPenRate}
+          rates={exchangeRates}
           trigger={
             <button
               type="button"
@@ -303,3 +309,4 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
     </div>
   );
 }
+

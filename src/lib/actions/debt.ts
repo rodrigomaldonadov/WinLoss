@@ -134,6 +134,8 @@ export async function createDebt(
     interestRateMonthly: formData.get("interestRateMonthly"),
     addToBankroll: formData.get("addToBankroll"),
     exchangeRate: formData.get("exchangeRate"),
+    rateId: formData.get("rateId"),
+    rateKind: formData.get("rateKind"),
     notes: formData.get("notes"),
   });
 
@@ -172,6 +174,39 @@ export async function createDebt(
     };
   }
 
+  let savedRate: { rate: Decimal; kind: "BUY" | "SELL"; label: string } | null =
+    null;
+  if (data.rateId) {
+    if (!(data.currency === "USD" && bankroll.currency === "PEN")) {
+      return {
+        fieldErrors: {
+          exchangeRate: [
+            "La tasa guardada solo aplica a deudas en USD desde un bankroll en PEN.",
+          ],
+        },
+      };
+    }
+    const entry = await prisma.exchangeRate.findFirst({
+      where: { id: data.rateId, userId: session.user.id },
+      select: { buyRate: true, sellRate: true, label: true },
+    });
+    if (!entry) {
+      return {
+        fieldErrors: {
+          exchangeRate: ["La tasa seleccionada ya no está disponible."],
+        },
+      };
+    }
+    const kind = data.rateKind ?? "BUY";
+    savedRate = {
+      rate: new Decimal(kind === "BUY" ? entry.buyRate : entry.sellRate),
+      kind,
+      label: entry.label,
+    };
+  }
+
+  const appliedRate = savedRate?.rate ?? rate;
+
   const principal = new Decimal(data.principal);
   const borrowedAt = localDateToUtc(data.borrowedAt, preferences.timezone);
   const dueDate = data.dueDate
@@ -189,6 +224,9 @@ export async function createDebt(
         borrowedAt,
         dueDate,
         interestRateMonthly: data.interestRateMonthly ?? null,
+        exchangeRate: appliedRate,
+        rateKind: savedRate?.kind ?? null,
+        rateLabel: savedRate?.label ?? null,
         status: "OPEN",
         notes: data.notes ?? null,
       },
@@ -203,10 +241,10 @@ export async function createDebt(
           type: "LOAN_IN",
           amount: principal,
           currency: data.currency,
-          exchangeRate: rate,
+          exchangeRate: appliedRate,
           amountInBankrollCurrency: convertToBankrollCurrency(
             principal,
-            rate,
+            appliedRate,
           ),
           occurredAt: borrowedAt,
           debtId: created.id,
@@ -223,7 +261,7 @@ export async function createDebt(
       userId: session.user.id,
       amountCurrency: data.currency,
       bankrollCurrency: bankroll.currency,
-      rate,
+      rate: appliedRate,
     });
   }
 
@@ -306,6 +344,8 @@ export async function registerPayment(
     paidAt: formData.get("paidAt"),
     source: formData.get("source"),
     exchangeRate: formData.get("exchangeRate"),
+    rateId: formData.get("rateId"),
+    rateKind: formData.get("rateKind"),
     note: formData.get("note"),
   });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
@@ -349,13 +389,48 @@ export async function registerPayment(
         };
       }
 
+      let savedRate: {
+        rate: Decimal;
+        kind: "BUY" | "SELL";
+        label: string;
+      } | null = null;
+
+      if (
+        data.source === "FROM_BANKROLL" &&
+        data.rateId &&
+        debt.currency === "USD" &&
+        debt.bankroll.currency === "PEN"
+      ) {
+        const entry = await tx.exchangeRate.findFirst({
+          where: { id: data.rateId, userId: session.user.id },
+          select: { buyRate: true, sellRate: true, label: true },
+        });
+
+        if (!entry) {
+          return {
+            ok: false,
+            fieldErrors: {
+              exchangeRate: ["La tasa seleccionada ya no está disponible."],
+            },
+          };
+        }
+
+        const kind = data.rateKind ?? "SELL";
+        savedRate = {
+          rate: new Decimal(kind === "BUY" ? entry.buyRate : entry.sellRate),
+          kind,
+          label: entry.label,
+        };
+      }
+
       const rate =
         data.source === "FROM_BANKROLL"
-          ? resolveExchangeRate({
+          ? (savedRate?.rate ??
+            resolveExchangeRate({
               amountCurrency: debt.currency,
               bankrollCurrency: debt.bankroll.currency,
               exchangeRate: data.exchangeRate,
-            })
+            }))
           : data.exchangeRate !== undefined
             ? new Decimal(data.exchangeRate)
             : null;
@@ -422,6 +497,8 @@ export async function registerPayment(
           paidAt,
           source: data.source,
           exchangeRate: rate,
+          rateKind: savedRate?.kind ?? null,
+          rateLabel: savedRate?.label ?? null,
           note: data.note ?? null,
         },
         select: { id: true },

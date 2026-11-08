@@ -8,17 +8,20 @@ import { PageHeader } from "@/components/page-header";
 import { UserProfileSheet } from "@/components/settings/user-profile-sheet";
 import { AutoSettlePreference } from "@/components/settings/auto-settle-preference";
 import { DebtPreferences } from "@/components/settings/debt-preferences";
+import { ExchangeRatesCard } from "@/components/settings/exchange-rates";
 import { ModelVersionsPanel } from "@/components/settings/model-versions-panel";
 import { ThemePreference } from "@/components/settings/theme-preference";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions/auth";
 import { canManageModelVersions } from "@/lib/analysis/model-version";
 import { getBookmakersForUser } from "@/lib/data/bookmakers";
+import { getExchangeRates } from "@/lib/data/exchange-rates";
 import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_DEBT_ALERT_THRESHOLD,
   DEFAULT_USD_TO_PEN_RATE,
 } from "@/lib/constants";
+import { toZonedDateTimeInput } from "@/lib/date";
 import { formatDate, getInitials } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -46,7 +49,11 @@ export default async function SettingsPage() {
 
   if (!user) redirect("/login");
 
-  const bookmakers = await getBookmakersForUser(session.user.id);
+  const [bookmakers, exchangeRates] = await Promise.all([
+    getBookmakersForUser(session.user.id),
+    getExchangeRates(session.user.id),
+  ]);
+  const today = toZonedDateTimeInput(new Date(), user.timezone).slice(0, 10);
   const adminEmail = process.env.ANALYSIS_ADMIN_EMAIL?.trim() ?? "";
   const canPromote = canManageModelVersions({
     userEmail: session.user.email,
@@ -145,8 +152,9 @@ export default async function SettingsPage() {
             Deudas y alertas
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Configura la tasa manual USD → PEN y el umbral de los avisos de
-            juego responsable. Las deudas no modifican tu ROI ni tu yield.
+            Tasa de respaldo USD → PEN, tasas de compra/venta por banco y umbral
+            de los avisos de juego responsable. Las deudas usan la tasa que
+            elijas al crearlas o pagarlas. No modifican tu ROI ni tu yield.
           </p>
         </div>
         <DebtPreferences
@@ -163,6 +171,10 @@ export default async function SettingsPage() {
           }
           showDebts={user.showDebts}
         />
+
+        <div className="border-t pt-3">
+          <ExchangeRatesCard rates={exchangeRates} today={today} />
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-xl border bg-card shadow-xs">

@@ -61,6 +61,16 @@ const booleanFlag = z.preprocess(
   z.boolean(),
 );
 
+const optionalId = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  z.string().min(1).optional(),
+);
+
+const optionalRateKind = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  z.enum(["BUY", "SELL"]).optional(),
+);
+
 export const createDebtSchema = z.object({
   bankrollId: z.string().min(1, "Selecciona un bankroll"),
   lenderName: z
@@ -75,6 +85,8 @@ export const createDebtSchema = z.object({
   interestRateMonthly: optionalDecimal("Interés inválido", 1_000),
   addToBankroll: booleanFlag,
   exchangeRate: optionalDecimal("Tasa de cambio inválida", 1_000_000),
+  rateId: optionalId,
+  rateKind: optionalRateKind,
   notes: optionalText(500),
 });
 
@@ -96,6 +108,8 @@ export const debtPaymentSchema = z.object({
   paidAt: dateString,
   source: debtPaymentSourceSchema,
   exchangeRate: optionalDecimal("Tasa de cambio inválida", 1_000_000),
+  rateId: optionalId,
+  rateKind: optionalRateKind,
   note: optionalText(300),
 });
 
