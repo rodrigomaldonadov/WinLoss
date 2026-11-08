@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Wallet } from "lucide-react";
+import { Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -168,18 +169,34 @@ export function RegisterPaymentSheet({
 
       <SheetContent
         side="bottom"
-        className="flex max-h-[92dvh] flex-col gap-0 rounded-t-2xl pb-0 sm:mx-auto sm:max-w-lg"
+        showCloseButton={false}
+        className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 overflow-x-hidden rounded-none pb-0 sm:mx-auto sm:h-auto sm:max-h-[90dvh] sm:max-w-lg sm:rounded-2xl"
       >
-        <SheetHeader className="pb-3 pr-10">
-          <SheetTitle>Registrar pago</SheetTitle>
-          <SheetDescription>
-            {debt.lenderName} · saldo{" "}
-            {formatCurrency(debt.balance, debt.currency)}
-          </SheetDescription>
+        <SheetHeader className="min-w-0 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] pb-2 sm:pb-3 sm:pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-0.5">
+              <SheetTitle>Registrar pago</SheetTitle>
+              <SheetDescription className="text-xs leading-snug break-words sm:text-sm">
+                {debt.lenderName} · saldo{" "}
+                {formatCurrency(debt.balance, debt.currency)}
+              </SheetDescription>
+            </div>
+            <SheetClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Cerrar"
+                className="-mt-1 -mr-1 shrink-0"
+              >
+                <X className="size-5" aria-hidden />
+              </Button>
+            </SheetClose>
+          </div>
         </SheetHeader>
 
         <form action={formAction} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pb-4">
             {state.error && (
               <p
                 role="alert"
@@ -191,11 +208,17 @@ export function RegisterPaymentSheet({
 
             <div className="space-y-2">
               <Label htmlFor="payment-amount">Monto a pagar</Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              <div
+                className={cn(
+                  "flex h-12 w-full items-center rounded-lg border border-input bg-transparent transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
+                  (amountExceeds || Boolean(state.fieldErrors?.amount)) &&
+                    "border-destructive focus-within:border-destructive focus-within:ring-destructive/20",
+                )}
+              >
+                <span className="pointer-events-none shrink-0 pl-3 text-sm text-muted-foreground">
                   {currencyInfo.symbol}
                 </span>
-                <Input
+                <input
                   id="payment-amount"
                   name="amount"
                   type="text"
@@ -204,7 +227,7 @@ export function RegisterPaymentSheet({
                   onChange={(event) => setAmount(event.target.value)}
                   placeholder="0.00"
                   required
-                  className="h-12 pl-10 text-lg font-semibold tabular-nums"
+                  className="h-full w-full min-w-0 bg-transparent pr-3 pl-2 text-lg font-semibold tabular-nums outline-none placeholder:text-muted-foreground"
                   aria-invalid={
                     amountExceeds || Boolean(state.fieldErrors?.amount)
                   }
@@ -326,16 +349,16 @@ export function RegisterPaymentSheet({
             )}
 
             <div className="rounded-lg border bg-muted/30 p-3 text-xs">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
                 <span className="text-muted-foreground">
                   Saldo de la deuda
                 </span>
-                <span className="font-semibold tabular-nums">
+                <span className="min-w-0 text-right font-semibold break-words tabular-nums">
                   {formatCurrency(debt.balance, debt.currency)} →{" "}
                   {formatCurrency(remainingAfter, debt.currency)}
                 </span>
               </div>
-              <div className="mt-1 flex items-center justify-between gap-2">
+              <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
                 <span className="text-muted-foreground">
                   {source === "FROM_BANKROLL"
                     ? "Bankroll después del pago"
@@ -343,7 +366,7 @@ export function RegisterPaymentSheet({
                 </span>
                 <span
                   className={cn(
-                    "font-semibold tabular-nums",
+                    "min-w-0 text-right font-semibold break-words tabular-nums",
                     bankrollAfter < 0 && "text-destructive",
                   )}
                 >
@@ -351,7 +374,7 @@ export function RegisterPaymentSheet({
                 </span>
               </div>
               {source === "FROM_BANKROLL" && converted > 0 && (
-                <p className="mt-1 text-[10px] text-muted-foreground">
+                <p className="mt-1 text-[10px] break-words text-muted-foreground">
                   Se descontarán{" "}
                   {formatCurrency(converted, debt.bankrollCurrency)} de{" "}
                   {debt.bankrollName}.
@@ -380,7 +403,7 @@ export function RegisterPaymentSheet({
             <input type="hidden" name="debtId" value={debt.id} />
           </div>
 
-          <div className="shrink-0 border-t bg-popover/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+          <div className="shrink-0 border-t bg-popover/95 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] backdrop-blur">
             <Button
               type="submit"
               className="h-12 w-full"

@@ -96,17 +96,17 @@ export default async function DebtDetailPage({
       )}
 
       <section className="rounded-xl border bg-card p-4 shadow-xs">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+          <div className="min-w-0">
+            <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
               Saldo pendiente
             </p>
-            <p className="mt-0.5 text-2xl font-semibold tabular-nums">
+            <p className="mt-0.5 text-2xl font-semibold break-words tabular-nums">
               {formatCurrency(debt.balance, debt.currency)}
             </p>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <p>
+          <div className="min-w-0 text-right text-xs text-muted-foreground">
+            <p className="break-words">
               {formatCurrency(debt.paid, debt.currency)} pagado
             </p>
             <p>{progress}%</p>
@@ -128,26 +128,28 @@ export default async function DebtDetailPage({
         </div>
 
         <dl className="mt-4 grid grid-cols-2 gap-3 border-t pt-3 text-xs sm:grid-cols-4">
-          <div>
+          <div className="min-w-0">
             <dt className="text-[10px] text-muted-foreground">Principal</dt>
-            <dd className="mt-0.5 font-medium tabular-nums">
+            <dd className="mt-0.5 font-medium break-words tabular-nums">
               {formatCurrency(debt.principal, debt.currency)}
             </dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-[10px] text-muted-foreground">Interés</dt>
-            <dd className="mt-0.5 font-medium tabular-nums">
+            <dd className="mt-0.5 font-medium break-words tabular-nums">
               {formatCurrency(debt.interest, debt.currency)}
             </dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-[10px] text-muted-foreground">Vencimiento</dt>
             <dd className="mt-0.5 font-medium">
               {debt.dueDate ? formatDate(debt.dueDate) : "—"}
             </dd>
           </div>
-          <div>
-            <dt className="text-[10px] text-muted-foreground">Interés mensual</dt>
+          <div className="min-w-0">
+            <dt className="text-[10px] text-muted-foreground">
+              Interés mensual
+            </dt>
             <dd className="mt-0.5 font-medium">
               {debt.interestRateMonthly !== null
                 ? `${debt.interestRateMonthly}%`
@@ -158,34 +160,36 @@ export default async function DebtDetailPage({
 
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2.5 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1">
-            <CalendarDays className="size-3.5" aria-hidden />
+            <CalendarDays className="size-3.5 shrink-0" aria-hidden />
             Prestado {formatDate(debt.borrowedAt)}
           </span>
           <span className="flex items-center gap-1">
-            <Landmark className="size-3.5" aria-hidden />
+            <Landmark className="size-3.5 shrink-0" aria-hidden />
             {formatCurrency(debt.equivalentPen, "PEN")} aprox.
           </span>
-          {debt.notes && <span className="truncate">{debt.notes}</span>}
+          {debt.notes && (
+            <span className="max-w-full break-words">{debt.notes}</span>
+          )}
         </div>
       </section>
 
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl border bg-card p-3 shadow-xs">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        <div className="min-w-0 rounded-xl border bg-card p-3 shadow-xs">
+          <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
             Ganancia disponible
           </p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums">
+          <p className="mt-0.5 text-sm font-semibold break-words tabular-nums">
             {formatCurrency(debt.availableProfit, debt.bankrollCurrency)}
           </p>
           <p className="text-[10px] text-muted-foreground">
             Solo apuestas liquidadas
           </p>
         </div>
-        <div className="rounded-xl border bg-card p-3 shadow-xs">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        <div className="min-w-0 rounded-xl border bg-card p-3 shadow-xs">
+          <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
             Saldo libre del bankroll
           </p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums">
+          <p className="mt-0.5 text-sm font-semibold break-words tabular-nums">
             {formatCurrency(debt.freeBankrollBalance, debt.bankrollCurrency)}
           </p>
           <p className="text-[10px] text-muted-foreground">
@@ -258,10 +262,10 @@ export default async function DebtDetailPage({
                   />
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold tabular-nums">
+                      <p className="text-sm font-semibold break-words tabular-nums">
                         {formatCurrency(payment.amount, debt.currency)}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      <p className="mt-0.5 text-[11px] break-words text-muted-foreground">
                         {formatDateTime(payment.paidAt, preferences.timezone)} ·{" "}
                         {payment.source === "FROM_BANKROLL"
                           ? "Desde el bankroll"
