@@ -102,6 +102,10 @@ export function DataStatusNotice({
       ? "Sin lote de cuotas reciente"
       : "Actualización automática con incidencias";
 
+  const failedStep = status.lastRun?.steps.find(
+    (step) => step.status === "failed" && step.error,
+  );
+
   return (
     <Sheet>
       <div
@@ -142,6 +146,11 @@ export function DataStatusNotice({
               Última corrida: {runStatusLabel(status.lastRun.status)}{" "}
               {status.lastRun.error ? `(${status.lastRun.error})` : ""}
               {stepSummary(status) ? ` · ${stepSummary(status)}` : ""}.
+            </p>
+          )}
+          {failedStep?.error && (
+            <p>
+              {failedStep.name}: {failedStep.error}
             </p>
           )}
           <p>
@@ -191,6 +200,11 @@ export function DataStatusNotice({
               Última corrida: {runStatusLabel(status.lastRun.status)}{" "}
               {status.lastRun.error ? `(${status.lastRun.error})` : ""}
               {stepSummary(status) ? ` · ${stepSummary(status)}` : ""}.
+            </p>
+          )}
+          {failedStep?.error && (
+            <p className="rounded bg-rose-500/10 px-1.5 py-1 text-rose-700 dark:text-rose-300">
+              {failedStep.name}: {failedStep.error}
             </p>
           )}
           <p>
@@ -306,11 +320,28 @@ export function DataStatusDetails({
         </ul>
       )}
 
+      {steps
+        .filter((step) => step.status === "failed" && step.error)
+        .map((step) => (
+          <p
+            key={`error-${step.name}`}
+            className="mt-1.5 rounded bg-rose-500/10 px-1.5 py-1 text-[10px] text-rose-700 dark:text-rose-300"
+          >
+            <span className="font-semibold">{step.name}:</span> {step.error}
+          </p>
+        ))}
+
       {status.marketStale && (
         <p className="mt-1.5 rounded bg-amber-500/10 px-1.5 py-1 text-amber-900 dark:text-amber-200">
           Mercado desactualizado: las cuotas se capturaron{" "}
           {batch ? formatAgeDays(batch.ageDays) : "hace más de 4 días"} y la
           fuente se oculta.
+        </p>
+      )}
+      {(status.marketStale || status.marketMissing) && (
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          Las APIs solo aportan calendario: el mercado se reactiva al importar un
+          fixtures.csv nuevo (descarga manual).
         </p>
       )}
       {status.marketMissing && (

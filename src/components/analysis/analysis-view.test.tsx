@@ -19,7 +19,11 @@ vi.mock("next/link", async () => {
 
 import { AnalysisCard, NoAnalysisCard } from "@/components/analysis/analysis-card";
 import { AnalysisDetailView } from "@/components/analysis/analysis-detail-view";
-import { DataStatusNotice, formatAgeDays } from "@/components/analysis/data-status";
+import {
+  DataStatusDetails,
+  DataStatusNotice,
+  formatAgeDays,
+} from "@/components/analysis/data-status";
 import { ModelAccuracyPanel } from "@/components/analysis/model-accuracy-panel";
 import { BookmakerOddsComparator, comparisonText } from "@/components/analysis/odds-comparator";
 import {
@@ -225,6 +229,39 @@ describe("estado de los datos", () => {
     expect(formatAgeDays(0)).toBe("hoy");
     expect(formatAgeDays(1)).toBe("hace 1 día");
     expect(formatAgeDays(8)).toBe("hace 8 días");
+  });
+
+  it("muestra el error del paso fallido y cómo reactivar el mercado", () => {
+    const failed = {
+      ...dataStatusFixture,
+      fixtureBatch: {
+        ...dataStatusFixture.fixtureBatch!,
+        capturedAt: "2026-10-30T10:05:00.000Z",
+        ageDays: 8,
+        stale: true,
+      },
+      marketStale: true,
+      lastRun: {
+        ...dataStatusFixture.lastRun!,
+        status: "PARTIAL",
+        steps: [
+          {
+            name: "results",
+            status: "failed",
+            durationMs: 1000,
+            error:
+              "results thesportsdb Liga 1: Error: 429 Too Many Requests",
+          },
+        ],
+      },
+    };
+
+    const notice = renderToStaticMarkup(<DataStatusNotice status={failed} />);
+    expect(notice).toContain("429 Too Many Requests");
+
+    const details = renderToStaticMarkup(<DataStatusDetails status={failed} />);
+    expect(details).toContain("429 Too Many Requests");
+    expect(details).toContain("fixtures.csv nuevo");
   });
 });
 
