@@ -5,81 +5,90 @@ import { cn } from "@/lib/utils";
 
 export function ResearchArbitrage({ event }: { event: ParlayEvent }) {
   const cases = bestArbitrage(event, 6);
-  const arbitrage = cases.filter((item) => item.sum < 1);
+  const best = cases[0];
+  const arbitrage = best && best.sum < 1 ? best : null;
+
+  if (!best) {
+    return (
+      <section className="rounded-xl border bg-muted/20 p-3">
+        <h2 className="text-sm font-semibold">Arbitraje</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Faltan cuotas comparables (1X2 o totales) para calcularlo.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="arbitraje" className="space-y-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 id="arbitraje" className="text-sm font-semibold">
-          Arbitraje
-        </h2>
-        <span className="text-[10px] text-muted-foreground">
-          {arbitrage.length > 0
-            ? `${arbitrage.length} caso${arbitrage.length === 1 ? "" : "s"}`
-            : "sin casos"}
-        </span>
+      <h2 id="arbitraje" className="text-sm font-semibold">
+        Arbitraje
+      </h2>
+
+      <div
+        className={cn(
+          "rounded-xl border p-3",
+          arbitrage
+            ? "border-emerald-500/40 bg-emerald-500/10"
+            : "bg-muted/20",
+        )}
+      >
+        <p
+          className={cn(
+            "text-sm font-semibold",
+            arbitrage && "text-emerald-700 dark:text-emerald-300",
+          )}
+        >
+          {arbitrage ? "Sí hay arbitraje" : "No hay arbitraje"}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {arbitrage
+            ? `Ganancia teórica del ${arbitrage.profitPct.toFixed(2)}% combinando las mejores cuotas.`
+            : `El mejor caso deja ${((best.sum - 1) * 100).toFixed(2)}% de margen a favor de las casas.`}
+        </p>
       </div>
 
-      {cases.length === 0 ? (
-        <p className="text-[11px] text-muted-foreground">
-          No hay dos cuotas comparables (1X2 o totales) para calcular el
-          arbitraje.
+      <details className="rounded-xl border bg-muted/10 px-3 py-2">
+        <summary className="cursor-pointer text-[11px] font-medium">
+          Ver el mejor caso
+        </summary>
+        <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
+          Se combinan la mejor cuota de cada lado entre todas las casas. Hay
+          arbitraje si 1/cuota A + 1/cuota B es menor que 1.
         </p>
-      ) : (
-        <>
-          <p className="text-[10px] leading-snug text-muted-foreground">
-            Se combinan la mejor cuota de cada lado entre todas las casas. Hay
-            arbitraje si 1/cuota A + 1/cuota B &lt; 1.
-          </p>
-          <ul className="space-y-1.5">
-            {cases.map((item) => {
-              const isArbitrage = item.sum < 1;
-              return (
-                <li
-                  key={`${item.market}-${item.point ?? "h2h"}`}
-                  className={cn(
-                    "rounded-lg border px-2.5 py-2",
-                    isArbitrage && "border-emerald-500/40 bg-emerald-500/10",
-                  )}
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-[11px] font-medium">
-                      {item.market === "h2h"
-                        ? "1X2"
-                        : `Total ${item.point}`}
-                    </p>
-                    <p
-                      className={cn(
-                        "text-[11px] font-semibold tabular-nums",
-                        isArbitrage ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground",
-                      )}
-                    >
-                      suma {item.sum.toFixed(3)}
-                      {isArbitrage
-                        ? ` · ${item.profitPct.toFixed(2)}%`
-                        : ""}
-                    </p>
-                  </div>
-                  <p className="mt-0.5 text-[10px] break-words text-muted-foreground">
-                    {item.legs
-                      .map(
-                        (leg) =>
-                          `${leg.label} ${formatOdds(leg.price)} (${leg.book})`,
-                      )
-                      .join(" + ")}
+        <ul className="mt-1.5 space-y-1.5">
+          {cases.map((item) => {
+            const positive = item.sum < 1;
+            return (
+              <li
+                key={`${item.market}-${item.point ?? "h2h"}`}
+                className={cn(
+                  "rounded-lg border bg-card px-2.5 py-1.5",
+                  positive && "border-emerald-500/40",
+                )}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[11px] font-medium">
+                    {item.market === "h2h" ? "Ganador" : `Total ${item.point}`}
                   </p>
-                </li>
-              );
-            })}
-          </ul>
-          {arbitrage.length === 0 && (
-            <p className="text-[10px] text-muted-foreground">
-              El mejor caso no llega a arbitraje; el margen queda en{" "}
-              {(cases[0]!.sum - 1).toFixed(3)}.
-            </p>
-          )}
-        </>
-      )}
+                  <p className="text-[10px] text-muted-foreground tabular-nums">
+                    suma {item.sum.toFixed(3)}
+                    {positive ? ` · +${item.profitPct.toFixed(2)}%` : ""}
+                  </p>
+                </div>
+                <p className="mt-0.5 text-[10px] break-words text-muted-foreground">
+                  {item.legs
+                    .map(
+                      (leg) =>
+                        `${leg.label} ${formatOdds(leg.price)} (${leg.book})`,
+                    )
+                    .join(" + ")}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      </details>
     </section>
   );
 }

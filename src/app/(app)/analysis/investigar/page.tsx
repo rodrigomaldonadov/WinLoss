@@ -8,6 +8,7 @@ import { AnalysisTabs } from "@/components/analysis/analysis-tabs";
 import { ResearchArbitrage } from "@/components/analysis/research-arbitrage";
 import { ResearchMoneyline } from "@/components/analysis/research-moneyline";
 import { ResearchProps } from "@/components/analysis/research-props";
+import { ResearchSummary } from "@/components/analysis/research-summary";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -89,7 +90,7 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
       <PageHeader
         className="pb-0 [&>div]:space-y-0 [&_h1]:text-xl md:[&_h1]:text-2xl [&_p]:text-xs"
         title="Investigar"
-        description="Cuotas de ParlayAPI: sharp, consenso, mejor línea y arbitraje."
+        description="Elige un partido y mira quién es favorito, la mejor cuota y si hay arbitraje."
       />
       <AnalysisTabs active="research" />
 
@@ -181,6 +182,7 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
             </div>
           </section>
 
+          <ResearchSummary event={selected} />
           <ResearchMoneyline event={selected} />
           <ResearchArbitrage event={selected} />
           <ResearchProps
@@ -191,15 +193,15 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
             sportKey={sportKey}
           />
 
-          <section className="space-y-1.5 rounded-lg border bg-muted/10 px-2.5 py-2">
-            <h2 className="text-[11px] font-semibold">
-              Cobertura y límites de ParlayAPI
-            </h2>
-            <ul className="space-y-1 text-[10px] leading-snug text-muted-foreground">
+          <details className="rounded-xl border bg-muted/10 px-3 py-2">
+            <summary className="cursor-pointer text-[11px] font-medium">
+              Cómo se calculan estos números y qué falta
+            </summary>
+            <ul className="mt-2 space-y-1 text-[10px] leading-snug text-muted-foreground">
               <li>
                 <strong className="text-foreground">Pinnacle no está</strong> en
                 el catálogo de ParlayAPI (la API devuelve UNKNOWN_BOOKMAKER). La
-                referencia sharp es Novig y, si falta, ProphetX.
+                referencia es Novig y, si falta, ProphetX.
               </li>
               <li>
                 <strong className="text-foreground">Polymarket y Kalshi</strong>{" "}
@@ -222,7 +224,7 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
                 aparece: no se rellenan cuotas.
               </li>
             </ul>
-          </section>
+          </details>
         </>
       )}
     </div>

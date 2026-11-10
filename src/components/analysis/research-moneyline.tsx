@@ -4,7 +4,6 @@ import {
   centsDifference,
   consensusFor,
   formatCents,
-  impliedProbability,
   moneylineNoVig,
   sharpBook,
 } from "@/lib/parlay/analysis";
@@ -28,161 +27,124 @@ export function ResearchMoneyline({ event }: { event: ParlayEvent }) {
   ].filter((name) => names.has(name));
 
   if (books.length === 0 || ordered.length === 0) {
-    return (
-      <section aria-labelledby="sharp" className="space-y-1.5">
-        <h2 id="sharp" className="text-sm font-semibold">
-          Sharp vs consenso
-        </h2>
-        <p className="text-[11px] text-muted-foreground">
-          Ninguna de las casas consultadas cotizó el 1X2 de este partido.
-        </p>
-      </section>
-    );
+    return null;
   }
 
   const consensus = consensusFor(books, ordered);
   const rows = ordered.map((outcome) => {
-    const sharpProbability = sharp?.probabilities[outcome] ?? null;
+    const probability =
+      sharp?.probabilities[outcome] ?? consensus[outcome] ?? null;
     return {
       outcome,
-      sharp: sharpProbability,
+      probability,
       consensus: consensus[outcome] ?? null,
-      cents: centsDifference(sharpProbability, consensus[outcome] ?? null),
+      cents: centsDifference(
+        sharp?.probabilities[outcome] ?? null,
+        consensus[outcome] ?? null,
+      ),
       best: bestPriceFor(event, "h2h", outcome),
     };
   });
 
   return (
-    <section aria-labelledby="sharp" className="space-y-2">
+    <section aria-labelledby="cuotas" className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 id="sharp" className="text-sm font-semibold">
-          Sharp vs consenso
+        <h2 id="cuotas" className="text-sm font-semibold">
+          Probabilidad y mejor cuota
         </h2>
         <span className="text-[10px] text-muted-foreground">
           {books.length} casas
         </span>
       </div>
 
-      <p className="rounded-lg border bg-muted/20 px-2.5 py-2 text-[10px] leading-snug text-muted-foreground">
-        {sharp ? (
-          <>
-            Referencia sharp: <strong className="text-foreground">{sharp.title}</strong>. Pinnacle no
-            está en el catálogo de ParlayAPI, así que se usa Novig (o ProphetX)
-            como sustituto.
-          </>
-        ) : (
-          <>
-            Sin referencia sharp: Novig y ProphetX no cotizaron este partido.
-            Solo se muestra el consenso sin vig.
-          </>
-        )}{" "}
-        El consenso es la mediana de las casas retail, sin vig; no es un
-        porcentaje de apuestas del público (la API no lo publica).
-      </p>
+      <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+        {rows.map((row) => (
+          <li
+            key={row.outcome}
+            className="flex items-center justify-between gap-3 px-3 py-2"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-medium">{row.outcome}</p>
+              <p className="text-[11px] text-muted-foreground tabular-nums">
+                {row.probability === null
+                  ? "sin probabilidad"
+                  : formatPercent(row.probability, { decimals: 0 })}{" "}
+                de probabilidad
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-[15px] leading-none font-bold tabular-nums">
+                {row.best ? formatOdds(row.best.price) : "—"}
+              </p>
+              <p className="mt-0.5 max-w-24 truncate text-[10px] text-muted-foreground">
+                {row.best?.book ?? "no cotizó"}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
 
-      <div className="overflow-hidden rounded-lg border">
-        <table className="w-full table-fixed border-collapse text-[11px]">
-          <thead>
-            <tr className="border-b bg-muted/40 text-[10px] text-muted-foreground">
-              <th className="w-[32%] px-2 py-1.5 text-left font-medium">
-                Resultado
-              </th>
-              <th className="px-1 py-1.5 text-right font-medium">Sharp</th>
-              <th className="px-1 py-1.5 text-right font-medium">Consenso</th>
-              <th className="px-1 py-1.5 text-right font-medium">Dif.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.outcome} className="border-b last:border-0">
-                <th scope="row" className="truncate px-2 py-1 text-left font-normal">
-                  {row.outcome}
-                </th>
-                <td className="px-1 py-1 text-right tabular-nums">
-                  {row.sharp === null ? "—" : formatPercent(row.sharp)}
-                </td>
-                <td className="px-1 py-1 text-right tabular-nums">
-                  {row.consensus === null ? "—" : formatPercent(row.consensus)}
-                </td>
-                <td className="px-1 py-1 text-right text-[10px] tabular-nums">
-                  {formatCents(row.cents)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div>
-        <h3 className="text-[11px] font-medium text-muted-foreground">
-          Mejor cuota por resultado
-        </h3>
-        <ul className="mt-1 flex flex-wrap gap-1">
-          {rows.map((row) => (
-            <li
-              key={row.outcome}
-              className="rounded-full border bg-background px-2 py-1 text-[10px]"
-            >
-              {row.outcome}{" "}
-              {row.best ? (
-                <>
-                  <strong className="tabular-nums">
-                    {formatOdds(row.best.price)}
-                  </strong>{" "}
-                  <span className="text-muted-foreground">
-                    · {row.best.book}
-                  </span>
-                </>
-              ) : (
-                "—"
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <details className="rounded-lg border bg-muted/10 px-2.5 py-2">
+      <details className="rounded-xl border bg-muted/10 px-3 py-2">
         <summary className="cursor-pointer text-[11px] font-medium">
-          Sin vig por casa y margen
+          Cómo se calcula y desglose por casa
         </summary>
-        <ul className="mt-1.5 space-y-1">
-          {[...books]
-            .sort((left, right) => left.overround - right.overround)
-            .map((book) => (
+
+        <div className="mt-2 space-y-2">
+          <p className="text-[10px] leading-snug text-muted-foreground">
+            {sharp
+              ? `La referencia es ${sharp.title}, una casa de margen bajo. Pinnacle no está en ParlayAPI. El consenso es la mediana del resto de casas, sin vig (sin margen).`
+              : "No hay una casa de referencia (Novig/ProphetX); se muestra el consenso sin vig."}{" "}
+            La diferencia va en puntos de probabilidad: 1 punto = 1%.
+          </p>
+
+          <ul className="divide-y overflow-hidden rounded-lg border bg-card">
+            {rows.map((row) => (
               <li
-                key={book.key}
-                className="flex items-baseline justify-between gap-2 text-[10px]"
+                key={`detalle-${row.outcome}`}
+                className="flex items-baseline justify-between gap-2 px-2.5 py-1.5 text-[10px]"
               >
-                <span className="truncate font-medium">{book.title}</span>
+                <span className="truncate font-medium">{row.outcome}</span>
                 <span className="shrink-0 text-muted-foreground tabular-nums">
-                  {ordered
-                    .map((name) =>
-                      book.probabilities[name] === undefined
-                        ? "—"
-                        : formatPercent(book.probabilities[name], {
-                            decimals: 1,
-                          }),
-                    )
-                    .join(" / ")}
-                  {" · "}
-                  vig {(book.overround * 100).toFixed(1)}%
+                  {row.probability === null
+                    ? "—"
+                    : formatPercent(row.probability, { decimals: 1 })}
+                  {" · consenso "}
+                  {row.consensus === null
+                    ? "—"
+                    : formatPercent(row.consensus, { decimals: 1 })}
+                  {row.cents === null ? "" : ` · ${formatCents(row.cents)}`}
                 </span>
               </li>
             ))}
-        </ul>
-      </details>
+          </ul>
 
-      <p className="text-[10px] text-muted-foreground">
-        Probabilidad implícita bruta de la mejor cuota:{" "}
-        {rows
-          .filter((row) => row.best)
-          .map(
-            (row) =>
-              `${row.outcome} ${(impliedProbability(row.best!.price) * 100).toFixed(1)}%`,
-          )
-          .join(" · ")}
-        .
-      </p>
+          <ul className="space-y-1">
+            {[...books]
+              .sort((left, right) => left.overround - right.overround)
+              .map((book) => (
+                <li
+                  key={book.key}
+                  className="flex items-baseline justify-between gap-2 text-[10px]"
+                >
+                  <span className="truncate font-medium">{book.title}</span>
+                  <span className="shrink-0 text-muted-foreground tabular-nums">
+                    {ordered
+                      .map((name) =>
+                        book.probabilities[name] === undefined
+                          ? "—"
+                          : formatPercent(book.probabilities[name], {
+                              decimals: 1,
+                            }),
+                      )
+                      .join(" / ")}
+                    {" · margen "}
+                    {(book.overround * 100).toFixed(1)}%
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </div>
+      </details>
     </section>
   );
 }

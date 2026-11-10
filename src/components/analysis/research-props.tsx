@@ -29,11 +29,11 @@ export function ResearchProps({
     return (
       <section aria-labelledby="props" className="space-y-2">
         <h2 id="props" className="text-sm font-semibold">
-          Props de jugador
+          Mejor cuota por jugador
         </h2>
         <p className="text-[11px] leading-snug text-muted-foreground">
-          Elige un mercado para ver la mejor cuota de Over y Under entre las
-          casas que lo cotizan.
+          Elige el mercado y busca al jugador. Verás la mejor casa para Más y
+          para Menos.
         </p>
         <div className="flex flex-wrap gap-1.5">
           {PARLAY_PROP_MARKETS.map(([key, label]) => (
@@ -64,7 +64,7 @@ export function ResearchProps({
     <section aria-labelledby="props" className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
         <h2 id="props" className="text-sm font-semibold">
-          Props · {label}
+          Mejor cuota · {label}
         </h2>
         <span className="text-[10px] text-muted-foreground">
           {lines.length} líneas
@@ -137,7 +137,7 @@ export function ResearchProps({
               </div>
               <div className="flex shrink-0 gap-3 text-right text-[10px]">
                 <div>
-                  <p className="text-muted-foreground">Over</p>
+                  <p className="text-muted-foreground">Más</p>
                   <p className="font-semibold tabular-nums">
                     {line.over ? formatOdds(line.over.price) : "—"}
                   </p>
@@ -146,7 +146,7 @@ export function ResearchProps({
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Under</p>
+                  <p className="text-muted-foreground">Menos</p>
                   <p className="font-semibold tabular-nums">
                     {line.under ? formatOdds(line.under.price) : "—"}
                   </p>
@@ -169,3 +169,5 @@ export function ResearchProps({
     </section>
   );
 }
+
+
