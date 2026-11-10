@@ -10,6 +10,7 @@ import {
   type PropLine,
 } from "@/lib/parlay/analysis";
 import { getParlayProps } from "@/lib/parlay/client";
+import { rateLimit } from "@/lib/rate-limit";
 
 const MARKET_KEYS = PARLAY_PROP_MARKETS.map(([key]) => key) as [
   ParlayPropMarket,
@@ -38,6 +39,18 @@ export async function loadResearchProps(
   const parsed = propsSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "Mercado de props inválido." };
+  }
+
+  const limit = rateLimit({
+    key: `research:${session.user.id}`,
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return {
+      ok: false,
+      error: "Demasiadas consultas seguidas. Espera un momento y reintenta.",
+    };
   }
 
   const { sportKey, eventId, market, homeTeam, awayTeam } = parsed.data;

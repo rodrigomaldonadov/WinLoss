@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import { searchAnalysisTeams } from "@/lib/data/analysis-history";
+import { rateLimit } from "@/lib/rate-limit";
 
 const suggestionsSchema = z.object({
   query: z.string().trim().min(2).max(60),
@@ -28,6 +29,15 @@ export async function suggestHistoryTeamsAction(
   const parsed = suggestionsSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: true, teams: [] };
+  }
+
+  const limit = rateLimit({
+    key: `teams:${session.user.id}`,
+    limit: 60,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return { ok: false, error: "Demasiadas búsquedas. Espera un momento." };
   }
 
   try {

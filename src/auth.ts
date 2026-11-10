@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
+import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { loginSchema } from "@/lib/validations/auth";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -27,8 +28,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
+        const email = parsed.data.email;
+        const limit = rateLimit({
+          key: `login:${email}`,
+          limit: 10,
+          windowMs: 10 * 60_000,
+        });
+        if (!limit.ok) return null;
+
         const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
+          where: { email },
         });
         if (!user?.passwordHash) return null;
 
@@ -37,6 +46,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.passwordHash,
         );
         if (!isValid) return null;
+
+        resetRateLimit(`login:${email}`);
 
         return {
           id: user.id,
