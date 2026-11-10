@@ -15,7 +15,7 @@ export function Brand({ href = "/", className, compact = false }: BrandProps) {
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex min-h-11 items-center gap-2.5 rounded-lg py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
       aria-label={`${APP_NAME} — inicio`}

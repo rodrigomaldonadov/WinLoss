@@ -19,6 +19,7 @@ export function ResearchHelpButton() {
         <Button
           variant="ghost"
           size="icon"
+          className="size-11"
           aria-label="Qué significa cada dato"
         >
           <HelpCircle className="size-5" aria-hidden />
@@ -125,3 +126,4 @@ export function ResearchHelpButton() {
     </Sheet>
   );
 }
+

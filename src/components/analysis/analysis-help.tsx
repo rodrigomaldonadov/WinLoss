@@ -19,6 +19,7 @@ export function AnalysisHelpButton() {
         <Button
           variant="ghost"
           size="icon"
+          className="size-11"
           aria-label="Cómo leer esta pantalla"
         >
           <HelpCircle className="size-5" aria-hidden />
@@ -68,3 +69,4 @@ export function AnalysisHelpButton() {
     </Sheet>
   );
 }
+

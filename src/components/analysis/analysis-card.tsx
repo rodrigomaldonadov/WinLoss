@@ -27,7 +27,7 @@ function CardShell({
   children: ReactNode;
 }) {
   return (
-    <article className="group relative flex flex-col rounded-lg border bg-card p-2 shadow-xs transition-colors hover:bg-muted/30 h-[196px]">
+    <article className="group relative flex flex-col rounded-lg border bg-card p-2 shadow-xs transition-colors hover:bg-muted/30 h-[220px]">
       <Link
         href={`/analysis/${item.id}`}
         aria-label={`Ver detalle de ${item.homeName} vs ${item.awayName}`}
@@ -79,7 +79,7 @@ export function AnalysisCard({
       )}
 
       <div className="pointer-events-auto relative z-20 mt-1 flex justify-end">
-        <Button asChild size="sm" className="h-8 px-2.5 text-[13px]">
+        <Button asChild size="sm" className="h-11 px-3 text-sm">
           <Link href={analysisBetHref(item)}>Registrar apuesta</Link>
         </Button>
       </div>
@@ -121,10 +121,12 @@ export function NoAnalysisCard({
       </p>
 
       <div className="pointer-events-auto relative z-20 mt-1 flex justify-end">
-        <Button asChild size="sm" className="h-8 px-2.5 text-[13px]">
+        <Button asChild size="sm" className="h-11 px-3 text-sm">
           <Link href={analysisBetHref(item)}>Registrar apuesta</Link>
         </Button>
       </div>
     </CardShell>
   );
 }
+
+

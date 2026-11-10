@@ -98,7 +98,12 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
         action={
           <div className="flex items-center gap-0.5">
             <AnalysisHelpButton />
-            <Button asChild size="icon" className="size-8" aria-label="Registrar apuesta">
+            <Button
+              asChild
+              size="icon"
+              className="size-11"
+              aria-label="Registrar apuesta"
+            >
               <Link href="/bets/new">
                 <Plus className="size-4" aria-hidden />
               </Link>

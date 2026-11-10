@@ -111,7 +111,7 @@ export function DataStatusNotice({
       <div
         role="status"
         className={cn(
-          "flex h-9 items-center justify-between gap-2 rounded-md border px-2.5 text-[11px]",
+          "flex h-11 items-center justify-between gap-2 rounded-md border px-2.5 text-[11px]",
           stale || runProblem
             ? "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
             : "border-border bg-muted/40 text-muted-foreground",
@@ -162,7 +162,7 @@ export function DataStatusNotice({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 shrink-0 px-2 text-[11px] font-semibold underline-offset-2 hover:underline"
+            className="h-11 shrink-0 px-3.5 text-[11px] font-semibold underline-offset-2 hover:underline"
           >
             Ver
           </Button>
@@ -358,3 +358,6 @@ export function DataStatusDetails({
     </div>
   );
 }
+
+
+

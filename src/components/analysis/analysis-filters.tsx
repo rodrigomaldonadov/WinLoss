@@ -44,7 +44,7 @@ export function AnalysisFilters({
             href={analysisHref({ days: option, competitions: selected })}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-9 shrink-0 items-center justify-center rounded-full border px-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "flex h-11 shrink-0 items-center justify-center rounded-full border px-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active
                 ? "border-primary bg-primary/10 text-primary"
                 : "bg-background text-muted-foreground active:bg-muted",
@@ -60,7 +60,7 @@ export function AnalysisFilters({
           <Button
             variant="outline"
             size="sm"
-            className="ml-auto h-9 gap-1 px-2.5 text-[11px]"
+            className="ml-auto h-11 gap-1 px-2.5 text-[11px]"
             aria-label="Abrir filtros"
           >
             <Filter className="size-3.5" aria-hidden />
@@ -131,3 +131,4 @@ export function AnalysisFilters({
     </div>
   );
 }
+
