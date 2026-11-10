@@ -35,9 +35,11 @@ nunca la recibe. Sin clave, la página muestra "No pudimos consultar ParlayAPI".
 - **Polymarket y Kalshi** están en el catálogo, pero solo cubren contratos de
   evento y futuros; no cotizan el moneyline de un partido. La página no inventa
   una comparación.
-- **Histórico**: no hay `odds-history`. El archivo es
-  `/v1/historical/sports/{sport_key}/odds` y el plan actual limita a 48 h; no se
-  muestra movimiento intradía.
+- **Histórico**: la API no expone `odds-history` y el archivo
+  `/v1/historical/sports/{sport_key}/odds` está limitado a 48 h. La app guarda
+  sus propias capturas 1X2 al abrir Investigar (como máximo una cada 10 min) y
+  muestra la variación contra la captura anterior; no es un histórico completo
+  del mercado.
 - Si una casa no cotizó un mercado, no aparece. No se rellenan cuotas.
 
 ## Bookmakers consultados
