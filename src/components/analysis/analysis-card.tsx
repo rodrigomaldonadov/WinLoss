@@ -12,7 +12,7 @@ import { formatDateTime } from "@/lib/format";
 
 function MatchHeading({ item }: { item: AnalysisFeedItem }) {
   return (
-    <h2 className="truncate text-[13px] font-semibold leading-tight">
+    <h2 className="truncate text-sm font-semibold leading-tight">
       {item.homeName} <span className="font-normal text-muted-foreground">vs</span>{" "}
       {item.awayName}
     </h2>
@@ -53,8 +53,8 @@ export function AnalysisCard({
     <CardShell item={item}>
       <header className="flex items-center justify-between gap-1 leading-none">
         <div className="min-w-0">
-          <p className="flex items-center gap-1 truncate text-[10px] font-medium text-muted-foreground">
-            <CalendarDays className="size-3 shrink-0" aria-hidden />
+          <p className="flex items-center gap-1 truncate text-xs font-medium text-muted-foreground">
+            <CalendarDays className="size-3.5 shrink-0" aria-hidden />
             <span className="truncate">{item.competition}</span>
             <span aria-hidden>·</span>
             <time dateTime={item.kickoff.toISOString()}>
@@ -63,7 +63,7 @@ export function AnalysisCard({
           </p>
         </div>
         <ChevronRight
-          className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
           aria-hidden
         />
       </header>
@@ -73,13 +73,13 @@ export function AnalysisCard({
       {available ? (
         <ProbabilityHeadline item={item} compact />
       ) : (
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           Sin datos suficientes
         </p>
       )}
 
       <div className="pointer-events-auto relative z-20 mt-1 flex justify-end">
-        <Button asChild size="sm" className="h-7 px-2.5 text-xs">
+        <Button asChild size="sm" className="h-8 px-2.5 text-[13px]">
           <Link href={analysisBetHref(item)}>Registrar apuesta</Link>
         </Button>
       </div>
@@ -99,8 +99,8 @@ export function NoAnalysisCard({
     <CardShell item={item}>
       <header className="flex items-center justify-between gap-1 leading-none">
         <div className="min-w-0">
-          <p className="flex items-center gap-1 truncate text-[10px] font-medium text-muted-foreground">
-            <CalendarDays className="size-3 shrink-0" aria-hidden />
+          <p className="flex items-center gap-1 truncate text-xs font-medium text-muted-foreground">
+            <CalendarDays className="size-3.5 shrink-0" aria-hidden />
             <span className="truncate">{item.competition}</span>
             <span aria-hidden>·</span>
             <time dateTime={item.kickoff.toISOString()}>
@@ -109,19 +109,19 @@ export function NoAnalysisCard({
           </p>
         </div>
         <ChevronRight
-          className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
           aria-hidden
         />
       </header>
 
       <MatchHeading item={item} />
 
-      <p className="mt-1 text-[11px] text-muted-foreground">
+      <p className="mt-1 text-xs text-muted-foreground">
         Sin análisis disponible para este partido.
       </p>
 
       <div className="pointer-events-auto relative z-20 mt-1 flex justify-end">
-        <Button asChild size="sm" className="h-7 px-2.5 text-xs">
+        <Button asChild size="sm" className="h-8 px-2.5 text-[13px]">
           <Link href={analysisBetHref(item)}>Registrar apuesta</Link>
         </Button>
       </div>

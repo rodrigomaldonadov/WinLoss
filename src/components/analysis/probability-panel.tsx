@@ -70,7 +70,7 @@ export function ProbabilityGrid({
             <p
               className={cn(
                 "font-medium uppercase tracking-wide text-muted-foreground",
-                compact ? "text-[8.5px] leading-tight" : "text-[10px]",
+                "text-[11px] leading-tight",
               )}
             >
               {outcome.short} · {outcome.label}
@@ -78,7 +78,7 @@ export function ProbabilityGrid({
             <p
               className={cn(
                 "font-semibold tabular-nums",
-                compact ? "mt-0.5 text-xs leading-tight" : "mt-0.5 text-lg",
+                compact ? "mt-0.5 text-[13px] leading-tight" : "mt-0.5 text-lg",
               )}
             >
               {probabilityLabel(value)}
@@ -148,7 +148,7 @@ export function TotalsLine({
 }) {
   if (!totals) return null;
   return (
-    <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[11px]">
+    <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-xs">
       <TotalCell
         label="Más de 2,5"
         value={totals.over25}
@@ -177,7 +177,7 @@ export function BttsLine({
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
 
   return (
-    <div className="mt-1.5 flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-2.5 py-1.5 text-[11px]">
+    <div className="mt-1.5 flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-2.5 py-1.5 text-xs">
       <span className="text-muted-foreground">{label}</span>
       <span className="flex items-center gap-2">
         {hrefYes ? (
@@ -248,7 +248,7 @@ export function CardMarketChips({ item }: { item: AnalysisFeedItem }) {
           key={chip.key}
           href={chip.href}
           aria-label={`Precargar ${chip.label} en una nueva apuesta`}
-          className="pointer-events-auto relative z-20 flex h-7 flex-1 items-center justify-between gap-0.5 rounded border bg-background px-1 text-[9px] font-medium transition-colors hover:bg-muted/60"
+          className="pointer-events-auto relative z-20 flex h-9 flex-1 items-center justify-between gap-0.5 rounded border bg-background px-1.5 text-[11px] font-medium transition-colors hover:bg-muted/60"
         >
           <span className="text-muted-foreground">{chip.label}</span>
           <span className="tabular-nums font-semibold">{probabilityLabel(chip.value)}</span>
@@ -285,14 +285,14 @@ export function ProbabilityHeadline({
   return (
     <div className={compact ? "mt-0.5" : "mt-1.5"}>
       <div className="flex items-center justify-between gap-1.5">
-        <p className="truncate text-[9px] font-medium leading-tight text-muted-foreground">
+        <p className="truncate text-[11px] font-medium leading-tight text-muted-foreground">
           {headlineTitle(final.source)}
         </p>
         <Badge
           variant={isMarket ? "secondary" : "outline"}
           className={cn(
             compact &&
-              "h-3.5 shrink-0 px-1 py-0 text-[8px] font-medium leading-none",
+              "h-5 shrink-0 px-1.5 py-0 text-[10px] font-medium leading-none",
           )}
         >
           {confidenceBadge(displayConfidence)}

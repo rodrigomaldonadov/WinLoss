@@ -92,7 +92,7 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
   return (
     <div className="space-y-1.5">
       <PageHeader
-        className="pb-0 [&>div]:space-y-0 [&_h1]:text-xl md:[&_h1]:text-2xl [&_p]:text-xs"
+        className="pb-0 [&>div]:space-y-0 [&_h1]:text-xl md:[&_h1]:text-2xl [&_p]:text-[13px]"
         title="Consenso"
         description={`Próximos ${days} días.`}
         action={
@@ -149,7 +149,7 @@ export default async function AnalysisPage({ searchParams }: AnalysisPageProps) 
             <section aria-labelledby="sin-analisis" className="space-y-1">
               <h2
                 id="sin-analisis"
-                className="text-[10px] font-semibold text-muted-foreground"
+                className="text-[11px] font-semibold text-muted-foreground"
               >
                 Sin análisis disponible
               </h2>
