@@ -32,3 +32,13 @@ Cubren el patrón `pointer-events-auto` + `z-20` sobre el enlace de la tarjeta.
 - Tablero, tarjeta y detalle en modo oscuro (360 y 390 px).
 - Tarjeta "Sin análisis disponible" en ambos anchos.
 - Estado del aviso con hoja "Ver" abierta.
+
+## 5. Fuente al 200 %
+
+- Todos los textos pasaron de 	ext-[Npx] a em, así que respetan el tamaño
+  de fuente del navegador.
+- La cabecera y la tarjeta ya se adaptan (marca con truncado, tarjeta con
+  min-h).
+- Pendiente: a 200 % las filas densas de chips (filtros rápidos y chips 1X2)
+  siguen desbordando a lo ancho en 390 px. Requieren un modo compacto o scroll
+  interno, no un simple cambio de unidades.
