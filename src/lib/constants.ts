@@ -1,5 +1,7 @@
 import type { BetStatus, BetType } from "@prisma/client";
 
+import { SPORT_OPTIONS } from "@/lib/catalogs/sports";
+
 export const APP_NAME = "WinLoss";
 export const APP_DESCRIPTION =
   "Gestiona tu bankroll, registra tus apuestas y mide tu rentabilidad real.";
@@ -68,19 +70,8 @@ export const BET_TYPE_LABELS: Record<BetType, string> = {
   COMBINED: "Combinada",
 };
 
-export const SPORTS = [
-  "Fútbol",
-  "Tenis",
-  "Básquet",
-  "Béisbol",
-  "Vóley",
-  "MMA",
-  "Boxeo",
-  "Fórmula 1",
-  "Ciclismo",
-  "eSports",
-  "Otro",
-] as const;
+/** Catálogo único de deportes (compartido con el formulario de apuestas). */
+export const SPORTS = SPORT_OPTIONS;
 
 export const MARKETS = [
   "Ganador del partido",

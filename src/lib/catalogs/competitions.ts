@@ -223,6 +223,63 @@ const ESPORTS: Competition[] = [
   }),
 ];
 
+const CYCLING: Competition[] = [
+  c("ciclismo-tour-francia", "Tour de Francia", "Grandes vueltas", {
+    sportsDb: "Tour de France",
+  }),
+  c("ciclismo-giro", "Giro de Italia", "Grandes vueltas", {
+    sportsDb: "Giro d'Italia",
+  }),
+  c("ciclismo-vuelta", "Vuelta a España", "Grandes vueltas", {
+    sportsDb: "Vuelta a España",
+  }),
+];
+
+const GOLF: Competition[] = [
+  c("golf-pga", "PGA Tour", "Circuitos", { sportsDb: "PGA Tour" }),
+  c("golf-european", "European Tour", "Circuitos", {
+    sportsDb: "European Tour",
+  }),
+  c("golf-lpga", "LPGA Tour", "Circuitos", { sportsDb: "LPGA Tour" }),
+];
+
+const CRICKET: Competition[] = [
+  c("cricket-ipl", "IPL", "Ligas", { sportsDb: "Indian Premier League" }),
+  c("cricket-big-bash", "Big Bash", "Ligas", {
+    sportsDb: "Big Bash League",
+  }),
+  c("cricket-ashes", "The Ashes", "Internacional", {
+    sportsDb: "The Ashes",
+  }),
+];
+
+const TABLE_TENNIS: Competition[] = [
+  c("tenis-mesa-wtt", "World Table Tennis", "Internacional", {
+    sportsDb: "World Table Tennis",
+  }),
+  c("tenis-mesa-elite", "TT Elite Series", "Internacional", {
+    sportsDb: "TT Elite Series",
+  }),
+];
+
+const HANDBALL: Competition[] = [
+  c("balonmano-ehf", "EHF Champions League", "Europa", {
+    sportsDb: "EHF Champions League",
+  }),
+  c("balonmano-asobal", "Liga ASOBAL", "Europa", {
+    sportsDb: "Liga ASOBAL",
+  }),
+];
+
+const DARTS: Competition[] = [
+  c("dardos-pdc", "PDC World Championship", "Internacional", {
+    sportsDb: "PDC World Championship",
+  }),
+  c("dardos-premier", "Premier League Darts", "Reino Unido", {
+    sportsDb: "Premier League Darts",
+  }),
+];
+
 export const COMPETITIONS_BY_SPORT: Record<SportOption, Competition[]> = {
   Fútbol: FOOTBALL,
   Tenis: TENNIS,
@@ -235,6 +292,12 @@ export const COMPETITIONS_BY_SPORT: Record<SportOption, Competition[]> = {
   Boxeo: BOXING,
   Rugby: RUGBY,
   "Fórmula 1": F1,
+  Ciclismo: CYCLING,
+  Golf: GOLF,
+  Cricket: CRICKET,
+  "Tenis de mesa": TABLE_TENNIS,
+  Balonmano: HANDBALL,
+  Dardos: DARTS,
   eSports: ESPORTS,
   Otros: [],
 };

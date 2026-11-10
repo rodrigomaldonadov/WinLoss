@@ -6,7 +6,7 @@ import {
   getCompetitionsForSport,
   groupCompetitionsByRegion,
 } from "./competitions";
-import { SPORT_OPTIONS } from "./sports";
+import { SPORT_OPTIONS, normalizeSport } from "./sports";
 
 const all = Object.values(COMPETITIONS_BY_SPORT).flat();
 
@@ -31,10 +31,26 @@ describe("catálogo de deportes", () => {
         "Boxeo",
         "Rugby",
         "Fórmula 1",
+        "Ciclismo",
+        "Golf",
+        "Cricket",
+        "Tenis de mesa",
+        "Balonmano",
+        "Dardos",
         "eSports",
         "Otros",
       ]),
     );
+  });
+
+  it("normaliza deportes de proveedores al catálogo", () => {
+    expect(normalizeSport("Table Tennis")).toBe("Tenis de mesa");
+    expect(normalizeSport("Handball")).toBe("Balonmano");
+    expect(normalizeSport("Cycling")).toBe("Ciclismo");
+    expect(normalizeSport("American Football")).toBe("Fútbol americano");
+    expect(normalizeSport("Darts")).toBe("Dardos");
+    expect(normalizeSport("Cricket")).toBe("Cricket");
+    expect(normalizeSport("Golf")).toBe("Golf");
   });
 });
 
