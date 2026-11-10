@@ -385,7 +385,7 @@ export default async function DashboardPage() {
           <section className="rounded-xl border bg-card p-4 shadow-xs">
             <h2 className="mb-3 text-sm font-semibold">Análisis</h2>
             <Tabs defaultValue="evolucion">
-              <TabsList className="mb-4">
+              <TabsList className="mb-4 grid w-full grid-cols-2">
                 <TabsTrigger value="evolucion">Evolución</TabsTrigger>
                 <TabsTrigger value="distribucion">Distribución</TabsTrigger>
               </TabsList>
@@ -409,3 +409,4 @@ export default async function DashboardPage() {
     </div>
   );
 }
+

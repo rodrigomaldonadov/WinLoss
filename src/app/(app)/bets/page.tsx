@@ -353,7 +353,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
 
       <nav
         aria-label="Filtrar apuestas"
-        className="flex gap-1 rounded-lg bg-muted/50 p-1"
+        className="grid grid-cols-3 gap-1 rounded-lg bg-muted/50 p-1"
       >
         {FILTERS.map((item) => {
           const active = item.value === filter;
@@ -363,13 +363,13 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
               href={tabHref(item.value)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-11 flex-1 items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "flex h-11 min-w-0 items-center justify-center truncate rounded-md px-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 active
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground active:bg-background/60",
               )}
             >
-              {item.label}
+              <span className="min-w-0 truncate">{item.label}</span>
             </Link>
           );
         })}
@@ -377,7 +377,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
 
       <nav
         aria-label="Filtrar apuestas por tipo"
-        className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {TYPE_FILTERS.map((item) => {
           const active = item.value === (type ?? "all");
@@ -509,3 +509,4 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
     </div>
   );
 }
+

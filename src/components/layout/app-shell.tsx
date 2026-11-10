@@ -13,7 +13,7 @@ type AppShellProps = {
 
 export function AppShell({ user, showDebts = true, children }: AppShellProps) {
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh overflow-x-clip bg-background">
       <a
         href="#contenido"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -37,3 +37,4 @@ export function AppShell({ user, showDebts = true, children }: AppShellProps) {
     </div>
   );
 }
+

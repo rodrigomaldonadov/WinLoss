@@ -128,7 +128,7 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
         <Button
           type="button"
           variant="outline"
-          className="h-11 w-full gap-2 border-dashed"
+          className="h-auto min-h-11 w-full flex-wrap gap-2 border-dashed py-2 text-center whitespace-normal"
           disabled={disabled}
         >
           <ClipboardPaste className="size-4" aria-hidden />

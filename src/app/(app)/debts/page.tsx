@@ -203,7 +203,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
       <div className="space-y-2">
         <nav
           aria-label="Filtrar deudas por estado"
-          className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {STATUS_FILTERS.map((item) => {
             const active = status === item.value;
@@ -227,7 +227,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
 
         <nav
           aria-label="Filtrar deudas por moneda"
-          className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {CURRENCY_FILTERS.map((item) => {
             const active = currency === item.value;
@@ -309,4 +309,5 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
     </div>
   );
 }
+
 

@@ -59,7 +59,7 @@ export function BankrollCard({ bankroll }: BankrollCardProps) {
 
   return (
     <>
-      <article className="rounded-xl border bg-card p-4 shadow-xs">
+      <article className="min-w-0 rounded-xl border bg-card p-4 shadow-xs">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -111,28 +111,28 @@ export function BankrollCard({ bankroll }: BankrollCardProps) {
           {formatPercent(bankroll.roi, { signed: true })} ROI
         </p>
 
-        <dl className="mt-4 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-4">
+        <dl className="mt-4 grid min-w-0 grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-4">
           <div>
             <dt className="text-[0.6875rem] text-muted-foreground">Aportado</dt>
-            <dd className="mt-0.5 text-xs font-medium tabular-nums">
+            <dd className="mt-0.5 truncate text-xs font-medium tabular-nums">
               {formatCurrency(bankroll.capitalContributed, bankroll.currency)}
             </dd>
           </div>
           <div>
             <dt className="text-[0.6875rem] text-muted-foreground">Movimientos</dt>
-            <dd className="mt-0.5 text-xs font-medium tabular-nums">
+            <dd className="mt-0.5 truncate text-xs font-medium tabular-nums">
               {formatCurrency(bankroll.movementsBalance, bankroll.currency)}
             </dd>
           </div>
           <div>
             <dt className="text-[0.6875rem] text-muted-foreground">Beneficio</dt>
-            <dd className="mt-0.5 text-xs font-medium tabular-nums">
+            <dd className="mt-0.5 truncate text-xs font-medium tabular-nums">
               {formatCurrency(bankroll.profit, bankroll.currency)}
             </dd>
           </div>
           <div>
             <dt className="text-[0.6875rem] text-muted-foreground">Pendiente</dt>
-            <dd className="mt-0.5 text-xs font-medium tabular-nums">
+            <dd className="mt-0.5 truncate text-xs font-medium tabular-nums">
               {formatCurrency(bankroll.pendingStake, bankroll.currency)}
             </dd>
           </div>
@@ -178,3 +178,4 @@ export function BankrollCard({ bankroll }: BankrollCardProps) {
     </>
   );
 }
+

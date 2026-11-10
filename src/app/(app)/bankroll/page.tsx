@@ -134,7 +134,7 @@ export default async function BankrollPage({
 
       {bankrolls.length > 0 && (
         <section className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-semibold">Movimientos</h2>
               <p className="text-xs text-muted-foreground">
@@ -167,7 +167,7 @@ export default async function BankrollPage({
 
           <nav
             aria-label="Filtrar movimientos"
-            className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {MOVEMENT_FILTERS.map((item) => {
               const active = movementFilter === item.value;
@@ -282,3 +282,5 @@ export default async function BankrollPage({
     </div>
   );
 }
+
+
