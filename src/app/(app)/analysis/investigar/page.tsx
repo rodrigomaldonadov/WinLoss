@@ -6,6 +6,7 @@ import { Telescope } from "lucide-react";
 import { auth } from "@/auth";
 import { AnalysisTabs } from "@/components/analysis/analysis-tabs";
 import { ResearchArbitrage } from "@/components/analysis/research-arbitrage";
+import { ResearchHelpButton } from "@/components/analysis/research-help";
 import { ResearchMoneyline } from "@/components/analysis/research-moneyline";
 import { ResearchProps } from "@/components/analysis/research-props";
 import { ResearchSummary } from "@/components/analysis/research-summary";
@@ -91,6 +92,7 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
         className="pb-0 [&>div]:space-y-0 [&_h1]:text-xl md:[&_h1]:text-2xl [&_p]:text-xs"
         title="Investigar"
         description="Elige un partido y mira quién es favorito, la mejor cuota y si hay arbitraje."
+        action={<ResearchHelpButton />}
       />
       <AnalysisTabs active="research" />
 
