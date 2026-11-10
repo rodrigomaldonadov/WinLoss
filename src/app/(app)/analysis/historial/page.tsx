@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { History } from "lucide-react";
+import { History, Download } from "lucide-react";
 
 import { auth } from "@/auth";
 import { AnalysisTabs } from "@/components/analysis/analysis-tabs";
@@ -111,12 +111,29 @@ export default async function AnalysisHistoryPage({
             ),
           };
 
+  const exportHref = `/api/export/analysis-history${historyHref(filters).slice(
+    "/analysis/historial".length,
+  )}`;
+
   return (
     <div className="space-y-1.5">
       <PageHeader
         className="pb-0 [&>div]:space-y-0 [&_h1]:text-xl md:[&_h1]:text-2xl [&_p]:text-xs"
         title="Historial"
         description={description}
+        action={
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            className="size-9"
+            aria-label="Exportar historial a CSV"
+          >
+            <a href={exportHref} download>
+              <Download className="size-4" aria-hidden />
+            </a>
+          </Button>
+        }
       />
 
       <AnalysisTabs active="history" />

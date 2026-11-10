@@ -456,6 +456,69 @@ export async function getAnalysisHistory({
   };
 }
 
+export type GetAnalysisHistoryExportArgs = {
+  userId: string;
+  filters: HistoryFilterState;
+  timeZone: string;
+  limit?: number;
+};
+
+/**
+ * Filas para exportar (sin paginar). Aplica los mismos filtros que el
+ * historial y corta en `limit` para no volcar una tabla entera de golpe.
+ */
+export async function getAnalysisHistoryExport({
+  userId,
+  filters,
+  timeZone,
+  limit = 10_000,
+}: GetAnalysisHistoryExportArgs): Promise<AnalysisHistoryItem[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), 20_000);
+  const from = filters.from
+    ? zonedDateTimeToUtc(`${filters.from}T00:00`, timeZone)
+    : null;
+  const to = filters.to
+    ? zonedDateTimeToUtc(`${filters.to}T23:59`, timeZone)
+    : null;
+
+  const matchedTeams = filters.query
+    ? await resolveTeams(prisma, filters.query)
+    : [];
+  if (filters.query && matchedTeams.length === 0) return [];
+
+  const where = buildWhere({
+    filters,
+    teamIds: filters.query ? matchedTeams.map((team) => team.id) : null,
+    from,
+    to,
+  });
+
+  const rows = await prisma.historicalMatch.findMany({
+    where,
+    orderBy: [{ playedAt: "desc" }, { id: "desc" }],
+    take: safeLimit,
+    select: ROW_SELECT,
+  });
+
+  const [snapshots, mineIndex] = await Promise.all([
+    latestSnapshotByKey(prisma, rows),
+    loadMineIndex(prisma, userId, from, to),
+  ]);
+
+  return rows
+    .map((row) => {
+      const key = snapshotKey(row);
+      return toHistoryItem({
+        row,
+        key,
+        snapshot: snapshots.get(key),
+        mine: mineIndex,
+      });
+    })
+    .filter((item) => filters.mode === "all" || item.mode === filters.mode)
+    .filter((item) => !filters.mine || item.hasBet);
+}
+
 export type RecentResultMarket = {
   key: "1x2" | "over25" | "btts";
   label: string;
