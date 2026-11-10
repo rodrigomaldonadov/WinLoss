@@ -2,7 +2,7 @@
 
 ## Estado actual
 
-- 19 migraciones aplicadas; el esquema de la base coincide con
+- 20 migraciones aplicadas; el esquema de la base coincide con
   `prisma/schema.prisma` (un `migrate diff` sale vacío).
 - La migración `20261107060000_analysis_results` tenía un checksum distinto al
   del archivo actual porque se editó después de aplicarse. Se sincronizó el
@@ -33,3 +33,4 @@
 No hace falta resetear la base si el esquema ya coincide: se actualiza el
 checksum de esa fila con el hash del archivo. Si el esquema **no** coincide,
 crear una migración nueva con el SQL que falte.
+
