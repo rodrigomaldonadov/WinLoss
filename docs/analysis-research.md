@@ -45,3 +45,4 @@ nunca la recibe. Sin clave, la página muestra "No pudimos consultar ParlayAPI".
 DraftKings, FanDuel, BetMGM, Caesars, BetRivers, bet365, Bovada, Hard Rock,
 Fanatics, Unibet, PMU, Novig y ProphetX. La lista está en
 `src/lib/parlay/client.ts`.
+
