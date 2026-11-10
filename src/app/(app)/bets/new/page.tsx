@@ -33,6 +33,7 @@ type NewBetPageProps = {
     seleccion?: string | string[];
     pick?: string | string[];
     linea?: string | string[];
+    cuota?: string | string[];
     subject?: string | string[];
   }>;
 };
@@ -57,6 +58,7 @@ export default async function NewBetPage({ searchParams }: NewBetPageProps) {
     seleccion: firstParam(params.seleccion),
     pick: firstParam(params.pick),
     linea: firstParam(params.linea),
+    cuota: firstParam(params.cuota),
     subject: firstParam(params.subject),
   });
   const prefillOrigin = firstParam(params.origen)?.trim() || "Consenso";

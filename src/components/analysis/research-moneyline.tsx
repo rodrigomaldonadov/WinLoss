@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import { formatOdds, formatPercent } from "@/lib/format";
+import { researchBetHref } from "@/lib/parlay/bet-link";
 import {
   bestPriceFor,
   centsDifference,
@@ -9,7 +12,13 @@ import {
 } from "@/lib/parlay/analysis";
 import type { ParlayEvent } from "@/lib/parlay/analysis";
 
-export function ResearchMoneyline({ event }: { event: ParlayEvent }) {
+export function ResearchMoneyline({
+  event,
+  sportKey,
+}: {
+  event: ParlayEvent;
+  sportKey: string;
+}) {
   const books = moneylineNoVig(event);
   const sharp = sharpBook(books);
 
@@ -73,12 +82,35 @@ export function ResearchMoneyline({ event }: { event: ParlayEvent }) {
               </p>
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[15px] leading-none font-bold tabular-nums">
-                {row.best ? formatOdds(row.best.price) : "—"}
-              </p>
-              <p className="mt-0.5 max-w-24 truncate text-[10px] text-muted-foreground">
-                {row.best?.book ?? "no cotizó"}
-              </p>
+              {row.best ? (
+                <Link
+                  href={researchBetHref({
+                    event,
+                    sportKey,
+                    market: "Ganador del partido",
+                    selection: row.outcome,
+                    odds: row.best.price,
+                  })}
+                  aria-label={`Registrar ${row.outcome} a ${formatOdds(row.best.price)} en ${row.best.book}`}
+                  className="block underline-offset-2 hover:underline"
+                >
+                  <p className="text-[15px] leading-none font-bold tabular-nums">
+                    {formatOdds(row.best.price)}
+                  </p>
+                  <p className="mt-0.5 max-w-24 truncate text-[10px] text-muted-foreground">
+                    {row.best.book}
+                  </p>
+                </Link>
+              ) : (
+                <>
+                  <p className="text-[15px] leading-none font-bold tabular-nums">
+                    —
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    no cotizó
+                  </p>
+                </>
+              )}
             </div>
           </li>
         ))}

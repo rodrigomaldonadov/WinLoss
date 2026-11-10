@@ -178,8 +178,8 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
             </div>
           </section>
 
-          <ResearchSummary event={selected} />
-          <ResearchMoneyline event={selected} />
+          <ResearchSummary event={selected} sportKey={sportKey} />
+          <ResearchMoneyline event={selected} sportKey={sportKey} />
           <ResearchArbitrage event={selected} />
           <Suspense fallback={<ResearchPropsSkeleton />}>
             <ResearchPropsSection

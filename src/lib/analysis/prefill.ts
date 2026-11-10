@@ -14,6 +14,7 @@ export type AnalysisPrefillInput = {
   seleccion?: string | null;
   pick?: string | null;
   linea?: string | null;
+  cuota?: string | null;
   subject?: string | null;
 };
 
@@ -28,6 +29,14 @@ function parseLine(value: string | null | undefined): number | null {
   if (!value) return null;
   const parsed = Number(value.replace(",", "."));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseOdds(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 1.01 && parsed <= 1000
+    ? parsed
+    : null;
 }
 
 function structuredSelection(input: AnalysisPrefillInput): {
@@ -96,7 +105,7 @@ function structuredSelection(input: AnalysisPrefillInput): {
 /**
  * Convierte los parámetros de /bets/new en valores iniciales del formulario.
  * Precarga evento, fecha y, si se tocó un mercado, mercado/línea/selección.
- * Nunca precarga la cuota.
+ * La cuota solo se precarga cuando llega explícita (`cuota`).
  */
 export function buildAnalysisPrefill(
   input: AnalysisPrefillInput,
@@ -111,11 +120,13 @@ export function buildAnalysisPrefill(
       ? input.fecha.slice(0, 10)
       : null;
   const selection = structuredSelection(input);
+  const odds = parseOdds(input.cuota);
 
   return {
     sport,
     competition,
     eventName,
+    odds: odds ?? undefined,
     legs: [
       {
         sport,
@@ -123,8 +134,10 @@ export function buildAnalysisPrefill(
         eventName,
         eventDate,
         isBuilder: false,
+        ...(odds !== null ? { odds } : {}),
         selections: [selection],
       },
     ],
   };
 }
+

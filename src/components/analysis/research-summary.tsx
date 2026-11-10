@@ -1,4 +1,8 @@
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { formatOdds, formatPercent } from "@/lib/format";
+import { researchBetHref } from "@/lib/parlay/bet-link";
 import {
   bestArbitrage,
   bestPriceFor,
@@ -9,7 +13,13 @@ import {
 import type { ParlayEvent } from "@/lib/parlay/analysis";
 import { cn } from "@/lib/utils";
 
-export function ResearchSummary({ event }: { event: ParlayEvent }) {
+export function ResearchSummary({
+  event,
+  sportKey,
+}: {
+  event: ParlayEvent;
+  sportKey: string;
+}) {
   const books = moneylineNoVig(event);
   const sharp = sharpBook(books);
 
@@ -91,6 +101,22 @@ export function ResearchSummary({ event }: { event: ParlayEvent }) {
         </span>
         {price ? ` en ${price.book}` : ""}.
       </p>
+
+      {price && (
+        <Button asChild size="sm" className="mt-2 h-9 w-full gap-1 text-xs">
+          <Link
+            href={researchBetHref({
+              event,
+              sportKey,
+              market: "Ganador del partido",
+              selection: favorite,
+              odds: price.price,
+            })}
+          >
+            Registrar {formatOdds(price.price)} en {price.book}
+          </Link>
+        </Button>
+      )}
 
       <p
         className={cn(
