@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { DateTimeCompact } from "@/components/bets/date-time-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -120,14 +121,14 @@ export function ExchangeRatesCard({
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1.5">
             <Label htmlFor="rate-date">Fecha</Label>
-            <Input
+            <input type="hidden" name="effectiveAt" value={effectiveAt} />
+            <DateTimeCompact
               id="rate-date"
-              name="effectiveAt"
-              type="date"
+              mode="date"
+              size="default"
               value={effectiveAt}
-              onChange={(event) => setEffectiveAt(event.target.value)}
+              onChange={setEffectiveAt}
               required
-              className="h-11"
             />
           </div>
           <div className="space-y-1.5">
