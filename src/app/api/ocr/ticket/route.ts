@@ -236,7 +236,7 @@ async function extractWithGemini(base64: string, mimeType: string) {
 /** POST /api/ocr/ticket
  *  multipart/form-data con `ticketImage`.
  *  - Con OPENAI_API_KEY o GEMINI_API_KEY: usa visión real.
- *  - Sin claves (o con `?variant=`): devuelve un boleto de ejemplo.
+ *  - Sin claves: en desarrollo devuelve un ejemplo; en producción responde 503.
  */
 export async function POST(request: Request) {
   try {
@@ -265,8 +265,19 @@ export async function POST(request: Request) {
     const variant = new URL(request.url).searchParams.get("variant");
     const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
     const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+    const allowMock = process.env.NODE_ENV !== "production";
 
     if (variant || (!hasOpenAI && !hasGemini)) {
+      if (!allowMock) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "La lectura automática de boletos no está configurada. Completa los datos a mano.",
+          },
+          { status: 503 },
+        );
+      }
       // Simula el tiempo de procesamiento del proveedor.
       await new Promise((resolve) => setTimeout(resolve, 1800));
       return NextResponse.json({ success: true, data: mockData(variant) });
