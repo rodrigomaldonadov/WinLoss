@@ -6,19 +6,13 @@ pedirlo.
 
 ## 1. Objetivos táctiles de 44 × 44 px
 
-- Chips de filtros rápidos (`h-8` en Próximos, `h-9` en Historial).
-- Botón "Registrar apuesta" de la tarjeta (`h-7`).
-- Celdas 1X2 y chips de mercados de la tarjeta.
-- Botón "Ver" del aviso de estado (`h-8`).
-
-Hoy están por debajo del mínimo recomendado. Subirlos a 44 px sin perder la
-densidad actual requiere revisar el layout de la tarjeta (por ejemplo, hacer los
-chips más altos solo en la zona inferior o usar un área táctil invisible con
-`::before`).
+Hecho: chips de filtros, "Registrar apuesta", celdas 1X2, chips de mercados,
+"Ver", pestañas y acciones de cabecera miden al menos 44 px. La tarjeta pasó a
+`h-[220px]` para que el contenido siga cabiendo sin desbordar.
 
 ## 2. Altura mínima con truncado en vez de altura fija
 
-La tarjeta usa `h-[196px]`. Probar `min-h` + `line-clamp` en equipos y
+La tarjeta usa `h-[220px]`. Probar `min-h` + `line-clamp` en equipos y
 competición, con nombres largos y con el tamaño de fuente del navegador al
 200 %. Validar que no se solapen la cabecera, la grilla 1X2, los chips ni el
 botón.
