@@ -25,13 +25,13 @@ export function AnalysisTabs({ active }: { active: AnalysisTabKey }) {
             href={tab.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex h-11 items-center justify-center rounded-md text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "flex h-11 min-w-0 items-center justify-center truncate rounded-md px-1 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isActive
                 ? "bg-background text-foreground shadow-xs"
                 : "text-muted-foreground active:bg-background/60",
             )}
           >
-            {tab.label}
+            <span className="min-w-0 truncate">{tab.label}</span>
           </Link>
         );
       })}

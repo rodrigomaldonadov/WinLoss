@@ -58,7 +58,7 @@ export function ProbabilityGrid({
         const href = hrefForOutcome?.(outcome.key);
         const cellClass = cn(
           "block rounded-md border text-center transition-colors",
-          compact ? "min-h-11 px-1 py-1" : "px-2 py-2",
+          compact ? "min-h-11 min-w-0 px-1 py-1" : "px-2 py-2",
           value === best
             ? "border-primary/40 bg-primary/5"
             : "border-border bg-muted/30",
@@ -70,7 +70,7 @@ export function ProbabilityGrid({
             <p
               className={cn(
                 "font-medium uppercase tracking-wide text-muted-foreground",
-                "text-[0.6875rem] leading-tight",
+                "truncate text-[0.6875rem] leading-tight",
               )}
             >
               {outcome.short} · {outcome.label}
@@ -248,10 +248,10 @@ export function CardMarketChips({ item }: { item: AnalysisFeedItem }) {
           key={chip.key}
           href={chip.href}
           aria-label={`Precargar ${chip.label} en una nueva apuesta`}
-          className="pointer-events-auto relative z-20 flex h-11 flex-1 items-center justify-between gap-0.5 rounded border bg-background px-1.5 text-[0.6875rem] font-medium transition-colors hover:bg-muted/60"
+          className="pointer-events-auto relative z-20 flex h-11 min-w-0 flex-1 items-center justify-between gap-0.5 rounded border bg-background px-1 text-[0.6875rem] font-medium transition-colors hover:bg-muted/60"
         >
-          <span className="text-muted-foreground">{chip.label}</span>
-          <span className="tabular-nums font-semibold">{probabilityLabel(chip.value)}</span>
+          <span className="min-w-0 truncate text-muted-foreground">{chip.label}</span>
+          <span className="shrink-0 tabular-nums font-semibold">{probabilityLabel(chip.value)}</span>
         </Link>
       ))}
     </div>
@@ -361,6 +361,8 @@ export function FairOddsComparator({ item }: { item: AnalysisFeedItem }) {
     />
   );
 }
+
+
 
 
 

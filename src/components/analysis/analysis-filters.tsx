@@ -35,7 +35,7 @@ export function AnalysisFilters({
   competitions: CompetitionFilterOption[];
 }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1">
       {ANALYSIS_DAY_OPTIONS.map((option) => {
         const active = option === days;
         return (
@@ -131,4 +131,5 @@ export function AnalysisFilters({
     </div>
   );
 }
+
 
