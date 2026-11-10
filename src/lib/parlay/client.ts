@@ -21,13 +21,6 @@ export const PARLAY_BOOKMAKERS = [
   "prophetx",
 ].join(",");
 
-export const PARLAY_PROP_MARKETS = [
-  ["player_points", "Puntos"],
-  ["player_rebounds", "Rebotes"],
-  ["player_assists", "Asistencias"],
-  ["player_threes", "Triples"],
-] as const;
-
 async function parlayGet<T>(
   path: string,
   params: Record<string, string | number | undefined>,

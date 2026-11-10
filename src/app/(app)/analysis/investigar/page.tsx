@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { Telescope } from "lucide-react";
 
 import { auth } from "@/auth";
@@ -8,15 +9,19 @@ import { AnalysisTabs } from "@/components/analysis/analysis-tabs";
 import { ResearchArbitrage } from "@/components/analysis/research-arbitrage";
 import { ResearchHelpButton } from "@/components/analysis/research-help";
 import { ResearchMoneyline } from "@/components/analysis/research-moneyline";
-import { ResearchProps } from "@/components/analysis/research-props";
+import { ResearchPropsSection } from "@/components/analysis/research-props-section";
+import { ResearchPropsSkeleton } from "@/components/analysis/research-props-skeleton";
 import { ResearchSummary } from "@/components/analysis/research-summary";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { getUserPreferences } from "@/lib/data/user";
 import { formatDateTime } from "@/lib/format";
-import { propLines } from "@/lib/parlay/analysis";
-import { getParlayGames, getParlayProps, PARLAY_PROP_MARKETS } from "@/lib/parlay/client";
+import {
+  PARLAY_PROP_MARKETS,
+  type ParlayPropMarket,
+} from "@/lib/parlay/analysis";
+import { getParlayGames } from "@/lib/parlay/client";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -35,7 +40,6 @@ const SPORTS = [
 ] as const;
 
 const SPORT_KEYS = new Set<string>(SPORTS.map((sport) => sport.key));
-const PROP_KEYS = new Set<string>(PARLAY_PROP_MARKETS.map(([key]) => key));
 const MAX_GAMES = 14;
 
 type ResearchPageProps = {
@@ -58,8 +62,10 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
       : "basketball_nba";
   const eventId = firstParam(params.evento);
   const marketParam = firstParam(params.mercado);
-  const market = marketParam && PROP_KEYS.has(marketParam) ? marketParam : null;
-  const playerQuery = (firstParam(params.jugador) ?? "").slice(0, 60);
+  const market =
+    marketParam && PARLAY_PROP_MARKETS.some(([key]) => key === marketParam)
+      ? (marketParam as ParlayPropMarket)
+      : null;
 
   const [games, preferences] = await Promise.all([
     getParlayGames(sportKey),
@@ -70,18 +76,6 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
     games?.find((event) => event.id === eventId) ??
     games?.[0] ??
     null;
-
-  const props =
-    selected && market ? await getParlayProps(sportKey, market) : null;
-  const propEvent = props?.find((event) => event.id === selected?.id) ?? null;
-  const lines =
-    propEvent && market
-      ? propLines(propEvent, market).filter(
-          (line) =>
-            line.player !== selected?.home_team &&
-            line.player !== selected?.away_team,
-        )
-      : [];
 
   const sportLabel =
     SPORTS.find((sport) => sport.key === sportKey)?.label ?? sportKey;
@@ -187,13 +181,13 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
           <ResearchSummary event={selected} />
           <ResearchMoneyline event={selected} />
           <ResearchArbitrage event={selected} />
-          <ResearchProps
-            event={selected}
-            market={market}
-            lines={lines}
-            query={playerQuery}
-            sportKey={sportKey}
-          />
+          <Suspense fallback={<ResearchPropsSkeleton />}>
+            <ResearchPropsSection
+              event={selected}
+              market={market}
+              sportKey={sportKey}
+            />
+          </Suspense>
 
           <details className="rounded-xl border bg-muted/10 px-3 py-2">
             <summary className="cursor-pointer text-[11px] font-medium">

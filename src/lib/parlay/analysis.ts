@@ -1,5 +1,14 @@
 /** Tipos y cuentas de la sección Investigar (ParlayAPI). Sin acceso a red. */
 
+export const PARLAY_PROP_MARKETS = [
+  ["player_points", "Puntos"],
+  ["player_rebounds", "Rebotes"],
+  ["player_assists", "Asistencias"],
+  ["player_threes", "Triples"],
+] as const;
+
+export type ParlayPropMarket = (typeof PARLAY_PROP_MARKETS)[number][0];
+
 export type ParlayOutcome = {
   name: string;
   description?: string;
