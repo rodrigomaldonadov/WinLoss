@@ -43,3 +43,4 @@ Cubren el patrón `pointer-events-auto` + `z-20` sobre el enlace de la tarjeta.
   siguen desbordando a lo ancho en 390 px. Requieren un modo compacto o scroll
   interno, no un simple cambio de unidades.
 
+
