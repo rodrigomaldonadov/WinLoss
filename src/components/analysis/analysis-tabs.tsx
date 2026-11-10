@@ -6,6 +6,7 @@ const TABS = [
   { key: "upcoming", href: "/analysis", label: "Próximos" },
   { key: "history", href: "/analysis/historial", label: "Historial" },
   { key: "precision", href: "/analysis/precision", label: "Precisión" },
+  { key: "research", href: "/analysis/investigar", label: "Investigar" },
 ] as const;
 
 export type AnalysisTabKey = (typeof TABS)[number]["key"];
@@ -14,7 +15,7 @@ export function AnalysisTabs({ active }: { active: AnalysisTabKey }) {
   return (
     <nav
       aria-label="Secciones de análisis"
-      className="grid grid-cols-3 gap-0.5 rounded-lg bg-muted/50 p-0.5"
+      className="grid grid-cols-4 gap-0.5 rounded-lg bg-muted/50 p-0.5"
     >
       {TABS.map((tab) => {
         const isActive = tab.key === active;
