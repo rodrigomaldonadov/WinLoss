@@ -16,9 +16,14 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { getUserPreferences } from "@/lib/data/user";
+import {
+  getParlayMovement,
+  recordParlaySnapshot,
+} from "@/lib/data/parlay-movement";
 import { formatDateTime } from "@/lib/format";
 import {
   PARLAY_PROP_MARKETS,
+  type ParlayMovement,
   type ParlayPropMarket,
 } from "@/lib/parlay/analysis";
 import { getParlayGames } from "@/lib/parlay/client";
@@ -79,6 +84,12 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
 
   const sportLabel =
     SPORTS.find((sport) => sport.key === sportKey)?.label ?? sportKey;
+
+  let movement: ParlayMovement = {};
+  if (selected) {
+    await recordParlaySnapshot(selected, sportKey);
+    movement = await getParlayMovement(selected.id);
+  }
 
   return (
     <div className="space-y-2">
@@ -178,8 +189,16 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
             </div>
           </section>
 
-          <ResearchSummary event={selected} sportKey={sportKey} />
-          <ResearchMoneyline event={selected} sportKey={sportKey} />
+          <ResearchSummary
+            event={selected}
+            sportKey={sportKey}
+            movement={movement}
+          />
+          <ResearchMoneyline
+            event={selected}
+            sportKey={sportKey}
+            movement={movement}
+          />
           <ResearchArbitrage event={selected} />
           <Suspense fallback={<ResearchPropsSkeleton />}>
             <ResearchPropsSection

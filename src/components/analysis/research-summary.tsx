@@ -10,15 +10,17 @@ import {
   moneylineNoVig,
   sharpBook,
 } from "@/lib/parlay/analysis";
-import type { ParlayEvent } from "@/lib/parlay/analysis";
+import type { ParlayEvent, ParlayMovement } from "@/lib/parlay/analysis";
 import { cn } from "@/lib/utils";
 
 export function ResearchSummary({
   event,
   sportKey,
+  movement,
 }: {
   event: ParlayEvent;
   sportKey: string;
+  movement: ParlayMovement;
 }) {
   const books = moneylineNoVig(event);
   const sharp = sharpBook(books);
@@ -60,6 +62,13 @@ export function ResearchSummary({
       ? (favoriteProbability - consensusFavorite) * 100
       : null;
   const price = bestPriceFor(event, "h2h", favorite);
+  const bestMove = price
+    ? movement[`${price.book}|${favorite}`]
+    : undefined;
+  const bestDelta =
+    bestMove && bestMove.previous !== null
+      ? bestMove.price - bestMove.previous
+      : null;
   const cases = bestArbitrage(event, 1);
   const arbitrage = cases[0] && cases[0].sum < 1 ? cases[0] : null;
 
@@ -101,6 +110,20 @@ export function ResearchSummary({
         </span>
         {price ? ` en ${price.book}` : ""}.
       </p>
+
+      {bestDelta !== null && Math.abs(bestDelta) >= 0.005 && (
+        <p
+          className={cn(
+            "mt-0.5 text-[11px]",
+            bestDelta > 0
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-rose-600 dark:text-rose-400",
+          )}
+        >
+          {bestDelta > 0 ? "Subió" : "Bajó"} {Math.abs(bestDelta).toFixed(2)}{" "}
+          desde la captura anterior.
+        </p>
+      )}
 
       {price && (
         <Button asChild size="sm" className="mt-2 h-9 w-full gap-1 text-xs">

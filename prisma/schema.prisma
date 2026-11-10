@@ -744,3 +744,19 @@ model RatingAsOfCache {
   @@unique([competitionCode, weekStart, modelVersionId])
   @@index([modelVersionId, calculatedAt])
 }
+
+model ParlayOddsSnapshot {
+  id String @id @default(cuid())
+
+  sportKey String
+  eventId String
+  eventName String
+  market String @default("h2h")
+  outcome String
+  bookmaker String
+  price Decimal @db.Decimal(8, 3)
+  capturedAt DateTime @default(now())
+
+  @@index([eventId, market, capturedAt])
+  @@index([capturedAt])
+}

@@ -9,6 +9,16 @@ export const PARLAY_PROP_MARKETS = [
 
 export type ParlayPropMarket = (typeof PARLAY_PROP_MARKETS)[number][0];
 
+/** Movimiento de una cuota respecto a la captura anterior. */
+export type ParlayPriceMove = {
+  price: number;
+  previous: number | null;
+  capturedAt: string;
+  previousAt: string | null;
+};
+
+export type ParlayMovement = Record<string, ParlayPriceMove>;
+
 export type ParlayOutcome = {
   name: string;
   description?: string;

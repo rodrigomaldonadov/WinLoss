@@ -10,14 +10,20 @@ import {
   moneylineNoVig,
   sharpBook,
 } from "@/lib/parlay/analysis";
-import type { ParlayEvent } from "@/lib/parlay/analysis";
+import type {
+  ParlayEvent,
+  ParlayMovement,
+} from "@/lib/parlay/analysis";
+import { cn } from "@/lib/utils";
 
 export function ResearchMoneyline({
   event,
   sportKey,
+  movement,
 }: {
   event: ParlayEvent;
   sportKey: string;
+  movement: ParlayMovement;
 }) {
   const books = moneylineNoVig(event);
   const sharp = sharpBook(books);
@@ -67,11 +73,17 @@ export function ResearchMoneyline({
       </div>
 
       <ul className="divide-y overflow-hidden rounded-xl border bg-card">
-        {rows.map((row) => (
-          <li
-            key={row.outcome}
-            className="flex items-center justify-between gap-3 px-3 py-2"
-          >
+        {rows.map((row) => {
+          const move = row.best
+            ? movement[`${row.best.book}|${row.outcome}`]
+            : undefined;
+          const delta =
+            move && move.previous !== null ? move.price - move.previous : null;
+          return (
+            <li
+              key={row.outcome}
+              className="flex items-center justify-between gap-3 px-3 py-2"
+            >
             <div className="min-w-0">
               <p className="truncate text-[13px] font-medium">{row.outcome}</p>
               <p className="text-[11px] text-muted-foreground tabular-nums">
@@ -111,9 +123,22 @@ export function ResearchMoneyline({
                   </p>
                 </>
               )}
+              {delta !== null && Math.abs(delta) >= 0.005 && (
+                <p
+                  className={cn(
+                    "mt-0.5 text-[10px] font-medium tabular-nums",
+                    delta > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-rose-600 dark:text-rose-400",
+                  )}
+                >
+                  {delta > 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(2)}
+                </p>
+              )}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <details className="rounded-xl border bg-muted/10 px-3 py-2">
