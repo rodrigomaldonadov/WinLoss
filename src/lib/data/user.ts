@@ -14,6 +14,8 @@ export type UserPreferences = {
   usdToPenRate: number;
   debtAlertThresholdPct: number;
   showDebts: boolean;
+  weeklyStakeLimit: number | null;
+  selfExclusionUntil: Date | null;
 };
 
 /** Preferencias del usuario (moneda, zona horaria y deudas). */
@@ -28,6 +30,8 @@ export async function getUserPreferences(
       usdToPenRate: true,
       debtAlertThresholdPct: true,
       showDebts: true,
+      weeklyStakeLimit: true,
+      selfExclusionUntil: true,
     },
   });
 
@@ -43,5 +47,9 @@ export async function getUserPreferences(
         ? Number(user.debtAlertThresholdPct)
         : DEFAULT_DEBT_ALERT_THRESHOLD,
     showDebts: user?.showDebts ?? true,
+    weeklyStakeLimit: user?.weeklyStakeLimit
+      ? Number(user.weeklyStakeLimit)
+      : null,
+    selfExclusionUntil: user?.selfExclusionUntil ?? null,
   };
 }

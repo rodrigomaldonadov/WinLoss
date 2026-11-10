@@ -37,6 +37,23 @@ export type SettingsState = {
   error?: string;
 };
 
+const responsibleSchema = z.object({
+  weeklyStakeLimit: z.preprocess(
+    (value) =>
+      value === "" || value === null || value === undefined
+        ? null
+        : typeof value === "string"
+          ? value.replace(",", ".")
+          : value,
+    z.coerce
+      .number({ error: "Límite inválido" })
+      .min(0, "El límite no puede ser negativo")
+      .max(1_000_000, "El límite es demasiado alto")
+      .nullable(),
+  ),
+  selfExclusionDays: z.enum(["active", "none", "1", "7", "30"]),
+});
+
 export async function updateAutoSettleModeAction(
   _prevState: SettingsState,
   formData: FormData,
@@ -98,5 +115,59 @@ export async function updateDebtPreferencesAction(
   revalidatePath("/debts");
   revalidatePath("/");
   revalidatePath("/bankroll");
+  return { ok: true };
+}
+
+export async function updateResponsibleGamblingAction(
+  _prevState: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "Tu sesión ha caducado." };
+  }
+
+  const parsed = responsibleSchema.safeParse({
+    weeklyStakeLimit: formData.get("weeklyStakeLimit"),
+    selfExclusionDays: formData.get("selfExclusionDays"),
+  });
+
+  if (!parsed.success) {
+    return { error: "Revisa el límite semanal." };
+  }
+
+  const current = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { selfExclusionUntil: true },
+  });
+
+  let selfExclusionUntil = current?.selfExclusionUntil ?? null;
+  if (
+    parsed.data.selfExclusionDays !== "none" &&
+    parsed.data.selfExclusionDays !== "active"
+  ) {
+    const days = Number(parsed.data.selfExclusionDays);
+    const candidate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    if (!selfExclusionUntil || candidate > selfExclusionUntil) {
+      selfExclusionUntil = candidate;
+    }
+  }
+
+  const limit = parsed.data.weeklyStakeLimit;
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        weeklyStakeLimit: limit !== null && limit > 0 ? limit : null,
+        selfExclusionUntil,
+      },
+    });
+  } catch (error) {
+    console.error("[settings] responsibleGambling:", error);
+    return { error: "No pudimos guardar las preferencias." };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/bets/new");
   return { ok: true };
 }

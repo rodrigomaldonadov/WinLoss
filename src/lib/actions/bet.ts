@@ -11,10 +11,16 @@ import {
   calculateBettingStats,
   settleBet as settleBetMath,
 } from "@/lib/bet-math";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 import { getUserPreferences } from "@/lib/data/user";
 import { zonedDateTimeToUtc } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
+import {
+  isSelfExclusionActive,
+  stakeToPen,
+  startOfWeekInTimeZone,
+  weeklyLimitRemaining,
+} from "@/lib/responsible-gambling";
 import {
   createBetSchema,
   settleBetSchema,
@@ -347,6 +353,62 @@ export async function createBet(
   );
 
   if (!references.ok) return references.state;
+
+  if (isSelfExclusionActive(preferences.selfExclusionUntil)) {
+    return {
+      error: `Autoexclusión activa hasta el ${formatDateTime(
+        preferences.selfExclusionUntil!,
+        preferences.timezone,
+      )}. No puedes registrar apuestas nuevas.`,
+    };
+  }
+
+  if (preferences.weeklyStakeLimit && !data.isFreeBet) {
+    const weekStart = startOfWeekInTimeZone(new Date(), preferences.timezone);
+    const weekBets = await prisma.bet.findMany({
+      where: {
+        userId: session.user.id,
+        placedAt: { gte: weekStart },
+        isFreeBet: false,
+      },
+      select: {
+        stake: true,
+        bankroll: { select: { currency: true } },
+      },
+    });
+    const spentPen = weekBets.reduce(
+      (total, bet) =>
+        total +
+        stakeToPen(
+          Number(bet.stake),
+          bet.bankroll.currency,
+          preferences.usdToPenRate,
+        ),
+      0,
+    );
+    const newStakePen = stakeToPen(
+      data.stake,
+      references.currency,
+      preferences.usdToPenRate,
+    );
+    const remaining = weeklyLimitRemaining(
+      preferences.weeklyStakeLimit,
+      spentPen,
+    );
+
+    if (remaining !== null && newStakePen > remaining) {
+      return {
+        fieldErrors: {
+          stake: [
+            `Tu límite semanal es ${formatCurrency(
+              preferences.weeklyStakeLimit,
+              "PEN",
+            )} y te quedan ${formatCurrency(remaining, "PEN")} esta semana.`,
+          ],
+        },
+      };
+    }
+  }
 
   let createdId = "";
   try {

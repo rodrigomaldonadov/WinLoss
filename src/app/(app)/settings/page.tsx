@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, Globe, Landmark, LogOut, Palette, Store, Wallet } from "lucide-react";
+import { ChevronRight, Globe, Landmark, LogOut, Palette, ShieldCheck, Store, Wallet } from "lucide-react";
 
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
@@ -9,6 +9,7 @@ import { UserProfileSheet } from "@/components/settings/user-profile-sheet";
 import { AutoSettlePreference } from "@/components/settings/auto-settle-preference";
 import { DebtPreferences } from "@/components/settings/debt-preferences";
 import { ExchangeRatesCard } from "@/components/settings/exchange-rates";
+import { ResponsibleGambling } from "@/components/settings/responsible-gambling";
 import { ModelVersionsPanel } from "@/components/settings/model-versions-panel";
 import { ThemePreference } from "@/components/settings/theme-preference";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ export default async function SettingsPage() {
       usdToPenRate: true,
       debtAlertThresholdPct: true,
       showDebts: true,
+      weeklyStakeLimit: true,
+      selfExclusionUntil: true,
       createdAt: true,
     },
   });
@@ -175,6 +178,29 @@ export default async function SettingsPage() {
         <div className="border-t pt-3">
           <ExchangeRatesCard rates={exchangeRates} today={today} />
         </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl border bg-card p-4 shadow-xs">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <ShieldCheck
+              className="size-4 text-muted-foreground"
+              aria-hidden
+            />
+            Juego responsable
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Pon un límite semanal de stake o pausa las apuestas. Se aplican en el
+            formulario de nueva apuesta.
+          </p>
+        </div>
+        <ResponsibleGambling
+          weeklyStakeLimit={
+            user.weeklyStakeLimit ? Number(user.weeklyStakeLimit) : null
+          }
+          selfExclusionUntil={user.selfExclusionUntil}
+          timezone={user.timezone}
+        />
       </section>
 
       <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
