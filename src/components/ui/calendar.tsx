@@ -83,7 +83,7 @@ export function Calendar({
         {WEEKDAYS.map((day) => (
           <span
             key={day}
-            className="py-1 text-[11px] font-medium text-muted-foreground"
+            className="py-1 text-[0.6875rem] font-medium text-muted-foreground"
             aria-hidden
           >
             {day}

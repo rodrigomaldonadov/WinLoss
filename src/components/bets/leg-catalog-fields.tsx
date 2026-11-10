@@ -219,7 +219,7 @@ export function CompetitionField({ index }: CatalogFieldProps) {
               ) : (
                 groups.map((group) => (
                   <div key={group.region} className="mb-1">
-                    <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="px-2 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
                       {group.region}
                     </p>
                     {group.items.map((competition) => {
@@ -277,7 +277,7 @@ export function CompetitionField({ index }: CatalogFieldProps) {
         <button
           type="button"
           onClick={() => setManual(false)}
-          className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+          className="text-[0.6875rem] font-medium text-primary underline-offset-4 hover:underline"
         >
           Elegir del catálogo
         </button>

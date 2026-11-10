@@ -26,7 +26,7 @@ export function HistoryRow({
 
       <div className="pointer-events-none relative z-10">
         <div className="flex items-center justify-between gap-2">
-          <p className="flex min-w-0 items-center gap-1 text-[10px] font-medium text-muted-foreground">
+          <p className="flex min-w-0 items-center gap-1 text-[0.625rem] font-medium text-muted-foreground">
             <CalendarDays className="size-3 shrink-0" aria-hidden />
             <span className="truncate">{item.competition}</span>
             <span aria-hidden>·</span>
@@ -46,7 +46,7 @@ export function HistoryRow({
             {item.provisional && (
               <Badge
                 variant="outline"
-                className="h-4 px-1.5 text-[9px] font-medium text-muted-foreground"
+                className="h-4 px-1.5 text-[0.5625rem] font-medium text-muted-foreground"
                 title="Resultado provisional de la API; el CSV oficial puede cambiarlo."
               >
                 Provisional
@@ -55,7 +55,7 @@ export function HistoryRow({
             <Badge
               variant={saved ? "secondary" : "outline"}
               className={cn(
-                "h-4 px-1.5 text-[9px] font-medium",
+                "h-4 px-1.5 text-[0.5625rem] font-medium",
                 saved ? "bg-primary/10 text-primary" : "text-muted-foreground",
               )}
               title={
@@ -70,12 +70,12 @@ export function HistoryRow({
         </div>
 
         <div className="mt-1 flex items-baseline justify-between gap-2">
-          <h2 className="min-w-0 truncate text-[13px] leading-tight font-semibold">
+          <h2 className="min-w-0 truncate text-[0.8125rem] leading-tight font-semibold">
             {item.homeName}{" "}
             <span className="font-normal text-muted-foreground">vs</span>{" "}
             {item.awayName}
           </h2>
-          <p className="flex shrink-0 items-center gap-0.5 text-[15px] leading-none font-bold tabular-nums">
+          <p className="flex shrink-0 items-center gap-0.5 text-[0.9375rem] leading-none font-bold tabular-nums">
             <span className="sr-only">Resultado </span>
             {item.homeGoals}–{item.awayGoals}
             <ChevronRight
@@ -85,7 +85,7 @@ export function HistoryRow({
           </p>
         </div>
 
-        <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+        <div className="mt-1 flex items-center justify-between gap-2 text-[0.625rem] text-muted-foreground">
           <p className="min-w-0 truncate">
             {item.prediction ? (
               <>
@@ -102,7 +102,7 @@ export function HistoryRow({
             )}
           </p>
           {item.hasBet && (
-            <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-primary">
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-[0.625rem] font-medium text-primary">
               <Ticket className="size-3" aria-hidden />
               Tu apuesta
             </span>

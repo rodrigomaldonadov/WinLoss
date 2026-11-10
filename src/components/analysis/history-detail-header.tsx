@@ -39,7 +39,7 @@ export function HistoryDetailHeader({
         <Badge
           variant={saved ? "secondary" : "outline"}
           className={cn(
-            "h-5 max-w-full truncate px-1.5 text-[10px] font-medium",
+            "h-5 max-w-full truncate px-1.5 text-[0.625rem] font-medium",
             saved ? "bg-primary/10 text-primary" : "text-muted-foreground",
           )}
         >
@@ -50,7 +50,7 @@ export function HistoryDetailHeader({
       </div>
 
       <div>
-        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        <p className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
           <CalendarDays className="size-3 shrink-0" aria-hidden />
           <span className="truncate">{header.competition}</span>
           <span aria-hidden>·</span>
@@ -86,7 +86,7 @@ export function HistoryDetailHeader({
         {header.provisional && (
           <Badge
             variant="outline"
-            className="h-5 px-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+            className="h-5 px-1.5 text-[0.625rem] font-medium text-amber-700 dark:text-amber-300"
             title="Resultado provisional de la API; el CSV oficial puede reemplazarlo."
           >
             Resultado provisional
@@ -94,7 +94,7 @@ export function HistoryDetailHeader({
         )}
         <p
           className={cn(
-            "rounded-lg border px-2.5 py-2 text-[11px] leading-snug",
+            "rounded-lg border px-2.5 py-2 text-[0.6875rem] leading-snug",
             saved
               ? "bg-muted/30 text-muted-foreground"
               : "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200",

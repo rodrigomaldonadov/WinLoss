@@ -247,7 +247,7 @@ export default async function SettingsPage() {
         </form>
       </section>
 
-      <p className="px-1 text-center text-[11px] text-muted-foreground">
+      <p className="px-1 text-center text-[0.6875rem] text-muted-foreground">
         WinLoss · Versión 0.1.0 · Juego responsable +18
       </p>
     </div>

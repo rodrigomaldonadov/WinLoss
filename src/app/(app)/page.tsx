@@ -308,7 +308,7 @@ export default async function DashboardPage() {
             >
               <div className="mb-3 flex items-baseline justify-between gap-2">
                 <h2 className="text-sm font-semibold">CLV por casa</h2>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[0.6875rem] text-muted-foreground">
                   Mejor a peor
                 </span>
               </div>

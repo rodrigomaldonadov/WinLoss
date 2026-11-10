@@ -39,7 +39,7 @@ function MetricLine({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 text-[11px]">
+    <div className="flex items-center justify-between gap-2 text-[0.6875rem]">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium tabular-nums">{value}</span>
     </div>
@@ -115,7 +115,7 @@ export async function ModelVersionsPanel({
       </div>
 
       {!canPromote && (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] leading-snug text-amber-900 dark:text-amber-200">
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[0.6875rem] leading-snug text-amber-900 dark:text-amber-200">
           {adminConfigured
             ? "Promoción y rollback deshabilitados para tu cuenta. Solo el email configurado en ANALYSIS_ADMIN_EMAIL puede aprobar versiones."
             : "Promoción y rollback deshabilitados. Define ANALYSIS_ADMIN_EMAIL en el servidor y entra con ese email para poder aprobar versiones."}
@@ -128,7 +128,7 @@ export async function ModelVersionsPanel({
             <p className="text-sm font-medium">
               {champion?.name ?? "Sin campeón registrado"}
             </p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[0.6875rem] text-muted-foreground">
               {champion?.promotedAt
                 ? `Promovido ${formatDate(champion.promotedAt)}`
                 : "Ejecuta analysis:tune para crear la línea base"}
@@ -137,7 +137,7 @@ export async function ModelVersionsPanel({
           <Badge>Campeón</Badge>
         </div>
         {champion && <VersionMetrics metrics={champion.metrics} />}
-        <p className="mt-2 text-[10px] text-muted-foreground">
+        <p className="mt-2 text-[0.625rem] text-muted-foreground">
           Parámetros:{" "}
           {champion
             ? `half-life ${param(champion.params, "halfLifeDays") ?? "—"} · ridge ${param(champion.params, "ridge") ?? "—"} · local ${param(champion.params, "homeAdvantageMode") ?? "—"}`
@@ -157,7 +157,7 @@ export async function ModelVersionsPanel({
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-sm font-medium">{challenger.name}</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   En sombra desde {formatDate(challenger.createdAt)}
                 </p>
               </div>
@@ -171,7 +171,7 @@ export async function ModelVersionsPanel({
 
             <VersionMetrics metrics={challenger.metrics} />
 
-            <div className="mt-2 rounded-lg bg-muted/30 px-2.5 py-2 text-[11px]">
+            <div className="mt-2 rounded-lg bg-muted/30 px-2.5 py-2 text-[0.6875rem]">
               <p className="font-medium">Regla de promoción</p>
               <p className="mt-0.5 text-muted-foreground">
                 N forward: {challenger.promotion?.sample ?? 0} · mejora Brier:{" "}
@@ -184,7 +184,7 @@ export async function ModelVersionsPanel({
                   ? `[${challenger.promotion.brierDifferenceCi.lower.toFixed(4)}, ${challenger.promotion.brierDifferenceCi.upper.toFixed(4)}]`
                   : "—"}
               </p>
-              <p className="mt-1 text-[10px] text-muted-foreground">
+              <p className="mt-1 text-[0.625rem] text-muted-foreground">
                 {challenger.promotion?.reasons.join(" ") ?? ""}
               </p>
             </div>
@@ -206,7 +206,7 @@ export async function ModelVersionsPanel({
                 </Button>
               </form>
             ) : (
-              <p className="mt-2 text-[10px] text-muted-foreground">
+              <p className="mt-2 text-[0.625rem] text-muted-foreground">
                 Promoción deshabilitada. Configura ANALYSIS_ADMIN_EMAIL.
               </p>
             )}
@@ -227,7 +227,7 @@ export async function ModelVersionsPanel({
               >
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium">{version.name}</p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[0.625rem] text-muted-foreground">
                     Retirada {version.retiredAt ? formatDate(version.retiredAt) : "—"} ·
                     Brier {metric(version.metrics, "brier")?.toFixed(4) ?? "—"}
                   </p>
@@ -246,7 +246,7 @@ export async function ModelVersionsPanel({
         </details>
       )}
 
-      <p className="text-[10px] text-muted-foreground">
+      <p className="text-[0.625rem] text-muted-foreground">
         El peso modelo/mercado no se cambia al promover. Se reestima con la misma
         regla; sigue en 0 salvo mejora significativa sostenida.{" "}
         <Link href="/analysis" className="underline underline-offset-4">

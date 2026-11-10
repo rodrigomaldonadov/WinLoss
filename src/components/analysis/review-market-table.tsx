@@ -85,16 +85,16 @@ export function ReviewMarketTable({ review }: { review: ReviewResult }) {
         <h2 id="mercados" className="text-sm font-semibold">
           Por mercado
         </h2>
-        <span className="text-[10px] text-muted-foreground">N = 1 partido</span>
+        <span className="text-[0.625rem] text-muted-foreground">N = 1 partido</span>
       </div>
 
       <div className="rounded-lg border bg-muted/20 px-2.5 py-2">
-        <p className="text-[11px] font-medium">
+        <p className="text-[0.6875rem] font-medium">
           Lo que ocurrió: {OUTCOME_LABEL[review.actualOutcome]} (
           {review.homeGoals}–{review.awayGoals})
         </p>
         {occurred.length > 0 ? (
-          <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+          <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.6875rem]">
             {occurred.map((item) => (
               <li key={item.label}>
                 <span className="text-muted-foreground">{item.label}</span>{" "}
@@ -105,14 +105,14 @@ export function ReviewMarketTable({ review }: { review: ReviewResult }) {
             ))}
           </ul>
         ) : (
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-[0.6875rem] text-muted-foreground">
             Ninguna fuente guardó una probabilidad para lo que ocurrió.
           </p>
         )}
       </div>
 
       {!hasMarket && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[0.6875rem] text-muted-foreground">
           Sin cuotas de mercado para este partido: la fuente Mercado no está
           disponible.
         </p>
@@ -120,9 +120,9 @@ export function ReviewMarketTable({ review }: { review: ReviewResult }) {
 
       {rows.length > 0 ? (
         <div className="overflow-hidden rounded-lg border">
-          <table className="w-full table-fixed border-collapse text-[11px]">
+          <table className="w-full table-fixed border-collapse text-[0.6875rem]">
             <thead>
-              <tr className="border-b bg-muted/40 text-[10px] text-muted-foreground">
+              <tr className="border-b bg-muted/40 text-[0.625rem] text-muted-foreground">
                 <th className="w-[34%] px-2 py-1.5 text-left font-medium">
                   Selección
                 </th>
@@ -148,7 +148,7 @@ export function ReviewMarketTable({ review }: { review: ReviewResult }) {
                   <tr className="border-b bg-muted/20">
                     <th
                       colSpan={columns}
-                      className="px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="px-2 py-1 text-left text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground"
                     >
                       {group.market}
                     </th>
@@ -192,13 +192,13 @@ export function ReviewMarketTable({ review }: { review: ReviewResult }) {
           </table>
         </div>
       ) : (
-        <p className="rounded-lg border border-dashed bg-muted/20 px-2.5 py-3 text-[11px] text-muted-foreground">
+        <p className="rounded-lg border border-dashed bg-muted/20 px-2.5 py-3 text-[0.6875rem] text-muted-foreground">
           Esta captura no guardó mercados del modelo. Solo se muestran las
           probabilidades 1X2 del mercado y la final que se mostró.
         </p>
       )}
 
-      <p className="text-[10px] text-muted-foreground">
+      <p className="text-[0.625rem] text-muted-foreground">
         <span aria-hidden>●</span> Fila resaltada = lo que ocurrió · — = no
         guardado. Probabilidades redondeadas al punto porcentual.
       </p>

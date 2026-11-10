@@ -47,7 +47,7 @@ export function BetRow({ bet }: BetRowProps) {
             ? formatCurrency(bet.stake, currency)
             : formatSignedCurrency(bet.profit ?? 0, currency)}
         </p>
-        <p className={cn("text-[11px]", status.textClassName)}>
+        <p className={cn("text-[0.6875rem]", status.textClassName)}>
           {status.label}
         </p>
       </div>

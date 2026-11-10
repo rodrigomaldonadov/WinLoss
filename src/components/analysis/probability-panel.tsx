@@ -70,7 +70,7 @@ export function ProbabilityGrid({
             <p
               className={cn(
                 "font-medium uppercase tracking-wide text-muted-foreground",
-                "text-[11px] leading-tight",
+                "text-[0.6875rem] leading-tight",
               )}
             >
               {outcome.short} · {outcome.label}
@@ -78,7 +78,7 @@ export function ProbabilityGrid({
             <p
               className={cn(
                 "font-semibold tabular-nums",
-                compact ? "mt-0.5 text-[13px] leading-tight" : "mt-0.5 text-lg",
+                compact ? "mt-0.5 text-[0.8125rem] leading-tight" : "mt-0.5 text-lg",
               )}
             >
               {probabilityLabel(value)}
@@ -248,7 +248,7 @@ export function CardMarketChips({ item }: { item: AnalysisFeedItem }) {
           key={chip.key}
           href={chip.href}
           aria-label={`Precargar ${chip.label} en una nueva apuesta`}
-          className="pointer-events-auto relative z-20 flex h-11 flex-1 items-center justify-between gap-0.5 rounded border bg-background px-1.5 text-[11px] font-medium transition-colors hover:bg-muted/60"
+          className="pointer-events-auto relative z-20 flex h-11 flex-1 items-center justify-between gap-0.5 rounded border bg-background px-1.5 text-[0.6875rem] font-medium transition-colors hover:bg-muted/60"
         >
           <span className="text-muted-foreground">{chip.label}</span>
           <span className="tabular-nums font-semibold">{probabilityLabel(chip.value)}</span>
@@ -284,15 +284,15 @@ export function ProbabilityHeadline({
 
   return (
     <div className={compact ? "mt-0.5" : "mt-1.5"}>
-      <div className="flex items-center justify-between gap-1.5">
-        <p className="truncate text-[11px] font-medium leading-tight text-muted-foreground">
+      <div className="flex min-w-0 items-center justify-between gap-1.5">
+        <p className="min-w-0 truncate text-[0.6875rem] font-medium leading-tight text-muted-foreground">
           {headlineTitle(final.source)}
         </p>
         <Badge
           variant={isMarket ? "secondary" : "outline"}
           className={cn(
             compact &&
-              "h-5 shrink-0 px-1.5 py-0 text-[10px] font-medium leading-none",
+              "h-5 shrink-0 px-1.5 py-0 text-[0.625rem] font-medium leading-none",
           )}
         >
           {confidenceBadge(displayConfidence)}
@@ -327,14 +327,14 @@ export function ProbabilityHeadline({
 
       {!compact &&
         (isMarket ? (
-          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+          <p className="mt-2 text-[0.6875rem] leading-snug text-muted-foreground">
             {marketNoteWithPeriod}{" "}
             {item.sources.model.available
               ? "El modelo se muestra aparte solo para comparar."
               : (item.sources.model.note ?? "Modelo no disponible")}
           </p>
         ) : (
-          <div className="mt-2 rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
+          <div className="mt-2 rounded-lg bg-muted/40 px-2.5 py-2 text-[0.6875rem] leading-snug text-muted-foreground">
             <p className="font-medium text-foreground">{caveat}.</p>
             <p className="mt-0.5">
               Sin cuotas de mercado para este partido. La estimación es solo del
@@ -361,5 +361,6 @@ export function FairOddsComparator({ item }: { item: AnalysisFeedItem }) {
     />
   );
 }
+
 
 

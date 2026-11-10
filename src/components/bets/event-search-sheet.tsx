@@ -419,7 +419,7 @@ export function EventSearchSheet({
                     </PopoverContent>
                   </Popover>
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   {dayLabel(day)} · zona {timeZone ?? "local"}
                 </p>
               </div>
@@ -436,7 +436,7 @@ export function EventSearchSheet({
                           setSelectedCompetitions(favorites);
                           void runSearch(day, favorites);
                         }}
-                        className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+                        className="text-[0.6875rem] font-medium text-primary underline-offset-4 hover:underline"
                       >
                         Favoritas
                       </button>
@@ -450,7 +450,7 @@ export function EventSearchSheet({
                         setSelectedCompetitions(top);
                         void runSearch(day, top);
                       }}
-                      className="text-[11px] font-medium text-muted-foreground underline-offset-4 hover:underline"
+                      className="text-[0.6875rem] font-medium text-muted-foreground underline-offset-4 hover:underline"
                     >
                       Todas (máx. {MAX_COMPETITIONS})
                     </button>
@@ -520,7 +520,7 @@ export function EventSearchSheet({
                           ) : (
                             filteredCompetitions.map((group) => (
                               <div key={group.region} className="mb-1">
-                                <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                <p className="px-2 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
                                   {group.region}
                                 </p>
                                 {group.items.map((item) => {
@@ -648,7 +648,7 @@ export function EventSearchSheet({
                   <div className="space-y-4">
                     {eventsByCompetition.map(([competitionName, list]) => (
                       <section key={competitionName}>
-                        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <h3 className="mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
                           {competitionName}
                         </h3>
                         <ul className="space-y-2">
@@ -692,7 +692,7 @@ export function EventSearchSheet({
                                       </span>
                                       <span
                                         className={cn(
-                                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums",
+                                          "shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tabular-nums",
                                           finished &&
                                             "bg-muted text-muted-foreground",
                                           event.status === "LIVE" &&
@@ -714,13 +714,13 @@ export function EventSearchSheet({
                                         {timeLabel(event.kickoffUtc, timeZone)}
                                       </span>
                                       <span aria-hidden>·</span>
-                                      <span className="shrink-0 text-[10px]">
+                                      <span className="shrink-0 text-[0.625rem]">
                                         {PROVIDER_LABEL[event.provider] ??
                                           event.provider}
                                       </span>
                                     </span>
                                     {finished && event.autoSettleable === false && (
-                                      <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-400">
+                                      <span className="mt-1 block text-[0.6875rem] text-amber-600 dark:text-amber-400">
                                         Sin desglose de 90 minutos: no se
                                         auto-liquidará.
                                       </span>

@@ -95,13 +95,13 @@ export function ResearchProps({
           {market ? `Mejor cuota · ${label}` : "Mejor cuota por jugador"}
         </h2>
         {market && (
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[0.625rem] text-muted-foreground">
             {loading ? "cargando…" : `${lines.length} líneas`}
           </span>
         )}
       </div>
 
-      <p className="text-[11px] leading-snug text-muted-foreground">
+      <p className="text-[0.6875rem] leading-snug text-muted-foreground">
         {market
           ? "Elige otro mercado o busca al jugador. Verás la mejor casa para Más y para Menos."
           : "Elige el mercado y busca al jugador. Verás la mejor casa para Más y para Menos."}
@@ -161,13 +161,13 @@ export function ResearchProps({
               <button
                 type="button"
                 onClick={() => selectMarket(market)}
-                className="mt-2 text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+                className="mt-2 text-[0.6875rem] font-medium text-primary underline-offset-4 hover:underline"
               >
                 Reintentar
               </button>
             </div>
           ) : visible.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[0.6875rem] text-muted-foreground">
               {lines.length === 0
                 ? "Ninguna casa cotizó este mercado para el partido."
                 : "Sin jugadores que coincidan con la búsqueda."}
@@ -180,14 +180,14 @@ export function ResearchProps({
                   className="flex items-center justify-between gap-2 px-2.5 py-1.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[11px] font-medium">
+                    <p className="truncate text-[0.6875rem] font-medium">
                       {line.player}
                     </p>
-                    <p className="text-[10px] text-muted-foreground tabular-nums">
+                    <p className="text-[0.625rem] text-muted-foreground tabular-nums">
                       Línea {line.line}
                     </p>
                   </div>
-                  <div className="flex shrink-0 gap-3 text-right text-[10px]">
+                  <div className="flex shrink-0 gap-3 text-right text-[0.625rem]">
                     <div>
                       <p className="text-muted-foreground">Más</p>
                       <p className="font-semibold tabular-nums">
@@ -213,7 +213,7 @@ export function ResearchProps({
           )}
 
           {!loading && filtered.length > visible.length && (
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-[0.625rem] text-muted-foreground">
               Mostrando {visible.length} de {filtered.length}. Busca por jugador
               para ver el resto.
             </p>

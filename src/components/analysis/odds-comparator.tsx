@@ -68,13 +68,13 @@ export function BookmakerOddsComparator({
       className="mt-3 rounded-lg border bg-muted/20 p-2.5"
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-[11px] font-medium">
+        <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium">
           <Scale className="size-3.5" aria-hidden />
           Comparador de cuotas justas
         </p>
         <Badge variant="outline">Solo comparación</Badge>
       </div>
-      <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+      <p className="mt-1 text-[0.625rem] leading-snug text-muted-foreground">
         Cuota justa = 1 / probabilidad del mercado sin margen. Escribe la cuota
         de tu casa para compararla.
       </p>
@@ -93,7 +93,7 @@ export function BookmakerOddsComparator({
               aria-pressed={active}
               onClick={() => setSelected(outcome.key)}
               className={cn(
-                "h-9 rounded-md border px-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "h-9 rounded-md border px-1 text-[0.6875rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active
                   ? "border-primary bg-primary/10 text-primary"
                   : "bg-background text-muted-foreground hover:bg-muted",
@@ -109,7 +109,7 @@ export function BookmakerOddsComparator({
         <div className="space-y-1">
           <label
             htmlFor={inputId}
-            className="text-[10px] font-medium text-muted-foreground"
+            className="text-[0.625rem] font-medium text-muted-foreground"
           >
             Cuota de tu casa ({selectedOutcome.label})
           </label>
@@ -129,7 +129,7 @@ export function BookmakerOddsComparator({
           />
         </div>
         <div className="space-y-1">
-          <p className="text-[10px] font-medium text-muted-foreground">
+          <p className="text-[0.625rem] font-medium text-muted-foreground">
             Cuota justa del mercado
           </p>
           <p className="flex h-9 items-center text-lg font-semibold tabular-nums">
@@ -141,7 +141,7 @@ export function BookmakerOddsComparator({
       <p
         role="status"
         className={cn(
-          "mt-1.5 rounded px-2 py-1 text-[11px] font-medium",
+          "mt-1.5 rounded px-2 py-1 text-[0.6875rem] font-medium",
           result.tone === "better" && "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
           result.tone === "worse" && "bg-rose-500/10 text-rose-800 dark:text-rose-300",
           result.tone === "neutral" && "bg-muted/60 text-muted-foreground",
@@ -152,7 +152,7 @@ export function BookmakerOddsComparator({
 
       {model && (
         <div className="mt-2 border-t pt-2">
-          <p className="text-[10px] font-medium text-muted-foreground">
+          <p className="text-[0.625rem] font-medium text-muted-foreground">
             Diferencia del modelo frente al mercado
           </p>
           <div className="mt-1 grid grid-cols-3 gap-1.5">
@@ -166,7 +166,7 @@ export function BookmakerOddsComparator({
                   key={outcome.key}
                   className="rounded-md border bg-background px-1.5 py-1 text-center"
                 >
-                  <p className="text-[10px] font-medium uppercase text-muted-foreground">
+                  <p className="text-[0.625rem] font-medium uppercase text-muted-foreground">
                     {outcome.short}
                   </p>
                   <p className="text-xs font-semibold tabular-nums">
@@ -181,7 +181,7 @@ export function BookmakerOddsComparator({
               );
             })}
           </div>
-          <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+          <p className="mt-1 text-[0.625rem] leading-snug text-muted-foreground">
             Positivo: el modelo da más cuota (menos probabilidad que el
             mercado). Solo comparación, no es una recomendación.
           </p>

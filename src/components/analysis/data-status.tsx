@@ -111,7 +111,7 @@ export function DataStatusNotice({
       <div
         role="status"
         className={cn(
-          "flex h-11 items-center justify-between gap-2 rounded-md border px-2.5 text-[11px]",
+          "flex h-11 items-center justify-between gap-2 rounded-md border px-2.5 text-[0.6875rem]",
           stale || runProblem
             ? "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200"
             : "border-border bg-muted/40 text-muted-foreground",
@@ -162,7 +162,7 @@ export function DataStatusNotice({
           <Button
             variant="ghost"
             size="sm"
-            className="h-11 shrink-0 px-3.5 text-[11px] font-semibold underline-offset-2 hover:underline"
+            className="h-11 shrink-0 px-3.5 text-[0.6875rem] font-semibold underline-offset-2 hover:underline"
           >
             Ver
           </Button>
@@ -229,7 +229,7 @@ export function DataStatusDetails({
   const steps = status.lastRun?.steps ?? [];
 
   return (
-    <div className="mt-3 rounded-lg border bg-muted/20 px-2.5 py-2 text-[11px]">
+    <div className="mt-3 rounded-lg border bg-muted/20 px-2.5 py-2 text-[0.6875rem]">
       <p className="flex items-center gap-1.5 font-medium">
         <RefreshCw className="size-3.5" aria-hidden />
         Estado de los datos
@@ -306,7 +306,7 @@ export function DataStatusDetails({
             <li
               key={step.name}
               className={cn(
-                "rounded-full border px-1.5 py-0.5 text-[10px]",
+                "rounded-full border px-1.5 py-0.5 text-[0.625rem]",
                 step.status === "success"
                   ? "border-emerald-500/30 bg-emerald-500/10"
                   : step.status === "failed"
@@ -325,7 +325,7 @@ export function DataStatusDetails({
         .map((step) => (
           <p
             key={`error-${step.name}`}
-            className="mt-1.5 rounded bg-rose-500/10 px-1.5 py-1 text-[10px] text-rose-700 dark:text-rose-300"
+            className="mt-1.5 rounded bg-rose-500/10 px-1.5 py-1 text-[0.625rem] text-rose-700 dark:text-rose-300"
           >
             <span className="font-semibold">{step.name}:</span> {step.error}
           </p>
@@ -339,7 +339,7 @@ export function DataStatusDetails({
         </p>
       )}
       {(status.marketStale || status.marketMissing) && (
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-[0.625rem] text-muted-foreground">
           Las APIs solo aportan calendario: el mercado se reactiva al importar un
           fixtures.csv nuevo (descarga manual).
         </p>

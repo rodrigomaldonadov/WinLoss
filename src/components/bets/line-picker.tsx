@@ -147,7 +147,7 @@ export function LinePicker({
         </button>
       </div>
 
-      <p className="text-[11px] text-muted-foreground">{hint}</p>
+      <p className="text-[0.6875rem] text-muted-foreground">{hint}</p>
     </div>
   );
 }

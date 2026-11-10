@@ -34,7 +34,7 @@ export function ReviewInsights({
             <h2 id="marcadores" className="text-sm font-semibold">
               Marcadores más probables
             </h2>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[0.625rem] text-muted-foreground">
               Top {review.topScores.length}
             </span>
           </div>
@@ -51,10 +51,10 @@ export function ReviewInsights({
                     actual && "border-primary bg-primary/10",
                   )}
                 >
-                  <p className="text-[11px] font-semibold tabular-nums">
+                  <p className="text-[0.6875rem] font-semibold tabular-nums">
                     {score.home}–{score.away}
                   </p>
-                  <p className="text-[9px] text-muted-foreground tabular-nums">
+                  <p className="text-[0.5625rem] text-muted-foreground tabular-nums">
                     {topScoreLabel(score.probability)}
                   </p>
                   {actual && (
@@ -64,7 +64,7 @@ export function ReviewInsights({
               );
             })}
           </ul>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             {review.actualScoreInTop5
               ? `El marcador real (${review.homeGoals}–${review.awayGoals}) estaba entre los cinco más probables.`
               : `El marcador real (${review.homeGoals}–${review.awayGoals}) no estaba entre los cinco más probables.`}
@@ -75,7 +75,7 @@ export function ReviewInsights({
           <h2 id="marcadores" className="text-sm font-semibold">
             Marcadores más probables
           </h2>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             No guardado: esta captura es anterior al top-5 de marcadores.
           </p>
         </section>
@@ -86,7 +86,7 @@ export function ReviewInsights({
           <h2 id="puntuacion" className="text-sm font-semibold">
             Puntuación del partido
           </h2>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[0.625rem] text-muted-foreground">
             Brier · log-loss
           </span>
         </div>
@@ -101,31 +101,31 @@ export function ReviewInsights({
                     "border-primary/40 bg-primary/5",
                 )}
               >
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-[0.625rem] text-muted-foreground">
                   {score.label}
                 </p>
                 <p className="text-sm font-semibold tabular-nums">
                   {score.brier.toFixed(3)}
                 </p>
-                <p className="text-[10px] text-muted-foreground tabular-nums">
+                <p className="text-[0.625rem] text-muted-foreground tabular-nums">
                   Log-loss {score.logLoss.toFixed(3)}
                 </p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             Sin probabilidades 1X2 suficientes para puntuar el partido.
           </p>
         )}
         {closest && (
-          <p className="text-[11px]">
+          <p className="text-[0.6875rem]">
             La fuente más cerca del resultado fue{" "}
             <strong className="font-semibold">{closest.label}</strong> (menor
             Brier).
           </p>
         )}
-        <p className="text-[10px] leading-snug text-muted-foreground">
+        <p className="text-[0.625rem] leading-snug text-muted-foreground">
           Un solo partido no permite concluir nada sobre la calidad del modelo.
           N = 1.
         </p>
@@ -142,14 +142,14 @@ export function ReviewInsights({
           </h2>
           <Link
             href="/analysis/precision"
-            className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+            className="text-[0.6875rem] font-medium text-primary underline-offset-4 hover:underline"
           >
             Ver precisión
           </Link>
         </div>
         {review.calibration ? (
           <>
-            <p className="text-[11px] leading-snug">
+            <p className="text-[0.6875rem] leading-snug">
               Cuando el modelo dio alrededor de{" "}
               <strong className="tabular-nums">
                 {formatPercent(review.calibration.probability, {
@@ -164,19 +164,19 @@ export function ReviewInsights({
               {review.calibration.bin} %).
             </p>
             {smallSample && (
-              <p className="rounded bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-900 dark:text-amber-200">
+              <p className="rounded bg-amber-500/10 px-2 py-1.5 text-[0.625rem] text-amber-900 dark:text-amber-200">
                 Muestra pequeña (N = {review.calibration.sample}); no es
                 concluyente.
               </p>
             )}
           </>
         ) : (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             Sin referencia de calibración para esta liga y banda de
             probabilidad.
           </p>
         )}
-        <p className="text-[10px] leading-snug text-muted-foreground">
+        <p className="text-[0.625rem] leading-snug text-muted-foreground">
           La calibración sale del backtest de la liga; no se recalcula con este
           partido.
         </p>
@@ -187,13 +187,13 @@ export function ReviewInsights({
           <h2 id="comunidad" className="text-sm font-semibold">
             Comunidad en la captura
           </h2>
-          <p className="text-[11px]">
+          <p className="text-[0.6875rem]">
             {review.community.sample}{" "}
             {review.community.sample === 1 ? "usuario" : "usuarios"} con picks
             compartidos.
           </p>
           {review.community.probabilities && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[0.6875rem] text-muted-foreground">
               Local{" "}
               {probabilityLabel(review.community.probabilities.home)} · Empate{" "}
               {probabilityLabel(review.community.probabilities.draw)} ·
@@ -201,7 +201,7 @@ export function ReviewInsights({
               {probabilityLabel(review.community.probabilities.away)}
             </p>
           )}
-          <p className="text-[10px] leading-snug text-muted-foreground">
+          <p className="text-[0.625rem] leading-snug text-muted-foreground">
             Agregado anónimo de quienes comparten estadísticas. Solo se muestra
             si el snapshot lo guardó con 5 usuarios o más; no se reconstruye.
           </p>
@@ -216,7 +216,7 @@ export function ReviewInsights({
           <BarChart3 className="size-4" aria-hidden />
           Origen del cálculo
         </h2>
-        <p className="text-[10px] leading-snug text-muted-foreground">
+        <p className="text-[0.625rem] leading-snug text-muted-foreground">
           {review.mode === "saved"
             ? `Captura guardada el ${formatDateTime(review.calculatedAt, timeZone)}.`
             : `Reconstrucción calculada el ${formatDateTime(review.calculatedAt, timeZone)}.`}{" "}

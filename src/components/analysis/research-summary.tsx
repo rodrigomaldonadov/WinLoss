@@ -77,11 +77,11 @@ export function ResearchSummary({
       aria-label="Resumen del partido"
       className="rounded-xl border bg-card p-3"
     >
-      <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+      <p className="text-[0.625rem] font-medium tracking-wide text-muted-foreground uppercase">
         En resumen
       </p>
 
-      <p className="mt-1 text-[15px] leading-snug font-semibold">
+      <p className="mt-1 text-[0.9375rem] leading-snug font-semibold">
         Lo más probable: {favorite}{" "}
         <span className="text-primary tabular-nums">
           {formatPercent(favoriteProbability, { decimals: 0 })}
@@ -114,7 +114,7 @@ export function ResearchSummary({
       {bestDelta !== null && Math.abs(bestDelta) >= 0.005 && (
         <p
           className={cn(
-            "mt-0.5 text-[11px]",
+            "mt-0.5 text-[0.6875rem]",
             bestDelta > 0
               ? "text-emerald-600 dark:text-emerald-400"
               : "text-rose-600 dark:text-rose-400",

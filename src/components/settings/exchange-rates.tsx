@@ -165,7 +165,7 @@ export function ExchangeRatesCard({
             >
               <div className="min-w-0">
                 <p className="truncate text-xs font-semibold">{rate.label}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 text-[0.6875rem] text-muted-foreground">
                   {formatDate(rate.effectiveAt, {
                     day: "2-digit",
                     month: "short",
@@ -183,7 +183,7 @@ export function ExchangeRatesCard({
                   </span>
                 </p>
                 {rate.note && (
-                  <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 truncate text-[0.625rem] text-muted-foreground">
                     {rate.note}
                   </p>
                 )}

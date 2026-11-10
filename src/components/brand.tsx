@@ -15,7 +15,7 @@ export function Brand({ href = "/", className, compact = false }: BrandProps) {
     <Link
       href={href}
       className={cn(
-        "flex min-h-11 items-center gap-2.5 rounded-lg py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex min-h-11 min-w-0 items-center gap-2.5 rounded-lg py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
       aria-label={`${APP_NAME} — inicio`}
@@ -24,7 +24,9 @@ export function Brand({ href = "/", className, compact = false }: BrandProps) {
         <TrendingUp className="size-5" strokeWidth={2.5} aria-hidden />
       </span>
       {!compact && (
-        <span className="text-lg font-semibold tracking-tight">{APP_NAME}</span>
+        <span className="truncate text-lg font-semibold tracking-tight">
+          {APP_NAME}
+        </span>
       )}
     </Link>
   );

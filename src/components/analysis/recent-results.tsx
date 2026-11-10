@@ -23,12 +23,12 @@ export function RecentResults({
         </h2>
         <Link
           href="/analysis/historial"
-          className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+          className="text-[0.6875rem] font-medium text-primary underline-offset-4 hover:underline"
         >
           Ver historial
         </Link>
       </div>
-      <p className="text-[11px] leading-snug text-muted-foreground">
+      <p className="text-[0.6875rem] leading-snug text-muted-foreground">
         Capturas guardadas de partidos recientes. “Ocurrió” compara con el
         snapshot; no es un veredicto del modelo.
       </p>
@@ -43,7 +43,7 @@ export function RecentResults({
                 className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <div className="pointer-events-none relative z-10">
-                <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                <div className="flex items-center justify-between gap-2 text-[0.6875rem] text-muted-foreground">
                   <p className="flex min-w-0 items-center gap-1">
                     <span className="truncate">{item.competition}</span>
                     <span aria-hidden>·</span>
@@ -61,7 +61,7 @@ export function RecentResults({
                   {item.provisional && (
                     <Badge
                       variant="outline"
-                      className="h-4 shrink-0 px-1.5 text-[10px] font-medium text-muted-foreground"
+                      className="h-4 shrink-0 px-1.5 text-[0.625rem] font-medium text-muted-foreground"
                       title="Resultado provisional de la API; el CSV oficial puede cambiarlo."
                     >
                       Provisional
@@ -70,7 +70,7 @@ export function RecentResults({
                 </div>
 
                 <div className="mt-0.5 flex items-baseline justify-between gap-2">
-                  <h3 className="min-w-0 truncate text-[13px] leading-tight font-semibold">
+                  <h3 className="min-w-0 truncate text-[0.8125rem] leading-tight font-semibold">
                     {item.homeName}{" "}
                     <span className="font-normal text-muted-foreground">vs</span>{" "}
                     {item.awayName}
@@ -81,7 +81,7 @@ export function RecentResults({
                   </p>
                 </div>
 
-                <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+                <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.6875rem]">
                   {item.markets.map((market) => (
                     <li key={market.key} className="whitespace-nowrap">
                       <span className="text-muted-foreground">

@@ -134,7 +134,7 @@ export function BankrollLineChart({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.625rem] text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="size-2 rounded-full bg-[var(--chart-1)]" />
           Bankroll

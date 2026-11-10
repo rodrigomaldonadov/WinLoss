@@ -11,9 +11,9 @@ type AppHeaderProps = {
 
 export function AppHeader({ user }: AppHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/75 md:hidden">
-      <Brand />
-      <div className="flex items-center gap-1">
+    <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 border-b bg-background/90 px-4 py-1 backdrop-blur supports-[backdrop-filter]:bg-background/75 md:hidden">
+      <Brand className="min-w-0" />
+      <div className="flex shrink-0 items-center gap-1">
         <Link
           href="/analysis"
           aria-label="Consenso de picks"

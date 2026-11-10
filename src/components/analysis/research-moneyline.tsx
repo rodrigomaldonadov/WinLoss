@@ -67,7 +67,7 @@ export function ResearchMoneyline({
         <h2 id="cuotas" className="text-sm font-semibold">
           Probabilidad y mejor cuota
         </h2>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-[0.625rem] text-muted-foreground">
           {books.length} casas
         </span>
       </div>
@@ -85,8 +85,8 @@ export function ResearchMoneyline({
               className="flex items-center justify-between gap-3 px-3 py-2"
             >
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-medium">{row.outcome}</p>
-              <p className="text-[11px] text-muted-foreground tabular-nums">
+              <p className="truncate text-[0.8125rem] font-medium">{row.outcome}</p>
+              <p className="text-[0.6875rem] text-muted-foreground tabular-nums">
                 {row.probability === null
                   ? "sin probabilidad"
                   : formatPercent(row.probability, { decimals: 0 })}{" "}
@@ -106,19 +106,19 @@ export function ResearchMoneyline({
                   aria-label={`Registrar ${row.outcome} a ${formatOdds(row.best.price)} en ${row.best.book}`}
                   className="block underline-offset-2 hover:underline"
                 >
-                  <p className="text-[15px] leading-none font-bold tabular-nums">
+                  <p className="text-[0.9375rem] leading-none font-bold tabular-nums">
                     {formatOdds(row.best.price)}
                   </p>
-                  <p className="mt-0.5 max-w-24 truncate text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 max-w-24 truncate text-[0.625rem] text-muted-foreground">
                     {row.best.book}
                   </p>
                 </Link>
               ) : (
                 <>
-                  <p className="text-[15px] leading-none font-bold tabular-nums">
+                  <p className="text-[0.9375rem] leading-none font-bold tabular-nums">
                     —
                   </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 text-[0.625rem] text-muted-foreground">
                     no cotizó
                   </p>
                 </>
@@ -126,7 +126,7 @@ export function ResearchMoneyline({
               {delta !== null && Math.abs(delta) >= 0.005 && (
                 <p
                   className={cn(
-                    "mt-0.5 text-[10px] font-medium tabular-nums",
+                    "mt-0.5 text-[0.625rem] font-medium tabular-nums",
                     delta > 0
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-rose-600 dark:text-rose-400",
@@ -142,12 +142,12 @@ export function ResearchMoneyline({
       </ul>
 
       <details className="rounded-xl border bg-muted/10 px-3 py-2">
-        <summary className="cursor-pointer text-[11px] font-medium">
+        <summary className="cursor-pointer text-[0.6875rem] font-medium">
           Cómo se calcula y desglose por casa
         </summary>
 
         <div className="mt-2 space-y-2">
-          <p className="text-[10px] leading-snug text-muted-foreground">
+          <p className="text-[0.625rem] leading-snug text-muted-foreground">
             {sharp
               ? `La referencia es ${sharp.title}, una casa de margen bajo. Pinnacle no está en ParlayAPI. El consenso es la mediana del resto de casas, sin vig (sin margen).`
               : "No hay una casa de referencia (Novig/ProphetX); se muestra el consenso sin vig."}{" "}
@@ -158,7 +158,7 @@ export function ResearchMoneyline({
             {rows.map((row) => (
               <li
                 key={`detalle-${row.outcome}`}
-                className="flex items-baseline justify-between gap-2 px-2.5 py-1.5 text-[10px]"
+                className="flex items-baseline justify-between gap-2 px-2.5 py-1.5 text-[0.625rem]"
               >
                 <span className="truncate font-medium">{row.outcome}</span>
                 <span className="shrink-0 text-muted-foreground tabular-nums">
@@ -181,7 +181,7 @@ export function ResearchMoneyline({
               .map((book) => (
                 <li
                   key={book.key}
-                  className="flex items-baseline justify-between gap-2 text-[10px]"
+                  className="flex items-baseline justify-between gap-2 text-[0.625rem]"
                 >
                   <span className="truncate font-medium">{book.title}</span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">

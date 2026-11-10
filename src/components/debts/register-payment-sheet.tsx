@@ -310,7 +310,7 @@ export function RegisterPaymentSheet({
                   {state.fieldErrors.amount[0]}
                 </p>
               )}
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[0.6875rem] text-muted-foreground">
                 Ganancias disponibles:{" "}
                 {formatCurrency(debt.availableProfit, debt.bankrollCurrency)}
                 {needsRate
@@ -370,12 +370,12 @@ export function RegisterPaymentSheet({
                 {canUseSavedRate && (
                   <div className="space-y-1.5 rounded-lg border bg-muted/20 p-2.5">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-medium">
+                      <span className="text-[0.6875rem] font-medium">
                         Tasa guardada
                       </span>
                       <Link
                         href="/settings"
-                        className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+                        className="text-[0.6875rem] font-medium text-primary underline-offset-4 hover:underline"
                       >
                         Gestionar
                       </Link>
@@ -455,7 +455,7 @@ export function RegisterPaymentSheet({
                   className="h-11 tabular-nums"
                   aria-invalid={Boolean(state.fieldErrors?.exchangeRate)}
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   {canUseSavedRate
                     ? "Elige una tasa guardada o edita la cifra para usar una manual."
                     : "Tasa manual. Regístralas en Ajustes para reutilizarlas."}
@@ -494,14 +494,14 @@ export function RegisterPaymentSheet({
                 </span>
               </div>
               {source === "FROM_BANKROLL" && converted > 0 && (
-                <p className="mt-1 text-[10px] break-words text-muted-foreground">
+                <p className="mt-1 text-[0.625rem] break-words text-muted-foreground">
                   Se descontarán{" "}
                   {formatCurrency(converted, debt.bankrollCurrency)} de{" "}
                   {debt.bankrollName}.
                 </p>
               )}
               {bankrollExceeds && (
-                <p className="mt-1 text-[11px] text-destructive">
+                <p className="mt-1 text-[0.6875rem] text-destructive">
                   El saldo libre del bankroll no alcanza para este pago.
                 </p>
               )}

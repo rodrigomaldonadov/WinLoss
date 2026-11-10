@@ -229,7 +229,7 @@ export function SettleBetSheet({ bet, debtSuggestion }: SettleBetSheetProps) {
                         )
                         .join(" · ")}
                     </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+                    <p className="mt-1 text-[0.6875rem] text-muted-foreground tabular-nums">
                       Cuota {formatOdds(leg.odds)}
                     </p>
                   </div>
@@ -258,7 +258,7 @@ export function SettleBetSheet({ bet, debtSuggestion }: SettleBetSheetProps) {
                         }
                         aria-pressed={status === option}
                         className={cn(
-                          "flex h-9 items-center justify-center rounded-md border px-1 text-[11px] font-medium transition-colors",
+                          "flex h-9 items-center justify-center rounded-md border px-1 text-[0.6875rem] font-medium transition-colors",
                           status === option
                             ? "border-primary bg-primary/10 text-primary"
                             : "bg-background text-muted-foreground active:bg-muted",
@@ -272,7 +272,7 @@ export function SettleBetSheet({ bet, debtSuggestion }: SettleBetSheetProps) {
                   <div className="space-y-1">
                     <Label
                       htmlFor={`settle-closing-${index}`}
-                      className="text-[11px] text-muted-foreground"
+                      className="text-[0.6875rem] text-muted-foreground"
                     >
                       Cuota de cierre (opcional)
                     </Label>

@@ -133,7 +133,7 @@ export function VerifyResultsButton({
                   <p className="min-w-0 flex-1 truncate text-sm font-medium">
                     {proposal.eventName}
                   </p>
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-[0.625rem]">
                     {proposal.status}
                   </Badge>
                 </div>

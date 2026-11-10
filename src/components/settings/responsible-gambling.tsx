@@ -74,7 +74,7 @@ export function ResponsibleGambling({
             defaultValue={weeklyStakeLimit ?? ""}
             className="h-11 tabular-nums"
           />
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             Se suman las apuestas de la semana en curso (lunes a domingo). Vacío
             o 0 = sin límite.
           </p>
@@ -100,7 +100,7 @@ export function ResponsibleGambling({
             <option value="7">7 días</option>
             <option value="30">30 días</option>
           </select>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             Bloquea nuevas apuestas durante el periodo. No se puede cancelar
             antes.
           </p>

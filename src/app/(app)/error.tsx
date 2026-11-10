@@ -28,7 +28,7 @@ export default function AppError({
         revisa la conexión con la base de datos.
       </p>
       {error.digest && (
-        <p className="mt-2 text-[10px] text-muted-foreground tabular-nums">
+        <p className="mt-2 text-[0.625rem] text-muted-foreground tabular-nums">
           Código: {error.digest}
         </p>
       )}

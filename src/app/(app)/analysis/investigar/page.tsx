@@ -113,7 +113,7 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
               href={`/analysis/investigar?deporte=${sport.key}`}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-8 shrink-0 items-center rounded-full border px-2.5 text-[11px] font-medium",
+                "flex h-8 shrink-0 items-center rounded-full border px-2.5 text-[0.6875rem] font-medium",
                 active
                   ? "border-primary bg-primary/10 text-primary"
                   : "bg-background text-muted-foreground active:bg-muted",
@@ -157,10 +157,10 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
                       : "bg-background active:bg-muted",
                   )}
                 >
-                  <span className="max-w-44 truncate text-[11px] font-medium">
+                  <span className="max-w-44 truncate text-[0.6875rem] font-medium">
                     {event.home_team} vs {event.away_team}
                   </span>
-                  <span className="text-[9px] text-muted-foreground">
+                  <span className="text-[0.5625rem] text-muted-foreground">
                     {formatDateTime(event.commence_time, preferences.timezone)}
                   </span>
                 </Link>
@@ -178,12 +178,12 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
                   </span>{" "}
                   {selected.away_team}
                 </h2>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                <p className="mt-0.5 text-[0.625rem] text-muted-foreground">
                   {selected.sport_title ?? sportLabel} ·{" "}
                   {formatDateTime(selected.commence_time, preferences.timezone)}
                 </p>
               </div>
-              <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-[9px]">
+              <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-[0.5625rem]">
                 {selected.bookmakers.length} casas
               </Badge>
             </div>
@@ -209,10 +209,10 @@ export default async function ResearchPage({ searchParams }: ResearchPageProps) 
           </Suspense>
 
           <details className="rounded-xl border bg-muted/10 px-3 py-2">
-            <summary className="cursor-pointer text-[11px] font-medium">
+            <summary className="cursor-pointer text-[0.6875rem] font-medium">
               Cómo se calculan estos números y qué falta
             </summary>
-            <ul className="mt-2 space-y-1 text-[10px] leading-snug text-muted-foreground">
+            <ul className="mt-2 space-y-1 text-[0.625rem] leading-snug text-muted-foreground">
               <li>
                 <strong className="text-foreground">Pinnacle no está</strong> en
                 el catálogo de ParlayAPI (la API devuelve UNKNOWN_BOOKMAKER). La

@@ -49,10 +49,10 @@ export function ResearchArbitrage({ event }: { event: ParlayEvent }) {
       </div>
 
       <details className="rounded-xl border bg-muted/10 px-3 py-2">
-        <summary className="cursor-pointer text-[11px] font-medium">
+        <summary className="cursor-pointer text-[0.6875rem] font-medium">
           Ver el mejor caso
         </summary>
-        <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
+        <p className="mt-1.5 text-[0.625rem] leading-snug text-muted-foreground">
           Se combinan la mejor cuota de cada lado entre todas las casas. Hay
           arbitraje si 1/cuota A + 1/cuota B es menor que 1.
         </p>
@@ -68,15 +68,15 @@ export function ResearchArbitrage({ event }: { event: ParlayEvent }) {
                 )}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-[11px] font-medium">
+                  <p className="text-[0.6875rem] font-medium">
                     {item.market === "h2h" ? "Ganador" : `Total ${item.point}`}
                   </p>
-                  <p className="text-[10px] text-muted-foreground tabular-nums">
+                  <p className="text-[0.625rem] text-muted-foreground tabular-nums">
                     suma {item.sum.toFixed(3)}
                     {positive ? ` · +${item.profitPct.toFixed(2)}%` : ""}
                   </p>
                 </div>
-                <p className="mt-0.5 text-[10px] break-words text-muted-foreground">
+                <p className="mt-0.5 text-[0.625rem] break-words text-muted-foreground">
                   {item.legs
                     .map(
                       (leg) =>

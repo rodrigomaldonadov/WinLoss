@@ -24,7 +24,7 @@ export function ReviewPrivateBets({ legs }: { legs: ReviewPrivateLeg[] }) {
         <h2 id="tus-apuestas" className="text-sm font-semibold">
           Tus apuestas en este partido
         </h2>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-[0.625rem] text-muted-foreground">
           Solo visible para ti
         </span>
       </div>
@@ -35,12 +35,12 @@ export function ReviewPrivateBets({ legs }: { legs: ReviewPrivateLeg[] }) {
           return (
             <li key={leg.id} className="rounded-lg border bg-card px-2.5 py-2">
               <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 truncate text-[11px] font-medium">
+                <p className="min-w-0 truncate text-[0.6875rem] font-medium">
                   {leg.eventName}
                 </p>
                 <span
                   className={cn(
-                    "shrink-0 text-[10px] font-semibold",
+                    "shrink-0 text-[0.625rem] font-semibold",
                     status.className,
                   )}
                 >
@@ -48,7 +48,7 @@ export function ReviewPrivateBets({ legs }: { legs: ReviewPrivateLeg[] }) {
                 </span>
               </div>
 
-              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+              <ul className="mt-1 space-y-0.5 text-[0.6875rem] text-muted-foreground">
                 {leg.selections.map((selection, index) => (
                   <li key={`${leg.id}-${index}`} className="truncate">
                     {selection.market} · {selection.selection}
@@ -57,7 +57,7 @@ export function ReviewPrivateBets({ legs }: { legs: ReviewPrivateLeg[] }) {
                 ))}
               </ul>
 
-              <p className="mt-1 text-[10px] text-muted-foreground">
+              <p className="mt-1 text-[0.625rem] text-muted-foreground">
                 Tu cuota{" "}
                 <span className="font-medium text-foreground tabular-nums">
                   {formatOdds(leg.odds)}
@@ -71,7 +71,7 @@ export function ReviewPrivateBets({ legs }: { legs: ReviewPrivateLeg[] }) {
         })}
       </ul>
 
-      <p className="text-[10px] leading-snug text-muted-foreground">
+      <p className="text-[0.625rem] leading-snug text-muted-foreground">
         La cuota justa es 1 / probabilidad del mercado guardado. Es una
         comparación, no una recomendación.
       </p>

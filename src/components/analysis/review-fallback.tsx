@@ -8,7 +8,7 @@ export function ReviewFallback({ hasSnapshot }: { hasSnapshot: boolean }) {
       aria-live="polite"
       aria-label="Cargando la revisión del partido"
     >
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-[0.6875rem] text-muted-foreground">
         {hasSnapshot
           ? "Cargando la captura guardada…"
           : "Reconstruyendo con los ratings de esa semana…"}

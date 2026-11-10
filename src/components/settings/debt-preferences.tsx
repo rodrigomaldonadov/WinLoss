@@ -50,7 +50,7 @@ export function DebtPreferences({
             required
             className="h-11 tabular-nums"
           />
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             PEN por 1 USD. Se usa para el total de deudas y alertas.
           </p>
         </div>
@@ -67,7 +67,7 @@ export function DebtPreferences({
             required
             className="h-11 tabular-nums"
           />
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             Aviso neutral cuando la deuda supera este porcentaje del capital
             propio.
           </p>

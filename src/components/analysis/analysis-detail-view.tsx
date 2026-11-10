@@ -68,11 +68,11 @@ function SourceCard({
       ) : null}
       <TotalsLine totals={source.totals} />
 
-      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+      <p className="mt-2 text-[0.6875rem] leading-snug text-muted-foreground">
         {source.note}
       </p>
       {source.sample !== null && (
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-[0.625rem] text-muted-foreground">
           Muestra: {source.sample}
           {source.key === "community" ? " usuarios" : ""}
           {source.key === "private" ? " picks" : ""}
@@ -87,7 +87,7 @@ function FormCard({ form }: { form: AnalysisTeamForm }) {
     <div className="rounded-lg border bg-card p-3">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium">{form.teamName}</p>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[0.625rem] text-muted-foreground">
           {form.summary.played} partidos
         </p>
       </div>
@@ -99,7 +99,7 @@ function FormCard({ form }: { form: AnalysisTeamForm }) {
       </p>
 
       {form.matches.length > 0 ? (
-        <ul className="mt-2 divide-y text-[11px]">
+        <ul className="mt-2 divide-y text-[0.6875rem]">
           {form.matches.map((match) => (
             <li
               key={match.id}
@@ -107,7 +107,7 @@ function FormCard({ form }: { form: AnalysisTeamForm }) {
             >
               <span
                 className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold",
+                  "flex size-5 shrink-0 items-center justify-center rounded text-[0.625rem] font-semibold",
                   match.result === "W" && "bg-emerald-500/10 text-emerald-700",
                   match.result === "D" && "bg-muted text-muted-foreground",
                   match.result === "L" && "bg-rose-500/10 text-rose-700",
@@ -134,7 +134,7 @@ function FormCard({ form }: { form: AnalysisTeamForm }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-[0.6875rem] text-muted-foreground">
           Sin partidos previos en la base histórica.
         </p>
       )}
@@ -155,7 +155,7 @@ function H2HCard({
     <div className="rounded-lg border bg-card p-3">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium">Historial directo</p>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[0.625rem] text-muted-foreground">
           {h2h.summary.played} partidos
         </p>
       </div>
@@ -168,7 +168,7 @@ function H2HCard({
       </p>
 
       {h2h.matches.length > 0 ? (
-        <ul className="mt-2 divide-y text-[11px]">
+        <ul className="mt-2 divide-y text-[0.6875rem]">
           {h2h.matches.map((match) => (
             <li
               key={match.id}
@@ -191,7 +191,7 @@ function H2HCard({
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-[0.6875rem] text-muted-foreground">
           Sin enfrentamientos previos en la base histórica.
         </p>
       )}
@@ -211,7 +211,7 @@ function PrivateLegRow({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-xs font-medium">{leg.eventName}</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">
+          <p className="mt-0.5 text-[0.625rem] text-muted-foreground">
             {leg.eventDate
               ? formatDateTime(leg.eventDate, timeZone)
               : "Sin fecha"}{" "}
@@ -224,7 +224,7 @@ function PrivateLegRow({
       </div>
 
       {leg.selections.length > 0 && (
-        <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+        <ul className="mt-1 space-y-0.5 text-[0.6875rem] text-muted-foreground">
           {leg.selections.map((selection) => (
             <li key={selection.id}>
               {selection.market}: {selection.selection}
@@ -241,8 +241,8 @@ function PrivateLegRow({
 function QualityRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b py-1.5 last:border-0">
-      <dt className="text-[11px] text-muted-foreground">{label}</dt>
-      <dd className="text-right text-[11px] font-medium">{value}</dd>
+      <dt className="text-[0.6875rem] text-muted-foreground">{label}</dt>
+      <dd className="text-right text-[0.6875rem] font-medium">{value}</dd>
     </div>
   );
 }
@@ -312,7 +312,7 @@ export function AnalysisDetailView({
                   No hay cuotas de mercado ni muestra suficiente para estimar
                   probabilidades.
                 </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-[0.6875rem] text-muted-foreground">
                   {detail.sources.model.note}
                 </p>
               </div>
@@ -335,7 +335,7 @@ export function AnalysisDetailView({
             <SourceCard key={source.key} source={source} />
           ))}
         </div>
-        <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+        <p className="mt-2 text-[0.625rem] leading-snug text-muted-foreground">
           El mercado es la fuente principal cuando hay cuotas. El modelo y la
           comunidad se muestran como comparación, sin combinarse en una sola
           cifra.{" "}
@@ -389,7 +389,7 @@ export function AnalysisDetailView({
             </ul>
           )}
 
-          <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+          <p className="mt-2 text-[0.625rem] leading-snug text-muted-foreground">
             Tu historial solo lo ves tú. La comunidad se agrega de forma anónima
             y solo aparece con al menos 5 usuarios distintos.
           </p>
@@ -467,7 +467,7 @@ export function AnalysisDetailView({
               />
             </dl>
 
-            <div className="mt-3 rounded-lg bg-muted/30 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
+            <div className="mt-3 rounded-lg bg-muted/30 px-2.5 py-2 text-[0.6875rem] leading-snug text-muted-foreground">
               <p className="font-medium text-foreground">Baselines</p>
               <p className="mt-0.5">
                 Modelo {brierLabel(detail.reference.modelBrier)} · Cierre{" "}
@@ -483,14 +483,14 @@ export function AnalysisDetailView({
             </div>
 
             {detail.notes.length > 0 && (
-              <ul className="mt-2 list-inside list-disc space-y-1 text-[11px] text-muted-foreground">
+              <ul className="mt-2 list-inside list-disc space-y-1 text-[0.6875rem] text-muted-foreground">
                 {detail.notes.map((note) => (
                   <li key={note}>{note}</li>
                 ))}
               </ul>
             )}
 
-            <p className="mt-2 flex items-start gap-1.5 text-[10px] leading-snug text-muted-foreground">
+            <p className="mt-2 flex items-start gap-1.5 text-[0.625rem] leading-snug text-muted-foreground">
               <CalendarDays className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               Las cifras salen del backtest versionado. No se generan
               probabilidades nuevas en la interfaz.
@@ -501,7 +501,7 @@ export function AnalysisDetailView({
         </Card>
       </section>
 
-      <p className="flex items-start gap-1.5 pb-2 text-[10px] leading-snug text-muted-foreground">
+      <p className="flex items-start gap-1.5 pb-2 text-[0.625rem] leading-snug text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         Probabilidades estimadas; no son una recomendación.
       </p>

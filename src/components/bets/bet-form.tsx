@@ -638,7 +638,7 @@ function SelectionEditor({
       <div className="flex items-center justify-between gap-2">
         <Label
           htmlFor={`leg-${legIndex}-sel-${selectionIndex}-market-key`}
-          className="text-[11px] text-muted-foreground"
+          className="text-[0.6875rem] text-muted-foreground"
         >
           Mercado
         </Label>
@@ -752,7 +752,7 @@ function SelectionEditor({
                 <div className="space-y-1">
                   <Label
                     htmlFor={`leg-${legIndex}-sel-${selectionIndex}-line`}
-                    className="text-[11px] text-muted-foreground"
+                    className="text-[0.6875rem] text-muted-foreground"
                   >
                     {lineConfig(marketKey).label}
                   </Label>
@@ -802,7 +802,7 @@ function SelectionEditor({
               </div>
             )}
 
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             {selectionValue
               ? `Se guardará: ${MARKET_LABELS[marketKey]} · ${selectionValue}`
               : marketKey === "EXACT_TOTAL_GOALS"
@@ -1005,7 +1005,7 @@ function LegFields({
           )}
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             {leg.externalEventId
               ? `Vinculado a ${leg.externalProvider ?? "proveedor"} · ${leg.homeTeam} vs. ${leg.awayTeam}`
               : "O busca el partido para auto-liquidarlo."}
@@ -1852,7 +1852,7 @@ export function BetForm({
                             La cuota debe ser mayor que 1.00.
                           </p>
                         )}
-                      <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between gap-2 text-[0.6875rem] text-muted-foreground">
                         <span>
                           {manualOdds ? "Cuota editada" : "Calculada"}
                         </span>
@@ -2138,7 +2138,7 @@ export function BetForm({
         <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:rounded-xl md:border">
           <div className="flex items-center gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                 Cuota
               </p>
               <p className="text-base font-semibold tabular-nums">
@@ -2146,10 +2146,10 @@ export function BetForm({
               </p>
             </div>
             <div className="min-w-0">
-              <p className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="flex items-center gap-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                 {isFreeBet ? "Ganancia" : "Retorno"}
                 {boostPctValue > 0 && (
-                  <span className="rounded bg-primary/10 px-1 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-primary">
+                  <span className="rounded bg-primary/10 px-1 py-0.5 text-[0.5625rem] font-semibold normal-case tracking-normal text-primary">
                     +{boostPctValue % 1 === 0 ? boostPctValue : boostPctValue.toFixed(2)}%
                   </span>
                 )}
@@ -2178,7 +2178,7 @@ export function BetForm({
                   : "Guardar"}
             </Button>
           </div>
-          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+          <p className="mt-1.5 text-center text-[0.625rem] text-muted-foreground">
             Puedes usar coma o punto decimal en cuota, línea y stake.
           </p>
         </div>

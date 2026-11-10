@@ -157,7 +157,7 @@ export function HistoryFilters({
       </form>
 
       {filters.query && matchedTeams.length > 0 && (
-        <p className="truncate px-0.5 text-[11px] text-muted-foreground">
+        <p className="truncate px-0.5 text-[0.6875rem] text-muted-foreground">
           {matchedTeams.length === 1 ? "Equipo: " : "Equipos: "}
           {matchedTeams
             .slice(0, 3)
@@ -213,7 +213,7 @@ export function HistoryFilters({
               <Filter className="size-3.5" aria-hidden />
               Filtros
               {hasActiveFilters && (
-                <span className="rounded-full bg-primary/10 px-1 text-[10px] font-semibold text-primary">
+                <span className="rounded-full bg-primary/10 px-1 text-[0.625rem] font-semibold text-primary">
                   {activeChips.length}
                 </span>
               )}
@@ -231,7 +231,7 @@ export function HistoryFilters({
               <section aria-labelledby="filtro-competiciones" className="space-y-2">
                 <h3
                   id="filtro-competiciones"
-                  className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground"
                 >
                   Competiciones
                 </h3>
@@ -298,12 +298,12 @@ export function HistoryFilters({
                   })}
                 </div>
                 {filteredCompetitions.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[0.6875rem] text-muted-foreground">
                     Sin competiciones con ese nombre.
                   </p>
                 )}
                 {competitions.length > MAX_COMPETITION_CHIPS && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[0.6875rem] text-muted-foreground">
                     Se muestran las {MAX_COMPETITION_CHIPS} competiciones con
                     más partidos.
                   </p>
@@ -313,7 +313,7 @@ export function HistoryFilters({
               <section aria-labelledby="filtro-modo" className="space-y-2">
                 <h3
                   id="filtro-modo"
-                  className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground"
                 >
                   Captura del análisis
                 </h3>
@@ -341,7 +341,7 @@ export function HistoryFilters({
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   “Guardada” usa la captura previa al inicio; “Reconstruida”
                   recalcula con los ratings de esa semana.
                 </p>
@@ -350,7 +350,7 @@ export function HistoryFilters({
               <section aria-labelledby="filtro-fechas" className="space-y-2">
                 <h3
                   id="filtro-fechas"
-                  className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  className="flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground"
                 >
                   <CalendarDays className="size-3.5" aria-hidden />
                   Fechas
@@ -363,7 +363,7 @@ export function HistoryFilters({
                   {hiddenParams(filters, { includeDates: false })}
                   <div className="grid grid-cols-2 gap-2">
                     <label className="space-y-1">
-                      <span className="text-[11px] font-medium text-muted-foreground">
+                      <span className="text-[0.6875rem] font-medium text-muted-foreground">
                         Desde
                       </span>
                       <Input
@@ -374,7 +374,7 @@ export function HistoryFilters({
                       />
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[11px] font-medium text-muted-foreground">
+                      <span className="text-[0.6875rem] font-medium text-muted-foreground">
                         Hasta
                       </span>
                       <Input

@@ -101,7 +101,7 @@ export default async function DebtDetailPage({
       <section className="rounded-xl border bg-card p-4 shadow-xs">
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
           <div className="min-w-0">
-            <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
+            <p className="text-[0.625rem] tracking-wide text-muted-foreground uppercase">
               Saldo pendiente
             </p>
             <p className="mt-0.5 text-2xl font-semibold break-words tabular-nums">
@@ -132,25 +132,25 @@ export default async function DebtDetailPage({
 
         <dl className="mt-4 grid grid-cols-2 gap-3 border-t pt-3 text-xs sm:grid-cols-4">
           <div className="min-w-0">
-            <dt className="text-[10px] text-muted-foreground">Principal</dt>
+            <dt className="text-[0.625rem] text-muted-foreground">Principal</dt>
             <dd className="mt-0.5 font-medium break-words tabular-nums">
               {formatCurrency(debt.principal, debt.currency)}
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[10px] text-muted-foreground">Interés</dt>
+            <dt className="text-[0.625rem] text-muted-foreground">Interés</dt>
             <dd className="mt-0.5 font-medium break-words tabular-nums">
               {formatCurrency(debt.interest, debt.currency)}
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[10px] text-muted-foreground">Vencimiento</dt>
+            <dt className="text-[0.625rem] text-muted-foreground">Vencimiento</dt>
             <dd className="mt-0.5 font-medium">
               {debt.dueDate ? formatDate(debt.dueDate) : "—"}
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[10px] text-muted-foreground">
+            <dt className="text-[0.625rem] text-muted-foreground">
               Interés mensual
             </dt>
             <dd className="mt-0.5 font-medium">
@@ -161,7 +161,7 @@ export default async function DebtDetailPage({
           </div>
         </dl>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2.5 text-[11px] text-muted-foreground">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2.5 text-[0.6875rem] text-muted-foreground">
           <span className="flex items-center gap-1">
             <CalendarDays className="size-3.5 shrink-0" aria-hidden />
             Prestado {formatDate(debt.borrowedAt)}
@@ -190,24 +190,24 @@ export default async function DebtDetailPage({
 
       <div className="grid grid-cols-2 gap-2">
         <div className="min-w-0 rounded-xl border bg-card p-3 shadow-xs">
-          <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
+          <p className="text-[0.625rem] tracking-wide text-muted-foreground uppercase">
             Ganancia disponible
           </p>
           <p className="mt-0.5 text-sm font-semibold break-words tabular-nums">
             {formatCurrency(debt.availableProfit, debt.bankrollCurrency)}
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[0.625rem] text-muted-foreground">
             Solo apuestas liquidadas
           </p>
         </div>
         <div className="min-w-0 rounded-xl border bg-card p-3 shadow-xs">
-          <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
+          <p className="text-[0.625rem] tracking-wide text-muted-foreground uppercase">
             Saldo libre del bankroll
           </p>
           <p className="mt-0.5 text-sm font-semibold break-words tabular-nums">
             {formatCurrency(debt.freeBankrollBalance, debt.bankrollCurrency)}
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[0.625rem] text-muted-foreground">
             Sin stakes pendientes
           </p>
         </div>
@@ -237,7 +237,7 @@ export default async function DebtDetailPage({
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Pagos</h2>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[0.6875rem] text-muted-foreground">
             {debt.payments.length} registro{debt.payments.length === 1 ? "" : "s"}
           </span>
         </div>
@@ -281,7 +281,7 @@ export default async function DebtDetailPage({
                       <p className="text-sm font-semibold break-words tabular-nums">
                         {formatCurrency(payment.amount, debt.currency)}
                       </p>
-                      <p className="mt-0.5 text-[11px] break-words text-muted-foreground">
+                      <p className="mt-0.5 text-[0.6875rem] break-words text-muted-foreground">
                         {formatDateTime(payment.paidAt, preferences.timezone)} ·{" "}
                         {payment.source === "FROM_BANKROLL"
                           ? "Desde el bankroll"
@@ -295,21 +295,21 @@ export default async function DebtDetailPage({
                           : ""}
                       </p>
                       {payment.note && (
-                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        <p className="mt-0.5 truncate text-[0.6875rem] text-muted-foreground">
                           {payment.note}
                         </p>
                       )}
                     </div>
                     <div className="shrink-0 text-right">
                       {voided ? (
-                        <span className="text-[10px] font-medium text-muted-foreground">
+                        <span className="text-[0.625rem] font-medium text-muted-foreground">
                           Anulado
                         </span>
                       ) : (
                         <VoidPaymentButton paymentId={payment.id} />
                       )}
                       {voided && payment.voidedAt && (
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[0.625rem] text-muted-foreground">
                           {formatDate(payment.voidedAt)}
                         </p>
                       )}
@@ -323,7 +323,7 @@ export default async function DebtDetailPage({
       </section>
 
       {debt.interestRateMonthly !== null && (
-        <p className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
+        <p className="flex items-start gap-1.5 text-[0.625rem] text-muted-foreground">
           <Percent className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           Interés simple prorrateado por días (mes de 30 días). Se detiene al
           completar el pago.

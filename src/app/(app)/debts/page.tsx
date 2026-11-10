@@ -147,20 +147,20 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
         className="grid grid-cols-3 divide-x rounded-xl border bg-card shadow-xs"
       >
         <div className="px-3 py-2.5 text-center">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
             Total (PEN)
           </p>
           <p className="mt-0.5 text-base font-semibold tabular-nums">
             {formatCurrency(summary.totalPen, "PEN")}
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[0.625rem] text-muted-foreground">
             {summary.byCurrency.USD > 0
               ? `US$ ${summary.byCurrency.USD.toFixed(2)} + S/ ${summary.byCurrency.PEN.toFixed(2)}`
               : "Equivalente en soles"}
           </p>
         </div>
         <div className="px-3 py-2.5 text-center">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
             Vencidas
           </p>
           <p
@@ -171,18 +171,18 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
           >
             {summary.overdueCount}
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[0.625rem] text-muted-foreground">
             {summary.openCount + summary.partialCount} abiertas
           </p>
         </div>
         <div className="px-3 py-2.5 text-center">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
             Próximo vencimiento
           </p>
           <p className="mt-0.5 text-sm font-semibold">
             {summary.nextDueDate ? formatDate(summary.nextDueDate) : "—"}
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[0.625rem] text-muted-foreground">
             Tasa USD→PEN {preferences.usdToPenRate.toFixed(2)}
           </p>
         </div>

@@ -27,7 +27,7 @@ function CardShell({
   children: ReactNode;
 }) {
   return (
-    <article className="group relative flex flex-col rounded-lg border bg-card p-2 shadow-xs transition-colors hover:bg-muted/30 h-[220px]">
+    <article className="group relative flex min-w-0 flex-col rounded-lg border bg-card p-2 shadow-xs transition-colors hover:bg-muted/30 min-h-[220px]">
       <Link
         href={`/analysis/${item.id}`}
         aria-label={`Ver detalle de ${item.homeName} vs ${item.awayName}`}
@@ -128,5 +128,7 @@ export function NoAnalysisCard({
     </CardShell>
   );
 }
+
+
 
 

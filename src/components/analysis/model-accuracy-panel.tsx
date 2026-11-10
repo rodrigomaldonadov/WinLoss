@@ -36,7 +36,7 @@ function Metric({
 }) {
   return (
     <div className="rounded-lg border bg-background px-2.5 py-2">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       <p
@@ -47,7 +47,7 @@ function Metric({
       >
         {value}
       </p>
-      {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-[0.625rem] text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -148,7 +148,7 @@ export function ModelAccuracyPanel({
           </summary>
 
           <div className="space-y-2 border-t px-2.5 py-2.5">
-            <p className="text-[11px] leading-snug text-muted-foreground">
+            <p className="text-[0.6875rem] leading-snug text-muted-foreground">
               N cambia según el baseline disponible. El total del holdout
               incluye todos los partidos con cuota de cierre; el subconjunto
               pre-cierre solo incluye partidos con cuota previa (Brasil y
@@ -158,7 +158,7 @@ export function ModelAccuracyPanel({
             </p>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[34rem] border-collapse text-left text-[11px]">
+              <table className="w-full min-w-[34rem] border-collapse text-left text-[0.6875rem]">
                 <thead>
                   <tr className="border-b text-muted-foreground">
                     <th className="py-1.5 pr-2 font-medium">Liga</th>
@@ -197,7 +197,7 @@ export function ModelAccuracyPanel({
                           <span className="block">
                             {competition.competition}
                           </span>
-                          <span className="block text-[10px] font-normal text-muted-foreground">
+                          <span className="block text-[0.625rem] font-normal text-muted-foreground">
                             {competition.code ?? "—"}
                             {competition.calibrationApplied
                               ? ` · T ${competition.temperature}`
@@ -208,7 +208,7 @@ export function ModelAccuracyPanel({
                           {sample(competition.sample)}
                           {competition.preSample > 0 &&
                           competition.preSample !== competition.sample ? (
-                            <span className="block text-[10px] text-muted-foreground">
+                            <span className="block text-[0.625rem] text-muted-foreground">
                               pre {competition.preSample}
                             </span>
                           ) : null}
@@ -253,7 +253,7 @@ export function ModelAccuracyPanel({
               </table>
             </div>
 
-            <p className="text-[10px] leading-snug text-muted-foreground">
+            <p className="text-[0.625rem] leading-snug text-muted-foreground">
               {accuracy.caveat}. El peso del modelo es {modelWeight} porque la
               validación temporal no mejoró el Brier del mercado en ninguna
               liga.
@@ -268,13 +268,13 @@ export function ModelAccuracyPanel({
           </div>
 
           {forward.sample === 0 ? (
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-[0.6875rem] text-muted-foreground">
               Aún no hay partidos evaluados desde que está en uso. Los snapshots
               se evalúan cuando el partido termina.
             </p>
           ) : (
             <>
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-[0.6875rem] text-muted-foreground">
                 Desde{" "}
                 {forward.since
                   ? formatDate(forward.since, {
@@ -317,7 +317,7 @@ export function ModelAccuracyPanel({
               </div>
 
               {forward.sample < 30 && (
-                <p className="mt-2 rounded bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-900 dark:text-amber-200">
+                <p className="mt-2 rounded bg-amber-500/10 px-2 py-1.5 text-[0.6875rem] text-amber-900 dark:text-amber-200">
                   Muestra pequeña (N={forward.sample}); todavía no es
                   concluyente.
                 </p>
@@ -332,7 +332,7 @@ export function ModelAccuracyPanel({
                   />
                 </summary>
                 <div className="overflow-x-auto border-t px-2.5 py-2">
-                  <table className="w-full min-w-[22rem] border-collapse text-left text-[11px]">
+                  <table className="w-full min-w-[22rem] border-collapse text-left text-[0.6875rem]">
                     <thead>
                       <tr className="border-b text-muted-foreground">
                         <th className="py-1.5 pr-2 font-medium">Liga</th>
@@ -367,7 +367,7 @@ export function ModelAccuracyPanel({
                               <span className="block">
                                 {competition.competition}
                               </span>
-                              <span className="block text-[10px] font-normal text-muted-foreground">
+                              <span className="block text-[0.625rem] font-normal text-muted-foreground">
                                 {competition.code ?? "—"}
                               </span>
                             </th>
@@ -397,7 +397,7 @@ export function ModelAccuracyPanel({
                 </div>
               </details>
 
-              <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+              <p className="mt-2 text-[0.625rem] leading-snug text-muted-foreground">
                 Forward test separado del backtest histórico. N pequeño no es
                 concluyente; no se cambian parámetros automáticamente.
               </p>

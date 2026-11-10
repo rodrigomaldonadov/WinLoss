@@ -133,7 +133,7 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
         >
           <ClipboardPaste className="size-4" aria-hidden />
           Pegar texto del boleto
-          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide text-primary">
             Nuevo
           </span>
         </Button>
@@ -162,7 +162,7 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
             placeholder={PLACEHOLDER}
             rows={7}
             aria-label="Texto del boleto"
-            className="h-40 min-h-0 resize-none field-sizing-fixed overflow-y-auto font-mono text-[11px] leading-relaxed"
+            className="h-40 min-h-0 resize-none field-sizing-fixed overflow-y-auto font-mono text-[0.6875rem] leading-relaxed"
           />
 
           <div className="grid grid-cols-2 gap-2">
@@ -204,21 +204,21 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
             <div className="space-y-3" aria-live="polite">
               <div className="rounded-xl border bg-muted/30 p-3">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-[0.625rem]">
                     {parsed.betType === "COMBINED"
                       ? `Múltiple · ${legs.length}`
                       : "Simple"}
                   </Badge>
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className="text-[0.625rem]">
                     {legs.length} partido{legs.length === 1 ? "" : "s"}
                   </Badge>
                   {totalSelections > legs.length && (
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge variant="secondary" className="text-[0.625rem]">
                       {totalSelections} selecciones
                     </Badge>
                   )}
                   {parsed.oddsBoostPct !== null && (
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge variant="secondary" className="text-[0.625rem]">
                       Boost +
                       {parsed.oddsBoostPct % 1 === 0
                         ? parsed.oddsBoostPct
@@ -229,7 +229,7 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
                 </div>
                 <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[0.625rem] uppercase tracking-wide text-muted-foreground">
                       Stake
                     </dt>
                     <dd className="font-semibold tabular-nums">
@@ -239,7 +239,7 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[0.625rem] uppercase tracking-wide text-muted-foreground">
                       Cuota total
                     </dt>
                     <dd className="font-semibold tabular-nums">
@@ -265,7 +265,7 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
                         {leg.odds !== null ? formatOdds(leg.odds) : "—"}
                       </span>
                     </div>
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 line-clamp-2 text-[0.6875rem] text-muted-foreground">
                       {leg.selections.length > 0
                         ? leg.selections
                             .map(
@@ -276,7 +276,7 @@ export function PasteBetSheet({ onParsed, disabled }: PasteBetSheetProps) {
                         : "Sin selección detectada"}
                     </p>
                     {leg.isBuilder && (
-                      <p className="mt-0.5 text-[10px] font-medium text-primary">
+                      <p className="mt-0.5 text-[0.625rem] font-medium text-primary">
                         {leg.selections.length} selecciones combinadas
                       </p>
                     )}

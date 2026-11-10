@@ -74,11 +74,11 @@ export function BetCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+            <Badge variant="outline" className="px-1.5 py-0 text-[0.625rem]">
               {typeLabel}
             </Badge>
             {bet.legs.length > 1 && (
-              <span className="text-[10px] font-medium tabular-nums text-muted-foreground">
+              <span className="text-[0.625rem] font-medium tabular-nums text-muted-foreground">
                 {bet.legs.filter((leg) => leg.status !== "PENDING").length}/
                 {bet.legs.length} ✓
               </span>
@@ -106,20 +106,20 @@ export function BetCard({
           {bet.legs.length === 1 &&
             bet.legs[0]?.scoreHome !== null &&
             bet.legs[0]?.scoreAway !== null && (
-              <span className="text-[10px] font-medium tabular-nums text-muted-foreground">
+              <span className="text-[0.625rem] font-medium tabular-nums text-muted-foreground">
                 {bet.legs[0].scoreHome}-{bet.legs[0].scoreAway}
               </span>
             )}
           {bet.legs.length === 1 && bet.legs[0]?.autoSettled && (
-            <span className="rounded bg-primary/10 px-1 text-[10px] font-semibold text-primary">
+            <span className="rounded bg-primary/10 px-1 text-[0.625rem] font-semibold text-primary">
               Auto
             </span>
           )}
           {bet.isFreeBet && (
-            <span className="text-[10px] font-medium text-primary">Free bet</span>
+            <span className="text-[0.625rem] font-medium text-primary">Free bet</span>
           )}
           {bet.oddsBoostPct !== null && bet.oddsBoostPct > 0 && (
-            <span className="rounded bg-primary/10 px-1 text-[10px] font-semibold text-primary">
+            <span className="rounded bg-primary/10 px-1 text-[0.625rem] font-semibold text-primary">
               Boost +
               {bet.oddsBoostPct % 1 === 0
                 ? bet.oddsBoostPct
@@ -144,7 +144,7 @@ export function BetCard({
                     {leg.isBuilder ? "Builder · " : ""}
                     {leg.eventName}
                   </p>
-                  <p className="line-clamp-1 text-[11px] text-muted-foreground">
+                  <p className="line-clamp-1 text-[0.6875rem] text-muted-foreground">
                     {leg.selections
                       .map(
                         (selection) =>
@@ -155,14 +155,14 @@ export function BetCard({
                   {!pending && analysisLinks?.has(leg.id) && (
                     <Link
                       href={`/analysis/historial/${analysisLinks.get(leg.id)}`}
-                      className="mt-0.5 inline-flex text-[10px] font-medium text-primary underline-offset-4 hover:underline"
+                      className="mt-0.5 inline-flex text-[0.625rem] font-medium text-primary underline-offset-4 hover:underline"
                     >
                       Ver análisis
                     </Link>
                   )}
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-[11px] font-medium tabular-nums">
+                  <p className="text-[0.6875rem] font-medium tabular-nums">
                     {leg.scoreHome !== null && leg.scoreAway !== null
                       ? `${leg.scoreHome}-${leg.scoreAway} · `
                       : ""}
@@ -171,7 +171,7 @@ export function BetCard({
                   {!pending && (
                     <p
                       className={cn(
-                        "flex items-center justify-end gap-1 text-[10px]",
+                        "flex items-center justify-end gap-1 text-[0.625rem]",
                         legStatus.textClassName,
                       )}
                     >
@@ -188,7 +188,7 @@ export function BetCard({
             );
           })}
           {hiddenLegs > 0 && (
-            <li className="text-[11px] text-muted-foreground">
+            <li className="text-[0.6875rem] text-muted-foreground">
               +{hiddenLegs} partido{hiddenLegs === 1 ? "" : "s"} más
             </li>
           )}
@@ -197,19 +197,19 @@ export function BetCard({
 
       <dl className="mt-2.5 grid grid-cols-3 gap-2 border-t pt-2.5">
         <div>
-          <dt className="text-[10px] text-muted-foreground">Cuota</dt>
+          <dt className="text-[0.625rem] text-muted-foreground">Cuota</dt>
           <dd className="mt-0.5 text-xs font-medium tabular-nums">
             {formatOdds(bet.odds)}
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] text-muted-foreground">Stake</dt>
+          <dt className="text-[0.625rem] text-muted-foreground">Stake</dt>
           <dd className="mt-0.5 text-xs font-medium tabular-nums">
             {formatCurrency(bet.stake, currency)}
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] text-muted-foreground">
+          <dt className="text-[0.625rem] text-muted-foreground">
             {pending
               ? bet.isFreeBet
                 ? "Ganancia"
@@ -275,7 +275,7 @@ export function BetCard({
       )}
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
-        <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+        <p className="min-w-0 flex-1 truncate text-[0.6875rem] text-muted-foreground">
           {formatDateTime(bet.placedAt, timeZone)} · {bet.bankroll.name}
           {bet.bookmaker ? ` · ${bet.bookmaker.name}` : ""}
           {bet.externalId ? ` · #${bet.externalId}` : ""}

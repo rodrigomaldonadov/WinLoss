@@ -42,12 +42,12 @@ export function DebtCard({ debt }: DebtCardProps) {
           <p className="text-base font-semibold tabular-nums">
             {formatCurrency(debt.balance, debt.currency)}
           </p>
-          <p className="text-[10px] text-muted-foreground">pendiente</p>
+          <p className="text-[0.625rem] text-muted-foreground">pendiente</p>
         </div>
       </div>
 
       <div className="mt-3">
-        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 text-[0.6875rem] text-muted-foreground">
           <span>
             {formatCurrency(debt.paid, debt.currency)} pagado
           </span>
@@ -68,7 +68,7 @@ export function DebtCard({ debt }: DebtCardProps) {
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2.5 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2.5 text-[0.6875rem] text-muted-foreground">
         <span className="flex items-center gap-1">
           <CalendarDays className="size-3.5" aria-hidden />
           {debt.dueDate

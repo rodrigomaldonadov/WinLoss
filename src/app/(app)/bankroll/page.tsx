@@ -231,7 +231,7 @@ export default async function BankrollPage({
                           ? ` · ${movement.lenderName}`
                           : ""}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-[0.6875rem] text-muted-foreground">
                         {formatDateTime(
                           movement.occurredAt,
                           preferences.timezone,
@@ -242,7 +242,7 @@ export default async function BankrollPage({
                           : ""}
                       </p>
                       {movement.note && (
-                        <p className="truncate text-[11px] text-muted-foreground">
+                        <p className="truncate text-[0.6875rem] text-muted-foreground">
                           {movement.note}
                         </p>
                       )}

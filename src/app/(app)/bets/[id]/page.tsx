@@ -113,11 +113,11 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
 
         <dl className="mt-4 grid grid-cols-2 gap-3 border-t pt-3 sm:grid-cols-4">
           <div>
-            <dt className="text-[11px] text-muted-foreground">Cuota total</dt>
+            <dt className="text-[0.6875rem] text-muted-foreground">Cuota total</dt>
             <dd className="mt-0.5 text-sm font-semibold tabular-nums">
               {formatOdds(bet.odds)}
               {bet.oddsBoostPct !== null && bet.oddsBoostPct > 0 && (
-                <span className="ml-1 text-[10px] font-semibold text-primary">
+                <span className="ml-1 text-[0.625rem] font-semibold text-primary">
                   +
                   {bet.oddsBoostPct % 1 === 0
                     ? bet.oddsBoostPct
@@ -128,13 +128,13 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
             </dd>
           </div>
           <div>
-            <dt className="text-[11px] text-muted-foreground">Stake</dt>
+            <dt className="text-[0.6875rem] text-muted-foreground">Stake</dt>
             <dd className="mt-0.5 text-sm font-semibold tabular-nums">
               {formatCurrency(bet.stake, currency)}
             </dd>
           </div>
           <div>
-            <dt className="text-[11px] text-muted-foreground">Payout</dt>
+            <dt className="text-[0.6875rem] text-muted-foreground">Payout</dt>
             <dd className="mt-0.5 text-sm font-semibold tabular-nums">
               {bet.payout === null
                 ? "—"
@@ -142,7 +142,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
             </dd>
           </div>
           <div>
-            <dt className="text-[11px] text-muted-foreground">Beneficio</dt>
+            <dt className="text-[0.6875rem] text-muted-foreground">Beneficio</dt>
             <dd
               className={cn(
                 "mt-0.5 text-sm font-semibold tabular-nums",
@@ -157,7 +157,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
           </div>
         </dl>
 
-        <p className="mt-3 border-t pt-3 text-[11px] text-muted-foreground">
+        <p className="mt-3 border-t pt-3 text-[0.6875rem] text-muted-foreground">
           {bet.bankroll.name}
           {bet.bookmaker ? ` · ${bet.bookmaker.name}` : ""}
           {bet.settledAt
@@ -205,12 +205,12 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
                         {leg.eventName}
                       </p>
                       {leg.isBuilder && (
-                        <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                        <Badge variant="outline" className="px-1.5 py-0 text-[0.625rem]">
                           Builder
                         </Badge>
                       )}
                       {leg.autoSettled && (
-                        <Badge className="px-1.5 py-0 text-[10px]">
+                        <Badge className="px-1.5 py-0 text-[0.625rem]">
                           Auto
                         </Badge>
                       )}
@@ -232,7 +232,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
                     <Badge className={legStatus.badgeClassName}>
                       {legStatus.label}
                     </Badge>
-                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                    <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
                       {leg.scoreHome !== null && leg.scoreAway !== null
                         ? `${leg.scoreHome}-${leg.scoreAway} · `
                         : ""}
@@ -258,7 +258,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
                 </ul>
 
                 {leg.closingOdds !== null && (
-                  <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground">
+                  <p className="mt-2 border-t pt-2 text-[0.6875rem] text-muted-foreground">
                     Cuota de cierre: {formatOdds(leg.closingOdds)}
                   </p>
                 )}
@@ -288,7 +288,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
         <section className="flex items-center justify-between rounded-xl border bg-card px-4 py-3 shadow-xs">
           <div>
             <p className="text-sm font-medium">Closing Line Value</p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[0.6875rem] text-muted-foreground">
               Producto de los CLV de los partidos con cuota de cierre.
             </p>
           </div>

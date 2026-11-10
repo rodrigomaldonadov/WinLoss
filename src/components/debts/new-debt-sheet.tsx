@@ -259,7 +259,7 @@ export function NewDebtSheet({
                       aria-pressed={active}
                       onClick={() => selectCurrency(code)}
                       className={cn(
-                        "flex h-11 min-w-0 items-center justify-center gap-1 rounded-md px-1 text-[13px] font-medium transition-colors sm:text-sm",
+                        "flex h-11 min-w-0 items-center justify-center gap-1 rounded-md px-1 text-[0.8125rem] font-medium transition-colors sm:text-sm",
                         active
                           ? "bg-background text-foreground shadow-xs"
                           : "text-muted-foreground active:bg-background/60",
@@ -393,12 +393,12 @@ export function NewDebtSheet({
                 {canUseSavedRate && (
                   <div className="space-y-1.5 rounded-lg border bg-muted/20 p-2.5">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-medium">
+                      <span className="text-[0.6875rem] font-medium">
                         Tasa guardada
                       </span>
                       <Link
                         href="/settings"
-                        className="text-[11px] font-medium text-primary underline-offset-4 hover:underline"
+                        className="text-[0.6875rem] font-medium text-primary underline-offset-4 hover:underline"
                       >
                         Gestionar
                       </Link>
@@ -483,7 +483,7 @@ export function NewDebtSheet({
                   className="h-11 tabular-nums"
                   aria-invalid={Boolean(state.fieldErrors?.exchangeRate)}
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   {canUseSavedRate
                     ? "Elige una tasa guardada o edita la cifra para usar una manual."
                     : "Última tasa usada como sugerencia. Puedes cambiarla."}
@@ -521,7 +521,7 @@ export function NewDebtSheet({
                     placeholder="0"
                     className="h-11 tabular-nums"
                   />
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[0.6875rem] text-muted-foreground">
                     Interés simple prorrateado por días. Déjalo vacío si no
                     genera interés.
                   </p>

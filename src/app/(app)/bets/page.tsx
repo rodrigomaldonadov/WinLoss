@@ -308,7 +308,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
         className="grid grid-cols-3 divide-x rounded-xl border bg-card shadow-xs"
       >
         <div className="px-3 py-2.5 text-center">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
             Beneficio
           </p>
           <p
@@ -325,7 +325,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           </p>
         </div>
         <div className="px-3 py-2.5 text-center">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
             ROI
           </p>
           <p
@@ -342,7 +342,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           </p>
         </div>
         <div className="px-3 py-2.5 text-center">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
             Pendientes
           </p>
           <p className="mt-0.5 text-base font-semibold tabular-nums">

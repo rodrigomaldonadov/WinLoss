@@ -100,7 +100,7 @@ export function BetsFiltersSheet({ sports }: BetsFiltersSheetProps) {
           <SlidersHorizontal className="size-4" aria-hidden />
           <span className="hidden text-xs sm:inline">Filtros</span>
           {activeCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground sm:static sm:size-5 sm:text-[11px]">
+            <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[0.625rem] font-semibold text-primary-foreground sm:static sm:size-5 sm:text-[0.6875rem]">
               {activeCount}
             </span>
           )}
